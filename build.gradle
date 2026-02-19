@@ -69,12 +69,10 @@ dependencyManagement {
 
 tasks.named('test') {
     useJUnitPlatform()
-    failOnNoDiscoveredTests = false
 }
 
 tasks.register('backtestRun', JavaExec) {
     group = 'verification'
-    description = 'Run backtest utility from test sources'
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'org.nowstart.evergreen.backtest.runner.BacktestMain'
 }
