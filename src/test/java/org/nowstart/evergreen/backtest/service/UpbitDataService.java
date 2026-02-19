@@ -44,31 +44,16 @@ public class UpbitDataService {
     private long lastRequestAtMs = 0L;
 
     public List<CandleBar> loadBars(BacktestConfig config) {
-        Path cachePath = resolveCachePath(config.market(), config.fromDt(), config.toDt(), config.csvCacheDir());
-
-        if (Files.exists(cachePath)) {
-            try {
-                List<CandleBar> cached = loadCsv(cachePath);
-                log.info("[Backtest][DATA] cache hit path={} rows={}", cachePath.toAbsolutePath(), cached.size());
-                return cached;
-            } catch (RuntimeException e) {
-                log.warn("[Backtest][DATA] cache read failed path={}, fallback to api", cachePath.toAbsolutePath(), e);
-            }
-        }
-
-        log.info("[Backtest][DATA] cache miss path={}, fetch from api", cachePath.toAbsolutePath());
-        List<CandleBar> bars = fetchFromApi(config.market(), config.fromDt(), config.toDt());
-        saveCsv(cachePath, bars);
-        log.info("[Backtest][DATA] cache saved path={} rows={}", cachePath.toAbsolutePath(), bars.size());
-        return bars;
+        Path cachePath = resolveCachePath(config.market(), config.fromDt(), config.toDt(), config.csvCacheDir(), "days");
+        return loadWithCache(cachePath, () -> fetchFromApi(UPBIT_DAYS_URL, config.market(), config.fromDt(), config.toDt()));
     }
 
-    public List<CandleBar> fetchFromApi(String market, Instant from, Instant to) {
+    public List<CandleBar> fetchFromApi(String endpoint, String market, Instant from, Instant to) {
         Map<String, CandleBar> dedup = new HashMap<>();
         Instant cursor = to;
 
         while (true) {
-            List<CandleBar> batch = requestBatch(market, cursor, 200);
+            List<CandleBar> batch = requestBatch(endpoint, market, cursor, 200);
             if (batch.isEmpty()) {
                 break;
             }
@@ -92,8 +77,8 @@ public class UpbitDataService {
         return out;
     }
 
-    private List<CandleBar> requestBatch(String market, Instant to, int count) {
-        String url = UPBIT_DAYS_URL
+    private List<CandleBar> requestBatch(String endpoint, String market, Instant to, int count) {
+        String url = endpoint
                 + "?market=" + URLEncoder.encode(market, StandardCharsets.UTF_8)
                 + "&to=" + URLEncoder.encode(to.toString(), StandardCharsets.UTF_8)
                 + "&count=" + count;
@@ -215,12 +200,30 @@ public class UpbitDataService {
         return Instant.parse(ts + "Z");
     }
 
-    private Path resolveCachePath(String market, Instant from, Instant to, String cacheDir) {
+    private Path resolveCachePath(String market, Instant from, Instant to, String cacheDir, String intervalKey) {
         String safeMarket = market.replaceAll("[^A-Za-z0-9._-]", "_");
         String fromKey = DATE_KEY_FORMAT.format(from.atOffset(ZoneOffset.UTC));
         String toKey = DATE_KEY_FORMAT.format(to.atOffset(ZoneOffset.UTC));
-        String fileName = safeMarket + "_" + fromKey + "_" + toKey + "_days.csv";
+        String fileName = safeMarket + "_" + fromKey + "_" + toKey + "_" + intervalKey + ".csv";
         return Path.of(cacheDir, fileName);
+    }
+
+    private List<CandleBar> loadWithCache(Path cachePath, DataSupplier fetcher) {
+        if (Files.exists(cachePath)) {
+            try {
+                List<CandleBar> cached = loadCsv(cachePath);
+                log.info("[Backtest][DATA] cache hit path={} rows={}", cachePath.toAbsolutePath(), cached.size());
+                return cached;
+            } catch (RuntimeException e) {
+                log.warn("[Backtest][DATA] cache read failed path={}, fallback to api", cachePath.toAbsolutePath(), e);
+            }
+        }
+
+        log.info("[Backtest][DATA] cache miss path={}, fetch from api", cachePath.toAbsolutePath());
+        List<CandleBar> bars = fetcher.get();
+        saveCsv(cachePath, bars);
+        log.info("[Backtest][DATA] cache saved path={} rows={}", cachePath.toAbsolutePath(), bars.size());
+        return bars;
     }
 
     private List<CandleBar> loadCsv(Path path) {
@@ -268,17 +271,16 @@ public class UpbitDataService {
 
             List<String> lines = new ArrayList<>(bars.size() + 1);
             lines.add(CSV_HEADER);
-            for (CandleBar b : bars) {
+            for (CandleBar bar : bars) {
                 lines.add(
-                        b.timestamp().toString()
-                                + "," + b.open()
-                                + "," + b.high()
-                                + "," + b.low()
-                                + "," + b.close()
-                                + "," + b.volume()
+                        bar.timestamp().toString()
+                                + "," + bar.open()
+                                + "," + bar.high()
+                                + "," + bar.low()
+                                + "," + bar.close()
+                                + "," + bar.volume()
                 );
             }
-
             Files.write(path, lines, StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to save CSV: " + path, e);
@@ -291,5 +293,10 @@ public class UpbitDataService {
 
     private double parseDouble(String raw) {
         return Double.parseDouble(raw.trim());
+    }
+
+    @FunctionalInterface
+    private interface DataSupplier {
+        List<CandleBar> get();
     }
 }

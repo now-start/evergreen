@@ -8,14 +8,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Stroke;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -40,7 +43,8 @@ public class PlotService {
     private static final int EXEC_MARKER_SIZE = 7;
     private static final int EXEC_MARKER_OFFSET = 14;
     private static final DateTimeFormatter FILE_STAMP_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
-    private static final DateTimeFormatter X_AXIS_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter X_AXIS_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM");
+    private static final ZoneId X_AXIS_ZONE = ZoneId.of("Asia/Seoul");
 
     public void saveCharts(BacktestResult result, boolean drawGridLines, StrategyParams params) {
         String stamp = FILE_STAMP_FORMAT.format(java.time.LocalDateTime.now());
@@ -70,20 +74,75 @@ public class PlotService {
 
         double minClose = rows.stream().mapToDouble(BacktestRow::close).min().orElse(0.0);
         double maxClose = rows.stream().mapToDouble(BacktestRow::close).max().orElse(1.0);
-        double minMa = rows.stream().mapToDouble(BacktestRow::ma).filter(Double::isFinite).min().orElse(minClose);
-        double maxMa = rows.stream().mapToDouble(BacktestRow::ma).filter(Double::isFinite).max().orElse(maxClose);
-        double min = Math.min(minClose, minMa);
-        double max = Math.max(maxClose, maxMa);
+        double min = minClose;
+        double max = maxClose;
+        min = Math.min(min, finiteMin(rows, i -> rows.get(i).ma(), minClose));
+        min = Math.min(min, finiteMin(rows, i -> rows.get(i).regimeAnchor(), minClose));
+        min = Math.min(min, finiteMin(rows, i -> rows.get(i).regimeUpper(), minClose));
+        min = Math.min(min, finiteMin(rows, i -> rows.get(i).regimeLower(), minClose));
+        min = Math.min(min, finiteMin(rows, i -> rows.get(i).atrTrailStop(), minClose));
+        max = Math.max(max, finiteMax(rows, i -> rows.get(i).ma(), maxClose));
+        max = Math.max(max, finiteMax(rows, i -> rows.get(i).regimeAnchor(), maxClose));
+        max = Math.max(max, finiteMax(rows, i -> rows.get(i).regimeUpper(), maxClose));
+        max = Math.max(max, finiteMax(rows, i -> rows.get(i).regimeLower(), maxClose));
+        max = Math.max(max, finiteMax(rows, i -> rows.get(i).atrTrailStop(), maxClose));
 
         drawAxes(g, rows, min, max, grid, "Price (KRW)");
 
+        drawDashedSeries(
+                g,
+                rows.size(),
+                i -> rows.get(i).regimeUpper(),
+                min,
+                max,
+                new Color(176, 176, 176),
+                new float[]{5f, 4f}
+        );
+        drawDashedSeries(
+                g,
+                rows.size(),
+                i -> rows.get(i).regimeLower(),
+                min,
+                max,
+                new Color(176, 176, 176),
+                new float[]{5f, 4f}
+        );
+        drawDashedSeries(
+                g,
+                rows.size(),
+                i -> rows.get(i).regimeAnchor(),
+                min,
+                max,
+                new Color(120, 120, 120),
+                new float[]{8f, 4f}
+        );
+
         drawSeries(g, rows.size(), i -> rows.get(i).close(), min, max, new Color(33, 150, 243));
-        drawSeries(g, rows.size(), i -> rows.get(i).ma(), min, max, new Color(255, 152, 0));
+        drawSeries(g, rows.size(), i -> rows.get(i).atrTrailStop(), min, max, new Color(192, 57, 43));
+
+        for (int i = 0; i < rows.size(); i++) {
+            int x = mapX(i, rows.size());
+            int closeY = mapY(rows.get(i).close(), min, max);
+            if (rows.get(i).setupBuy()) {
+                drawCircleMarker(g, x, closeY - 8, 3, new Color(46, 204, 113, 200), new Color(26, 140, 79));
+            }
+            if (rows.get(i).setupSell()) {
+                drawCircleMarker(g, x, closeY + 8, 3, new Color(243, 156, 18, 200), new Color(183, 120, 10));
+            }
+            if (rows.get(i).trailStopTriggered()) {
+                drawCrossMarker(g, x, closeY, 4, new Color(192, 57, 43));
+            }
+            if (i > 0 && !rows.get(i).regime().equals(rows.get(i - 1).regime())) {
+                double markerBase = Double.isFinite(rows.get(i).regimeAnchor()) ? rows.get(i).regimeAnchor() : rows.get(i).close();
+                int regimeY = mapY(markerBase, min, max);
+                drawSquareMarker(g, x, regimeY, 4, regimeColor(rows.get(i).regime()));
+            }
+        }
 
         g.setColor(new Color(46, 204, 113));
         for (int i = 1; i < rows.size(); i++) {
-            // Mark execution points at open when position flips from flat -> long.
-            if (rows.get(i - 1).posOpen() == 0 && rows.get(i).posOpen() == 1) {
+            // Mark execution points at open when exposure increases.
+            if (rows.get(i).posOpen() > rows.get(i - 1).posOpen()) {
                 int x = mapX(i, rows.size());
                 int y = mapY(rows.get(i).open(), min, max);
                 drawExecutionMarker(g, x, y, true, new Color(46, 204, 113));
@@ -92,8 +151,8 @@ public class PlotService {
 
         g.setColor(new Color(231, 76, 60));
         for (int i = 1; i < rows.size(); i++) {
-            // Mark execution points at open when position flips from long -> flat.
-            if (rows.get(i - 1).posOpen() == 1 && rows.get(i).posOpen() == 0) {
+            // Mark execution points at open when exposure decreases.
+            if (rows.get(i).posOpen() < rows.get(i - 1).posOpen()) {
                 int x = mapX(i, rows.size());
                 int y = mapY(rows.get(i).open(), min, max);
                 drawExecutionMarker(g, x, y, false, new Color(231, 76, 60));
@@ -102,7 +161,13 @@ public class PlotService {
 
         drawLegend(g, List.of(
                 new LegendEntry("Close", new Color(33, 150, 243)),
-                new LegendEntry("MA", new Color(255, 152, 0)),
+                new LegendEntry("Regime EMA", new Color(120, 120, 120)),
+                new LegendEntry("Regime Upper/Lower", new Color(176, 176, 176)),
+                new LegendEntry("ATR Trail Stop", new Color(192, 57, 43)),
+                new LegendEntry("Setup Buy Cond", new Color(46, 204, 113)),
+                new LegendEntry("Setup Sell Cond", new Color(243, 156, 18)),
+                new LegendEntry("Trail Stop Hit", new Color(192, 57, 43)),
+                new LegendEntry("Regime Change", new Color(127, 140, 141)),
                 new LegendEntry("Buy", new Color(46, 204, 113)),
                 new LegendEntry("Sell", new Color(231, 76, 60))
         ));
@@ -131,12 +196,12 @@ public class PlotService {
         drawSeries(g, rows.size(), i -> rows.get(i).equityBh(), min, max, new Color(155, 89, 182));
 
         for (int i = 1; i < rows.size(); i++) {
-            if (rows.get(i - 1).posOpen() == 0 && rows.get(i).posOpen() == 1) {
+            if (rows.get(i).posOpen() > rows.get(i - 1).posOpen()) {
                 int x = mapX(i, rows.size());
                 int y = mapY(rows.get(i).equity(), min, max);
                 drawExecutionMarker(g, x, y, true, new Color(46, 204, 113));
             }
-            if (rows.get(i - 1).posOpen() == 1 && rows.get(i).posOpen() == 0) {
+            if (rows.get(i).posOpen() < rows.get(i - 1).posOpen()) {
                 int x = mapX(i, rows.size());
                 int y = mapY(rows.get(i).equity(), min, max);
                 drawExecutionMarker(g, x, y, false, new Color(231, 76, 60));
@@ -186,28 +251,28 @@ public class PlotService {
                 g.drawLine(x, TOP_PADDING, x, TOP_PADDING + CHART_HEIGHT);
             }
 
-            String label = X_AXIS_DATE_FORMAT.format(rows.get(index).timestamp().atOffset(ZoneOffset.UTC));
+            String label = X_AXIS_DATE_FORMAT.format(rows.get(index).timestamp().atZone(X_AXIS_ZONE));
             g.setColor(Color.GRAY);
             g.drawLine(x, TOP_PADDING + CHART_HEIGHT, x, TOP_PADDING + CHART_HEIGHT + 5);
-            g.drawString(label, x - 34, TOP_PADDING + CHART_HEIGHT + 24);
+            g.drawString(label, x - 20, TOP_PADDING + CHART_HEIGHT + 24);
         }
 
         g.setColor(Color.BLACK);
         g.drawRect(LEFT_PADDING, TOP_PADDING, CHART_WIDTH, CHART_HEIGHT);
         g.drawString(yAxisName, LEFT_PADDING - 70, TOP_PADDING - 10);
-        g.drawString("Date (UTC)", LEFT_PADDING + CHART_WIDTH - 100, TOP_PADDING + CHART_HEIGHT + 48);
+        g.drawString("Date (KST)", LEFT_PADDING + CHART_WIDTH - 100, TOP_PADDING + CHART_HEIGHT + 48);
     }
 
     private List<Integer> xTickIndices(int n) {
         if (n <= 1) {
             return List.of(0);
         }
+        int tickCount = 6;
         Set<Integer> indexSet = new LinkedHashSet<>();
-        indexSet.add(0);
-        indexSet.add((n - 1) / 4);
-        indexSet.add((n - 1) / 2);
-        indexSet.add(((n - 1) * 3) / 4);
-        indexSet.add(n - 1);
+        for (int i = 0; i < tickCount; i++) {
+            int index = (int) Math.round(((n - 1) * i) / (double) (tickCount - 1));
+            indexSet.add(index);
+        }
         return new ArrayList<>(indexSet);
     }
 
@@ -222,14 +287,15 @@ public class PlotService {
     }
 
     private void drawLegend(Graphics2D g, List<LegendEntry> entries) {
-        int x = LEFT_PADDING + CHART_WIDTH - 170;
+        int boxWidth = 220;
+        int lineHeight = 16;
+        int x = LEFT_PADDING + CHART_WIDTH - boxWidth - 12;
         int y = TOP_PADDING + 12;
-        int lineHeight = 18;
 
         g.setColor(new Color(255, 255, 255, 220));
-        g.fillRect(x - 8, y - 14, 160, (entries.size() * lineHeight) + 10);
+        g.fillRect(x - 8, y - 14, boxWidth, (entries.size() * lineHeight) + 10);
         g.setColor(Color.GRAY);
-        g.drawRect(x - 8, y - 14, 160, (entries.size() * lineHeight) + 10);
+        g.drawRect(x - 8, y - 14, boxWidth, (entries.size() * lineHeight) + 10);
 
         for (int i = 0; i < entries.size(); i++) {
             LegendEntry entry = entries.get(i);
@@ -278,12 +344,11 @@ public class PlotService {
     private String formatParamTitle(StrategyParams params) {
         return String.format(
                 Locale.US,
-                "RSI<%.2f, MA=%d, MA-slope=%d, fee=%.4f, slippage=%.4f",
-                params.rsiBuy(),
-                params.maLen(),
-                params.maSlopeDays(),
-                params.feePerSide(),
-                params.slippage()
+                "RegimeFlip(BEAR->BULL / BULL->BEAR), EMA=%d, ATR(%d)x%.1f, regimeBand=%.2f",
+                params.regimeEmaLen(),
+                params.atrPeriod(),
+                params.atrTrailMultiplier(),
+                params.regimeBand()
         );
     }
 
@@ -320,6 +385,28 @@ public class PlotService {
         }
     }
 
+    private double finiteMin(List<BacktestRow> rows, ValueAt valueAt, double fallback) {
+        double min = Double.POSITIVE_INFINITY;
+        for (int i = 0; i < rows.size(); i++) {
+            double value = valueAt.get(i);
+            if (Double.isFinite(value)) {
+                min = Math.min(min, value);
+            }
+        }
+        return min == Double.POSITIVE_INFINITY ? fallback : min;
+    }
+
+    private double finiteMax(List<BacktestRow> rows, ValueAt valueAt, double fallback) {
+        double max = Double.NEGATIVE_INFINITY;
+        for (int i = 0; i < rows.size(); i++) {
+            double value = valueAt.get(i);
+            if (Double.isFinite(value)) {
+                max = Math.max(max, value);
+            }
+        }
+        return max == Double.NEGATIVE_INFINITY ? fallback : max;
+    }
+
     private void drawSeries(Graphics2D g, int n, ValueAt indexValue, double min, double max, Color color) {
         g.setColor(color);
         int prevX = -1;
@@ -337,6 +424,51 @@ public class PlotService {
             prevX = x;
             prevY = y;
         }
+    }
+
+    private void drawDashedSeries(
+            Graphics2D g,
+            int n,
+            ValueAt indexValue,
+            double min,
+            double max,
+            Color color,
+            float[] dashPattern
+    ) {
+        Stroke original = g.getStroke();
+        g.setStroke(new BasicStroke(1.2f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND, 10.0f, dashPattern, 0f));
+        drawSeries(g, n, indexValue, min, max, color);
+        g.setStroke(original);
+    }
+
+    private void drawCircleMarker(Graphics2D g, int x, int y, int radius, Color fill, Color border) {
+        int d = radius * 2;
+        g.setColor(fill);
+        g.fillOval(x - radius, y - radius, d, d);
+        g.setColor(border);
+        g.drawOval(x - radius, y - radius, d, d);
+    }
+
+    private void drawSquareMarker(Graphics2D g, int x, int y, int halfSize, Color fill) {
+        int size = halfSize * 2;
+        g.setColor(fill);
+        g.fillRect(x - halfSize, y - halfSize, size, size);
+        g.setColor(Color.DARK_GRAY);
+        g.drawRect(x - halfSize, y - halfSize, size, size);
+    }
+
+    private void drawCrossMarker(Graphics2D g, int x, int y, int halfSize, Color color) {
+        g.setColor(color);
+        g.drawLine(x - halfSize, y - halfSize, x + halfSize, y + halfSize);
+        g.drawLine(x - halfSize, y + halfSize, x + halfSize, y - halfSize);
+    }
+
+    private Color regimeColor(String regime) {
+        return switch (regime) {
+            case "BULL" -> new Color(39, 174, 96);
+            case "BEAR" -> new Color(192, 57, 43);
+            default -> new Color(241, 196, 15);
+        };
     }
 
     private int mapX(int i, int n) {

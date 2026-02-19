@@ -17,6 +17,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Locale;
 
 @Component
 public class BacktestRunner implements ApplicationRunner {
@@ -52,8 +53,14 @@ public class BacktestRunner implements ApplicationRunner {
         }
 
         logSection("BACKTEST START");
-        log.info("[Overview] market={} from={} to={} validationRatio={} topK={}",
-                config.market(), config.fromDt(), config.toDt(), config.validationRatio(), config.topK());
+        log.info("[Overview] market={} from={} to={} validationRatio={} topK={} gridParallelism={} progressLogSec={}",
+                config.market(),
+                config.fromDt(),
+                config.toDt(),
+                formatPercent(config.validationRatio()),
+                config.topK(),
+                config.gridParallelism(),
+                config.gridProgressLogSeconds());
 
         List<CandleBar> bars = upbitDataService.loadBars(config);
         log.info("[Overview] loaded bars={}", bars.size());
@@ -73,20 +80,21 @@ public class BacktestRunner implements ApplicationRunner {
 
         StrategyParams selectedParams = rows.get(0).params();
         BacktestResult validationResult = backtestService.backtestDailyStrategy(validationBars, selectedParams);
-        BacktestResult result = backtestService.backtestDailyStrategy(testBars, selectedParams);
+        BacktestResult testResult = backtestService.backtestDailyStrategy(testBars, selectedParams);
+        BacktestResult fullResult = backtestService.backtestDailyStrategy(bars, selectedParams);
 
         logSection("TOP1 PARAM");
         log.info("[Overview] selected params={}", selectedParams);
 
         logSection("SUMMARY");
         logSummary("VALID", validationResult);
-        logSummary("TEST", result);
+        logSummary("TEST", testResult);
 
         logSection("PLOT");
-        plotService.saveCharts(result, config.plotGridLines(), selectedParams);
+        plotService.saveCharts(fullResult, config.plotGridLines(), selectedParams);
 
         logSection("TEST TAIL");
-        logTailRows("TEST", result.rows());
+        logTailRows("TEST", testResult.rows());
         logSection("BACKTEST END");
     }
 
@@ -105,8 +113,8 @@ public class BacktestRunner implements ApplicationRunner {
                 result.summary().range(),
                 result.summary().finalEquity(),
                 result.summary().finalEquityBh(),
-                result.summary().cagr(),
-                result.summary().mdd(),
+                formatPercent(result.summary().cagr()),
+                formatPercent(result.summary().mdd()),
                 result.summary().trades());
     }
 
@@ -116,7 +124,13 @@ public class BacktestRunner implements ApplicationRunner {
         for (int i = 0; i < rows.size(); i++) {
             GridSearchRow row = rows.get(i);
             log.info("[Candidate {}/{}] calmarLike={} cagr={} mdd={} final={} params={}",
-                    i + 1, rows.size(), row.calmarLike(), row.cagr(), row.mdd(), row.finalEquity(), row.params());
+                    i + 1,
+                    rows.size(),
+                    row.calmarLike(),
+                    formatPercent(row.cagr()),
+                    formatPercent(row.mdd()),
+                    row.finalEquity(),
+                    row.params());
         }
         return rows;
     }
@@ -131,5 +145,12 @@ public class BacktestRunner implements ApplicationRunner {
 
     private void logSection(String title) {
         log.info("========== {} ==========", title);
+    }
+
+    private String formatPercent(double value) {
+        if (!Double.isFinite(value)) {
+            return "NaN";
+        }
+        return String.format(Locale.US, "%.2f%%", value * 100.0);
     }
 }
