@@ -1,0 +1,23 @@
+name: App CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  release:
+    types:
+      - released
+      - edited
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  app:
+    uses: now-start/workflow/.github/workflows/reusable-java-app.yaml@main
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}

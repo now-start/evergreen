@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: spring
+  config:
+    import: ${SPRING_CONFIG_IMPORT:optional:configserver:https://spring.nowstart.org/config}
