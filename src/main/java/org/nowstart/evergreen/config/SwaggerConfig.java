@@ -1,4 +1,4 @@
-package org.nowstart.spring.config;
+package org.nowstart.evergreen.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
@@ -17,8 +17,8 @@ public class SwaggerConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Spring Template")
-                        .description("Spring 관련 API 문서")
+                        .title("evergreen API")
+                        .description("evergreen 프로젝트의 API 문서입니다.")
                         .version(buildProperties.getVersion()));
     }
 }

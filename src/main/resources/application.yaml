@@ -1,5 +1,5 @@
 spring:
   application:
-    name: spring
+    name: evergreen
   config:
     import: ${SPRING_CONFIG_IMPORT:optional:configserver:https://spring.nowstart.org/config}
