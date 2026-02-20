@@ -28,7 +28,10 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 outputs
-docs
+.venv/
+**/.venv/
+__pycache__/
+*.pyc
 
 ### NetBeans ###
 /nbproject/private/
