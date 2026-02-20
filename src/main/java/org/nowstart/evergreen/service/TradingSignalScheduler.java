@@ -1,8 +1,10 @@
 package org.nowstart.evergreen.service;
 
+import lombok.extern.slf4j.Slf4j;
+import org.nowstart.evergreen.data.dto.OrderDto;
 import org.nowstart.evergreen.data.dto.SignalExecuteRequest;
 import org.nowstart.evergreen.data.dto.UpbitDayCandleResponse;
-import org.nowstart.evergreen.data.entity.Position;
+import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.property.TradingProperties;
 import org.nowstart.evergreen.data.type.ExecutionMode;
 import org.nowstart.evergreen.data.type.OrderSide;
@@ -28,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @Service
 @RefreshScope
 public class TradingSignalScheduler {
@@ -63,12 +66,21 @@ public class TradingSignalScheduler {
 
     @Scheduled(fixedDelayString = "${evergreen.trading.interval:30s}")
     public void run() {
+        log.info(
+                "Trading scheduler tick started. mode={}, marketCount={}",
+                tradingProperties.executionMode(),
+                tradingProperties.markets().size()
+        );
         for (String marketValue : tradingProperties.markets()) {
             String market = normalizeMarket(marketValue);
             if (market.isBlank()) {
                 continue;
             }
-            evaluateMarket(market);
+            try {
+                evaluateMarket(market);
+            } catch (Exception e) {
+                log.error("Failed to evaluate market={}", market, e);
+            }
         }
     }
 
@@ -76,17 +88,19 @@ public class TradingSignalScheduler {
         List<DayCandle> candles = fetchDailyCandles(market);
         int signalIndex = resolveSignalIndex(candles.size());
         if (signalIndex < 1) {
+            log.info("Skipping signal evaluation due to insufficient candles. market={}, candles={}", market, candles.size());
             return;
         }
 
         if (hasActiveOrder(market)) {
+            log.info("Skipping signal evaluation due to active order. market={}", market);
             return;
         }
 
         DayCandle signalCandle = candles.get(signalIndex);
 
-        Optional<Position> positionOpt = positionRepository.findBySymbol(market);
-        BigDecimal positionQty = positionOpt.map(Position::getQty)
+        Optional<TradingPosition> positionOpt = positionRepository.findBySymbol(market);
+        BigDecimal positionQty = positionOpt.map(TradingPosition::getQty)
                 .filter(qty -> qty != null)
                 .orElse(BigDecimal.ZERO);
         boolean hasPosition = positionQty.compareTo(tradingProperties.minPositionQty()) > 0;
@@ -121,17 +135,37 @@ public class TradingSignalScheduler {
         boolean sellSignal = hasPosition && (baseSell || trailStop.triggered());
 
         if (buySignal) {
+            log.info("Buy signal detected. market={}, signalTs={}, mode={}", market, signalCandle.timestamp(), tradingProperties.executionMode());
             submitBuySignal(market, signalCandle);
             return;
         }
 
         if (sellSignal) {
+            log.info(
+                    "Sell signal detected. market={}, signalTs={}, mode={}, trailStopTriggered={}",
+                    market,
+                    signalCandle.timestamp(),
+                    tradingProperties.executionMode(),
+                    trailStop.triggered()
+            );
             submitSellSignal(market, signalCandle, positionQty);
+            return;
         }
+
+        log.info(
+                "No trade signal. market={}, signalTs={}, hasPosition={}, prevRegime={}, currentRegime={}, trailStopTriggered={}",
+                market,
+                signalCandle.timestamp(),
+                hasPosition,
+                prevRegime,
+                currentRegime,
+                trailStop.triggered()
+        );
     }
 
     private void submitBuySignal(String market, DayCandle signalCandle) {
         if (isDuplicateSignal(market, OrderSide.BUY, signalCandle.timestamp())) {
+            log.info("Skipping duplicate buy signal. market={}, signalTs={}", market, signalCandle.timestamp());
             return;
         }
 
@@ -140,11 +174,18 @@ public class TradingSignalScheduler {
         if (tradingProperties.executionMode() == ExecutionMode.PAPER) {
             BigDecimal signalOrderNotional = tradingProperties.signalOrderNotional();
             if (signalCandle.close().compareTo(BigDecimal.ZERO) <= 0) {
+                log.warn("Skipping buy signal due to non-positive close price. market={}, close={}", market, signalCandle.close());
                 return;
             }
 
             BigDecimal quantity = signalOrderNotional.divide(signalCandle.close(), 12, RoundingMode.DOWN);
             if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+                log.warn(
+                        "Skipping buy signal due to non-positive paper quantity. market={}, notional={}, close={}",
+                        market,
+                        signalOrderNotional,
+                        signalCandle.close()
+                );
                 return;
             }
             paperQuantity = quantity;
@@ -166,10 +207,17 @@ public class TradingSignalScheduler {
 
     private void submitSellSignal(String market, DayCandle signalCandle, BigDecimal positionQty) {
         if (isDuplicateSignal(market, OrderSide.SELL, signalCandle.timestamp())) {
+            log.info("Skipping duplicate sell signal. market={}, signalTs={}", market, signalCandle.timestamp());
             return;
         }
 
         if (positionQty == null || positionQty.compareTo(tradingProperties.minPositionQty()) <= 0) {
+            log.info(
+                    "Skipping sell signal due to small position. market={}, positionQty={}, minPositionQty={}",
+                    market,
+                    positionQty,
+                    tradingProperties.minPositionQty()
+            );
             return;
         }
 
@@ -189,7 +237,16 @@ public class TradingSignalScheduler {
     }
 
     private void submitSignal(String market, DayCandle signalCandle, OrderSide side, SignalExecuteRequest request) {
-        tradingExecutionService.executeSignal(request);
+        OrderDto submittedOrder = tradingExecutionService.executeSignal(request);
+        log.info(
+                "Signal order submitted. market={}, side={}, signalTs={}, clientOrderId={}, status={}, mode={}",
+                market,
+                side,
+                signalCandle.timestamp(),
+                submittedOrder.clientOrderId(),
+                submittedOrder.status(),
+                submittedOrder.mode()
+        );
         recordSubmittedSignal(market, side, signalCandle.timestamp());
     }
 
@@ -212,14 +269,31 @@ public class TradingSignalScheduler {
 
         List<UpbitDayCandleResponse> rows = upbitFeignClient.getDayCandles(market, required);
         if (rows == null || rows.isEmpty()) {
+            log.warn("No daily candles received from exchange. market={}, requiredCount={}", market, required);
             return List.of();
         }
 
-        return rows.stream()
+        List<DayCandle> candles = rows.stream()
                 .map(this::toDayCandle)
                 .filter(candle -> candle != null)
                 .sorted(Comparator.comparing(DayCandle::timestamp))
                 .toList();
+        if (candles.isEmpty()) {
+            log.warn("No valid daily candles after normalization. market={}, rawCount={}", market, rows.size());
+            return candles;
+        }
+
+        DayCandle first = candles.get(0);
+        DayCandle last = candles.get(candles.size() - 1);
+        log.info(
+                "Fetched daily candles. market={}, rawCount={}, validCount={}, firstTs={}, lastTs={}",
+                market,
+                rows.size(),
+                candles.size(),
+                first.timestamp(),
+                last.timestamp()
+        );
+        return candles;
     }
 
     private DayCandle toDayCandle(UpbitDayCandleResponse row) {
@@ -240,6 +314,7 @@ public class TradingSignalScheduler {
                     row.trade_price()
             );
         } catch (Exception e) {
+            log.info("Failed to parse day candle row. row={}", row, e);
             return null;
         }
     }
@@ -375,7 +450,7 @@ public class TradingSignalScheduler {
             int signalIndex,
             double[] atr,
             double atrMultiplier,
-            Position position,
+            TradingPosition position,
             boolean hasPosition
     ) {
         if (!hasPosition || atrMultiplier <= 0.0 || !Double.isFinite(atr[signalIndex])) {
@@ -392,7 +467,7 @@ public class TradingSignalScheduler {
         return new TrailStopResult(stop, currentClose <= stop);
     }
 
-    private double resolveHighestCloseSinceEntry(List<DayCandle> candles, int signalIndex, Position position) {
+    private double resolveHighestCloseSinceEntry(List<DayCandle> candles, int signalIndex, TradingPosition position) {
         int startIndex = 0;
 
         if (position != null && position.getUpdatedAt() != null) {

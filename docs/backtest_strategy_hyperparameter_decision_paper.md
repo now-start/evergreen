@@ -23,6 +23,21 @@
 - 각 버전은 Validation 구간 Grid Search 결과의 1순위 파라미터(`cand[0]`)를 선택한다.
 - Test 구간은 선택된 파라미터 고정 상태로 성능을 계산한다.
 
+### 4) v5 최종 Best Parameter (논문 기준)
+아래 값은 `backtest_playground.ipynb`의 v5 Grid Search 출력(`GridSearchRowV5`)에서 선택된 최적 파라미터다.
+
+| 파라미터 | 값 |
+|---|---:|
+| fee_per_side | 0.0005 |
+| slippage | 0.0002 |
+| regime_ema_len | 120 |
+| atr_period | 18 |
+| atr_mult_low_vol | 2.0 |
+| atr_mult_high_vol | 3.0 |
+| vol_regime_lookback | 40 |
+| vol_regime_threshold | 0.6 |
+| regime_band | 0.01 |
+
 ## 실험설계
 ### 1) Hold-out 비교 프로토콜
 1. 동일 데이터 구간을 버전별 Candle 타입으로 매핑한다.

@@ -1,7 +1,8 @@
 package org.nowstart.evergreen.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.nowstart.evergreen.data.entity.Fill;
-import org.nowstart.evergreen.data.entity.Position;
+import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.entity.TradingOrder;
 import org.nowstart.evergreen.data.type.OrderSide;
 import org.nowstart.evergreen.data.type.OrderStatus;
@@ -18,6 +19,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 
+@Slf4j
 @Service
 public class OrderReconciliationService {
 
@@ -90,6 +92,18 @@ public class OrderReconciliationService {
             applyPositionDelta(order, deltaQtyToApply, deltaPriceToApply);
         }
 
+        log.info(
+                "Order reconciled. clientOrderId={}, exchangeOrderId={}, state={}, status={}, previousExecutedVolume={}, latestExecutedVolume={}, deltaExecutedVolume={}, newFillCount={}",
+                order.getClientOrderId(),
+                order.getExchangeOrderId(),
+                response.state(),
+                order.getStatus(),
+                previousExecutedVolume,
+                latestExecutedVolume,
+                deltaExecutedVolume,
+                newFillCount
+        );
+
         return order;
     }
 
@@ -98,7 +112,7 @@ public class OrderReconciliationService {
             return;
         }
 
-        Position position = positionRepository.findBySymbol(order.getSymbol()).orElseGet(() -> Position.builder()
+        TradingPosition position = positionRepository.findBySymbol(order.getSymbol()).orElseGet(() -> TradingPosition.builder()
                 .symbol(order.getSymbol())
                 .qty(BigDecimal.ZERO)
                 .avgPrice(BigDecimal.ZERO)

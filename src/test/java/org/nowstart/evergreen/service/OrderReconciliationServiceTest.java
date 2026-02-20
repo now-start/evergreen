@@ -7,7 +7,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.nowstart.evergreen.data.dto.UpbitOrderResponse;
-import org.nowstart.evergreen.data.entity.Position;
+import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.entity.TradingOrder;
 import org.nowstart.evergreen.data.type.OrderSide;
 import org.nowstart.evergreen.data.type.OrderStatus;
@@ -44,7 +44,7 @@ class OrderReconciliationServiceTest {
         orderReconciliationService = new OrderReconciliationService(tradingOrderRepository, fillRepository, positionRepository);
 
         lenient().when(tradingOrderRepository.save(any(TradingOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        lenient().when(positionRepository.save(any(Position.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(positionRepository.save(any(TradingPosition.class))).thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(fillRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
@@ -59,7 +59,7 @@ class OrderReconciliationServiceTest {
                 .avgExecutedPrice(new BigDecimal("100"))
                 .build();
 
-        Position position = Position.builder()
+        TradingPosition position = TradingPosition.builder()
                 .symbol("KRW-BTC")
                 .qty(new BigDecimal("1.0"))
                 .avgPrice(new BigDecimal("100"))
@@ -96,7 +96,7 @@ class OrderReconciliationServiceTest {
                 .avgExecutedPrice(new BigDecimal("100"))
                 .build();
 
-        Position position = Position.builder()
+        TradingPosition position = TradingPosition.builder()
                 .symbol("KRW-BTC")
                 .qty(new BigDecimal("1.0"))
                 .avgPrice(new BigDecimal("100"))
@@ -147,7 +147,7 @@ class OrderReconciliationServiceTest {
         orderReconciliationService.reconcile(order, response);
 
         verify(fillRepository, times(2)).save(any());
-        ArgumentCaptor<Position> positionCaptor = ArgumentCaptor.forClass(Position.class);
+        ArgumentCaptor<TradingPosition> positionCaptor = ArgumentCaptor.forClass(TradingPosition.class);
         verify(positionRepository).save(positionCaptor.capture());
         assertThat(positionCaptor.getValue().getQty()).isEqualByComparingTo("0.3");
     }

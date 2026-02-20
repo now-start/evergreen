@@ -7,7 +7,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.nowstart.evergreen.data.entity.Fill;
-import org.nowstart.evergreen.data.entity.Position;
+import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.entity.TradingOrder;
 import org.nowstart.evergreen.data.property.TradingProperties;
 import org.nowstart.evergreen.data.type.ExecutionMode;
@@ -72,7 +72,7 @@ class PaperExecutionServiceTest {
 
         when(tradingOrderRepository.save(any(TradingOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(fillRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(positionRepository.save(any(Position.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(positionRepository.save(any(TradingPosition.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -94,9 +94,9 @@ class PaperExecutionServiceTest {
         assertThat(executed.getExecutedVolume()).isEqualByComparingTo("0.5");
         assertThat(executed.getFeeAmount()).isEqualByComparingTo("0.05");
 
-        ArgumentCaptor<Position> positionCaptor = ArgumentCaptor.forClass(Position.class);
+        ArgumentCaptor<TradingPosition> positionCaptor = ArgumentCaptor.forClass(TradingPosition.class);
         verify(positionRepository).save(positionCaptor.capture());
-        Position savedPosition = positionCaptor.getValue();
+        TradingPosition savedPosition = positionCaptor.getValue();
 
         assertThat(savedPosition.getQty()).isEqualByComparingTo("0.5");
         assertThat(savedPosition.getAvgPrice()).isEqualByComparingTo("100");
@@ -114,7 +114,7 @@ class PaperExecutionServiceTest {
                 .status(OrderStatus.CREATED)
                 .build();
 
-        Position current = Position.builder()
+        TradingPosition current = TradingPosition.builder()
                 .symbol("KRW-BTC")
                 .qty(new BigDecimal("0.5"))
                 .avgPrice(new BigDecimal("90"))
@@ -125,9 +125,9 @@ class PaperExecutionServiceTest {
 
         paperExecutionService.execute(order);
 
-        ArgumentCaptor<Position> positionCaptor = ArgumentCaptor.forClass(Position.class);
+        ArgumentCaptor<TradingPosition> positionCaptor = ArgumentCaptor.forClass(TradingPosition.class);
         verify(positionRepository).save(positionCaptor.capture());
-        Position savedPosition = positionCaptor.getValue();
+        TradingPosition savedPosition = positionCaptor.getValue();
 
         assertThat(savedPosition.getQty()).isEqualByComparingTo("0");
         assertThat(savedPosition.getAvgPrice()).isEqualByComparingTo("0");
