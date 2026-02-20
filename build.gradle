@@ -71,12 +71,6 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-tasks.register('backtestRun', JavaExec) {
-    group = 'verification'
-    classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'org.nowstart.evergreen.backtest.runner.BacktestMain'
-}
-
 bootBuildImage {
     buildpacks = [
             "docker.io/paketobuildpacks/java",

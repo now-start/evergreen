@@ -1,15 +1,1 @@
-backtest:
-  enabled: true
-  market: KRW-BTC
-  from-dt: 1000-01-01T00:00:00Z
-  to-dt: 2030-01-01T00:00:00Z
-  validation-ratio: 0.7
-  fee-per-side: 0.0005
-  slippage: 0.0002
-  top-k: 20
-  grid-parallelism: 16
-  grid-progress-log-seconds: 5
-  plot-grid-lines: true
-
-  grid-ma-len-range: "100:100:50"
-  grid-regime-band-range: "0.01:0.01:0.005"
+# Test-specific overrides are currently not required.

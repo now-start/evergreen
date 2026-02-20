@@ -1,6 +1,7 @@
-"""Backtest V2 migrated from Java commit b565309/current.
+"""Backtest V3 migrated from V2 architecture.
 
-Strategy: regime transition (BEAR->BULL, BULL->BEAR) + ATR trailing stop.
+Strategy: regime transition (BEAR->BULL, BULL->BEAR) + ATR trailing stop
+with volatility-targeted dynamic exposure.
 """
 
 from __future__ import annotations
@@ -9,9 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable
 import csv
-import heapq
 import json
 import math
 import os
@@ -29,7 +28,6 @@ CSV_HEADER = [
     "candle_acc_trade_volume",
 ]
 MIN_EQUITY = 1e-12
-FULL_POSITION_UNITS = 3
 
 
 class MarketRegime(str, Enum):
@@ -49,17 +47,20 @@ class CandleBar:
 
 
 @dataclass(frozen=True)
-class StrategyParamsV2:
+class StrategyParamsV3:
     fee_per_side: float
     slippage: float
     regime_ema_len: int
     atr_period: int
     atr_trail_multiplier: float
     regime_band: float
+    vol_target: float
+    max_leverage: float
+    min_exposure: float | None = None
 
 
 @dataclass(frozen=True)
-class BacktestRowV2:
+class BacktestRowV3:
     timestamp: datetime
     open: float
     close: float
@@ -74,6 +75,9 @@ class BacktestRowV2:
     regime_anchor: float
     regime_upper: float
     regime_lower: float
+    atr: float
+    vol_proxy: float
+    target_exposure: float
     atr_trail_stop: float
     pos_open: float
     ret_oo: float
@@ -93,14 +97,14 @@ class BacktestSummary:
 
 
 @dataclass(frozen=True)
-class BacktestResultV2:
-    rows: list[BacktestRowV2]
+class BacktestResultV3:
+    rows: list[BacktestRowV3]
     summary: BacktestSummary
 
 
 @dataclass(frozen=True)
-class GridSearchRowV2:
-    params: StrategyParamsV2
+class GridSearchRowV3:
+    params: StrategyParamsV3
     calmar_like: float
     cagr: float
     mdd: float
@@ -108,7 +112,7 @@ class GridSearchRowV2:
 
 
 @dataclass(frozen=True)
-class BacktestConfigV2:
+class BacktestConfigV3:
     enabled: bool = True
     market: str = "KRW-BTC"
     from_dt: datetime = datetime(2020, 1, 1, tzinfo=timezone.utc)
@@ -128,6 +132,9 @@ class BacktestConfigV2:
     grid_atr_period_range: str = "14:14:1"
     grid_atr_trail_mult_range: str = "3:3:1"
     grid_regime_band_range: str = "0.02:0.02:0.01"
+    grid_vol_target_range: str = "0.02:0.02:0.01"
+    grid_max_leverage_range: str = "2:2:0.5"
+    grid_min_exposure_range: str = "0:0:1"
 
     def __post_init__(self) -> None:
         if not self.market.strip():
@@ -169,6 +176,29 @@ class BacktestConfigV2:
                 raise ValueError("grid-regime-band-range must be in [0, 1)")
         return values
 
+    def resolve_vol_target_values(self) -> list[float]:
+        values = _parse_double_range(self.grid_vol_target_range)
+        for value in values:
+            if value <= 0.0:
+                raise ValueError("grid-vol-target-range values must be > 0")
+        return values
+
+    def resolve_max_leverage_values(self) -> list[float]:
+        values = _parse_double_range(self.grid_max_leverage_range)
+        for value in values:
+            if value <= 0.0:
+                raise ValueError("grid-max-leverage-range values must be > 0")
+        return values
+
+    def resolve_min_exposure_values(self) -> list[float | None]:
+        values = _parse_double_range(self.grid_min_exposure_range)
+        out: list[float | None] = []
+        for value in values:
+            if value < 0.0:
+                raise ValueError("grid-min-exposure-range values must be >= 0")
+            out.append(value)
+        return out
+
     def combination_count(self) -> int:
         total = 1
         for size in (
@@ -176,6 +206,9 @@ class BacktestConfigV2:
             len(self.resolve_atr_period_values()),
             len(self.resolve_atr_trail_multipliers()),
             len(self.resolve_regime_band_values()),
+            len(self.resolve_vol_target_values()),
+            len(self.resolve_max_leverage_values()),
+            len(self.resolve_min_exposure_values()),
         ):
             if size <= 0:
                 raise ValueError("grid axis must not be empty")
@@ -191,8 +224,8 @@ class BacktestConfigV2:
         return split
 
 
-class BacktestServiceV2:
-    def backtest_daily_strategy(self, daily_bars: list[CandleBar], params: StrategyParamsV2) -> BacktestResultV2:
+class BacktestServiceV3:
+    def backtest_daily_strategy(self, daily_bars: list[CandleBar], params: StrategyParamsV3) -> BacktestResultV3:
         if daily_bars is None or len(daily_bars) < 2:
             raise ValueError("At least 2 daily bars are required")
         self._validate_params(params)
@@ -206,6 +239,7 @@ class BacktestServiceV2:
         regime_ema = self._exponential_moving_average(close, params.regime_ema_len)
         atr = self._wilder_atr(high, low, close, params.atr_period)
         regimes, anchor, upper, lower = self._resolve_regimes(close, regime_ema, params.regime_band)
+        vol_proxy = self._resolve_vol_proxy(atr, close)
 
         buy_signal = [False] * n
         sell_signal = [False] * n
@@ -213,9 +247,9 @@ class BacktestServiceV2:
         setup_sell = [False] * n
         trail_stop_triggered = [False] * n
         atr_trail_stop = [math.nan] * n
-        pos_close_units = [0] * n
-        pos_open_units = [0] * n
+        pos_close_exposure = [0.0] * n
         pos_open_exposure = [0.0] * n
+        target_exposure = [0.0] * n
         ret_oo = [0.0] * n
         trade = [0.0] * n
         equity = [0.0] * n
@@ -226,43 +260,46 @@ class BacktestServiceV2:
 
         highest_close_since_entry = math.nan
         for i in range(n):
-            pos_open_units[i] = 0 if i == 0 else pos_close_units[i - 1]
-            pos_open_exposure[i] = pos_open_units[i] / float(FULL_POSITION_UNITS)
+            pos_open_exposure[i] = 0.0 if i == 0 else pos_close_exposure[i - 1]
             trade[i] = abs(pos_open_exposure[i]) if i == 0 else abs(pos_open_exposure[i] - pos_open_exposure[i - 1])
 
-            previous_open_units = 0 if i == 0 else pos_open_units[i - 1]
-            current_open_units = pos_open_units[i]
-            if current_open_units > previous_open_units:
+            previous_open_exposure = 0.0 if i == 0 else pos_open_exposure[i - 1]
+            current_open_exposure = pos_open_exposure[i]
+            if current_open_exposure > previous_open_exposure and current_open_exposure > 0.0:
                 highest_close_since_entry = close[i]
-            elif current_open_units > 0:
+            elif current_open_exposure > 0.0:
                 highest_close_since_entry = max(highest_close_since_entry, close[i]) if math.isfinite(highest_close_since_entry) else close[i]
             else:
                 highest_close_since_entry = math.nan
 
             base_buy = self._base_buy_signal(i, regimes)
-            base_sell = self._base_sell_signal(i, regimes, current_open_units)
+            base_sell = self._base_sell_signal(i, regimes, current_open_exposure)
             trail_stop = self._evaluate_atr_trail_stop(
                 i,
                 close,
                 atr,
                 highest_close_since_entry,
-                current_open_units,
+                current_open_exposure,
                 params,
             )
 
-            target_units = current_open_units
-            if trail_stop[1] or base_sell:
-                target_units = 0
-            elif base_buy:
-                target_units = FULL_POSITION_UNITS
+            bullish_active = regimes[i] == MarketRegime.BULL
+            should_zero = (not bullish_active) or trail_stop[1] or base_sell
+            desired_exposure = self._target_exposure_from_vol_proxy(vol_proxy[i], params)
+
+            next_exposure = 0.0
+            if not should_zero:
+                if base_buy or current_open_exposure > 0.0:
+                    next_exposure = desired_exposure
 
             setup_buy[i] = base_buy
             setup_sell[i] = base_sell
             trail_stop_triggered[i] = trail_stop[1]
             atr_trail_stop[i] = trail_stop[0]
-            buy_signal[i] = target_units > current_open_units
-            sell_signal[i] = target_units < current_open_units
-            pos_close_units[i] = target_units
+            target_exposure[i] = next_exposure
+            buy_signal[i] = next_exposure > current_open_exposure
+            sell_signal[i] = next_exposure < current_open_exposure
+            pos_close_exposure[i] = next_exposure
 
         cost_unit = params.fee_per_side + params.slippage
         equity[0] = 1.0
@@ -284,7 +321,7 @@ class BacktestServiceV2:
         trades = self._count_trade_executions(trade)
 
         rows = [
-            BacktestRowV2(
+            BacktestRowV3(
                 timestamp=daily_bars[i].timestamp,
                 open=open_[i],
                 close=close[i],
@@ -299,6 +336,9 @@ class BacktestServiceV2:
                 regime_anchor=anchor[i],
                 regime_upper=upper[i],
                 regime_lower=lower[i],
+                atr=atr[i],
+                vol_proxy=vol_proxy[i],
+                target_exposure=target_exposure[i],
                 atr_trail_stop=atr_trail_stop[i],
                 pos_open=pos_open_exposure[i],
                 ret_oo=ret_oo[i],
@@ -316,7 +356,7 @@ class BacktestServiceV2:
             trades=trades,
             range=f"{daily_bars[0].timestamp} -> {daily_bars[-1].timestamp}",
         )
-        return BacktestResultV2(rows=rows, summary=summary)
+        return BacktestResultV3(rows=rows, summary=summary)
 
     @staticmethod
     def _base_buy_signal(index: int, regimes: list[MarketRegime]) -> bool:
@@ -325,8 +365,8 @@ class BacktestServiceV2:
         return regimes[index - 1] == MarketRegime.BEAR and regimes[index] == MarketRegime.BULL
 
     @staticmethod
-    def _base_sell_signal(index: int, regimes: list[MarketRegime], current_open_units: int) -> bool:
-        if current_open_units <= 0 or index <= 0:
+    def _base_sell_signal(index: int, regimes: list[MarketRegime], current_open_exposure: float) -> bool:
+        if current_open_exposure <= 0.0 or index <= 0:
             return False
         return regimes[index - 1] == MarketRegime.BULL and regimes[index] == MarketRegime.BEAR
 
@@ -336,10 +376,10 @@ class BacktestServiceV2:
         close: list[float],
         atr: list[float],
         highest_close_since_entry: float,
-        current_open_units: int,
-        params: StrategyParamsV2,
+        current_open_exposure: float,
+        params: StrategyParamsV3,
     ) -> tuple[float, bool]:
-        if params.atr_trail_multiplier <= 0.0 or current_open_units <= 0:
+        if params.atr_trail_multiplier <= 0.0 or current_open_exposure <= 0.0:
             return (math.nan, False)
         if not math.isfinite(atr[index]) or not math.isfinite(highest_close_since_entry):
             return (math.nan, False)
@@ -378,7 +418,23 @@ class BacktestServiceV2:
         return (regimes, anchor, upper, lower)
 
     @staticmethod
-    def _validate_params(params: StrategyParamsV2) -> None:
+    def _resolve_vol_proxy(atr: list[float], close: list[float]) -> list[float]:
+        out = [math.nan] * len(close)
+        for i in range(len(close)):
+            if math.isfinite(atr[i]) and close[i] > 0.0 and math.isfinite(close[i]):
+                out[i] = atr[i] / close[i]
+        return out
+
+    @staticmethod
+    def _target_exposure_from_vol_proxy(vol_proxy: float, params: StrategyParamsV3) -> float:
+        floor = params.min_exposure if params.min_exposure is not None else 0.0
+        if not math.isfinite(vol_proxy) or vol_proxy <= 0.0:
+            return floor
+        raw = params.vol_target / vol_proxy
+        return max(floor, min(params.max_leverage, raw))
+
+    @staticmethod
+    def _validate_params(params: StrategyParamsV3) -> None:
         if params is None:
             raise ValueError("strategy params are required")
         if params.fee_per_side < 0 or params.slippage < 0:
@@ -389,6 +445,16 @@ class BacktestServiceV2:
             raise ValueError("atr parameters are invalid")
         if params.regime_band < 0.0 or params.regime_band >= 1.0:
             raise ValueError("regime-band must be in [0,1)")
+        if params.vol_target <= 0.0:
+            raise ValueError("vol-target must be > 0")
+        if params.max_leverage <= 0.0:
+            raise ValueError("max-leverage must be > 0")
+
+        min_exposure = params.min_exposure if params.min_exposure is not None else 0.0
+        if min_exposure < 0.0:
+            raise ValueError("min-exposure must be >= 0")
+        if min_exposure > params.max_leverage:
+            raise ValueError("min-exposure must be <= max-leverage")
 
     @staticmethod
     def _exponential_moving_average(values: list[float], length: int) -> list[float]:
@@ -441,43 +507,55 @@ class BacktestServiceV2:
         return sum(1 for turnover in trade if turnover > 1e-12)
 
 
-class GridSearchServiceV2:
-    def __init__(self, backtest_service: BacktestServiceV2) -> None:
+class GridSearchServiceV3:
+    def __init__(self, backtest_service: BacktestServiceV3) -> None:
         self.backtest_service = backtest_service
 
-    def search(self, daily_bars: list[CandleBar], config: BacktestConfigV2) -> list[GridSearchRowV2]:
+    def search(self, daily_bars: list[CandleBar], config: BacktestConfigV3) -> list[GridSearchRowV3]:
         ma_len_values = config.resolve_ma_len_values()
         atr_period_values = config.resolve_atr_period_values()
         atr_trail_values = config.resolve_atr_trail_multipliers()
         regime_band_values = config.resolve_regime_band_values()
+        vol_target_values = config.resolve_vol_target_values()
+        max_leverage_values = config.resolve_max_leverage_values()
+        min_exposure_values = config.resolve_min_exposure_values()
 
         sizes = [
             len(ma_len_values),
             len(atr_period_values),
             len(atr_trail_values),
             len(regime_band_values),
+            len(vol_target_values),
+            len(max_leverage_values),
+            len(min_exposure_values),
         ]
         total = config.combination_count()
         strides = _build_strides(sizes)
 
-        def evaluator(index: int) -> GridSearchRowV2:
+        def evaluator(index: int) -> GridSearchRowV3:
             c0 = _coord(index, strides[0], sizes[0])
             c1 = _coord(index, strides[1], sizes[1])
             c2 = _coord(index, strides[2], sizes[2])
             c3 = _coord(index, strides[3], sizes[3])
-            params = StrategyParamsV2(
+            c4 = _coord(index, strides[4], sizes[4])
+            c5 = _coord(index, strides[5], sizes[5])
+            c6 = _coord(index, strides[6], sizes[6])
+            params = StrategyParamsV3(
                 fee_per_side=config.fee_per_side,
                 slippage=config.slippage,
                 regime_ema_len=ma_len_values[c0],
                 atr_period=atr_period_values[c1],
                 atr_trail_multiplier=atr_trail_values[c2],
                 regime_band=regime_band_values[c3],
+                vol_target=vol_target_values[c4],
+                max_leverage=max_leverage_values[c5],
+                min_exposure=min_exposure_values[c6],
             )
             result = self.backtest_service.backtest_daily_strategy(daily_bars, params)
             cagr = result.summary.cagr
             mdd = result.summary.mdd
             calmar_like = math.nan if mdd == 0.0 else cagr / abs(mdd)
-            return GridSearchRowV2(
+            return GridSearchRowV3(
                 params=params,
                 calmar_like=calmar_like,
                 cagr=cagr,
@@ -503,11 +581,11 @@ class GridSearchServiceV2:
         return rows[: config.top_k]
 
 
-class UpbitDataServiceV2:
+class UpbitDataServiceV3:
     def __init__(self) -> None:
         self._last_request_at_ms = 0
 
-    def load_bars(self, config: BacktestConfigV2) -> list[CandleBar]:
+    def load_bars(self, config: BacktestConfigV3) -> list[CandleBar]:
         cache_path = self._resolve_cache_path(
             config.market,
             config.from_dt,
@@ -616,28 +694,28 @@ class UpbitDataServiceV2:
 
 
 @dataclass(frozen=True)
-class BacktestRunOutputV2:
-    validation_result: BacktestResultV2
-    test_result: BacktestResultV2
-    full_result: BacktestResultV2
-    selected_params: StrategyParamsV2
-    candidates: list[GridSearchRowV2]
+class BacktestRunOutputV3:
+    validation_result: BacktestResultV3
+    test_result: BacktestResultV3
+    full_result: BacktestResultV3
+    selected_params: StrategyParamsV3
+    candidates: list[GridSearchRowV3]
 
 
-class BacktestRunnerV2:
+class BacktestRunnerV3:
     def __init__(
         self,
-        config: BacktestConfigV2,
-        upbit_data_service: UpbitDataServiceV2 | None = None,
-        backtest_service: BacktestServiceV2 | None = None,
-        grid_search_service: GridSearchServiceV2 | None = None,
+        config: BacktestConfigV3,
+        upbit_data_service: UpbitDataServiceV3 | None = None,
+        backtest_service: BacktestServiceV3 | None = None,
+        grid_search_service: GridSearchServiceV3 | None = None,
     ) -> None:
         self.config = config
-        self.upbit_data_service = upbit_data_service or UpbitDataServiceV2()
-        self.backtest_service = backtest_service or BacktestServiceV2()
-        self.grid_search_service = grid_search_service or GridSearchServiceV2(self.backtest_service)
+        self.upbit_data_service = upbit_data_service or UpbitDataServiceV3()
+        self.backtest_service = backtest_service or BacktestServiceV3()
+        self.grid_search_service = grid_search_service or GridSearchServiceV3(self.backtest_service)
 
-    def run(self) -> BacktestRunOutputV2 | None:
+    def run(self) -> BacktestRunOutputV3 | None:
         if not self.config.enabled:
             return None
 
@@ -654,7 +732,7 @@ class BacktestRunnerV2:
         validation_result = self.backtest_service.backtest_daily_strategy(validation_bars, selected_params)
         test_result = self.backtest_service.backtest_daily_strategy(test_bars, selected_params)
         full_result = self.backtest_service.backtest_daily_strategy(bars, selected_params)
-        return BacktestRunOutputV2(
+        return BacktestRunOutputV3(
             validation_result=validation_result,
             test_result=test_result,
             full_result=full_result,

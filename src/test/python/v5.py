@@ -1,6 +1,6 @@
-"""Backtest V2 migrated from Java commit b565309/current.
+"""Backtest V5 migrated from Java commit b565309/current.
 
-Strategy: regime transition (BEAR->BULL, BULL->BEAR) + ATR trailing stop.
+Strategy: regime transition (BEAR->BULL, BULL->BEAR) + adaptive ATR trailing stop.
 """
 
 from __future__ import annotations
@@ -49,17 +49,20 @@ class CandleBar:
 
 
 @dataclass(frozen=True)
-class StrategyParamsV2:
+class StrategyParamsV5:
     fee_per_side: float
     slippage: float
     regime_ema_len: int
     atr_period: int
-    atr_trail_multiplier: float
+    atr_mult_low_vol: float
+    atr_mult_high_vol: float
+    vol_regime_lookback: int
+    vol_regime_threshold: float
     regime_band: float
 
 
 @dataclass(frozen=True)
-class BacktestRowV2:
+class BacktestRowV5:
     timestamp: datetime
     open: float
     close: float
@@ -74,6 +77,10 @@ class BacktestRowV2:
     regime_anchor: float
     regime_upper: float
     regime_lower: float
+    volatility_is_high: bool
+    atr_price_ratio: float
+    vol_percentile: float
+    atr_trail_multiplier_applied: float
     atr_trail_stop: float
     pos_open: float
     ret_oo: float
@@ -93,14 +100,14 @@ class BacktestSummary:
 
 
 @dataclass(frozen=True)
-class BacktestResultV2:
-    rows: list[BacktestRowV2]
+class BacktestResultV5:
+    rows: list[BacktestRowV5]
     summary: BacktestSummary
 
 
 @dataclass(frozen=True)
-class GridSearchRowV2:
-    params: StrategyParamsV2
+class GridSearchRowV5:
+    params: StrategyParamsV5
     calmar_like: float
     cagr: float
     mdd: float
@@ -108,7 +115,7 @@ class GridSearchRowV2:
 
 
 @dataclass(frozen=True)
-class BacktestConfigV2:
+class BacktestConfigV5:
     enabled: bool = True
     market: str = "KRW-BTC"
     from_dt: datetime = datetime(2020, 1, 1, tzinfo=timezone.utc)
@@ -126,7 +133,10 @@ class BacktestConfigV2:
     grid_ma_len_range: str = "200:200:1"
     grid_ma_slope_range: str = "1:19:3"
     grid_atr_period_range: str = "14:14:1"
-    grid_atr_trail_mult_range: str = "3:3:1"
+    grid_atr_mult_low_vol_range: str = "2:2:1"
+    grid_atr_mult_high_vol_range: str = "4:4:1"
+    grid_vol_regime_lookback_range: str = "30:30:1"
+    grid_vol_regime_threshold_range: str = "0.7:0.7:0.1"
     grid_regime_band_range: str = "0.02:0.02:0.01"
 
     def __post_init__(self) -> None:
@@ -155,11 +165,28 @@ class BacktestConfigV2:
     def resolve_atr_period_values(self) -> list[int]:
         return _parse_positive_int_range(self.grid_atr_period_range, "grid-atr-period-range")
 
-    def resolve_atr_trail_multipliers(self) -> list[float]:
-        values = _parse_double_range(self.grid_atr_trail_mult_range)
+    def resolve_atr_mult_low_vol_values(self) -> list[float]:
+        values = _parse_double_range(self.grid_atr_mult_low_vol_range)
         for value in values:
             if value < 0.0:
-                raise ValueError("grid-atr-trail-mult-range must be >= 0")
+                raise ValueError("grid-atr-mult-low-vol-range must be >= 0")
+        return values
+
+    def resolve_atr_mult_high_vol_values(self) -> list[float]:
+        values = _parse_double_range(self.grid_atr_mult_high_vol_range)
+        for value in values:
+            if value < 0.0:
+                raise ValueError("grid-atr-mult-high-vol-range must be >= 0")
+        return values
+
+    def resolve_vol_regime_lookback_values(self) -> list[int]:
+        return _parse_positive_int_range(self.grid_vol_regime_lookback_range, "grid-vol-regime-lookback-range")
+
+    def resolve_vol_regime_threshold_values(self) -> list[float]:
+        values = _parse_double_range(self.grid_vol_regime_threshold_range)
+        for value in values:
+            if value <= 0.0 or value > 1.0:
+                raise ValueError("grid-vol-regime-threshold-range must be in (0, 1]")
         return values
 
     def resolve_regime_band_values(self) -> list[float]:
@@ -174,7 +201,10 @@ class BacktestConfigV2:
         for size in (
             len(self.resolve_ma_len_values()),
             len(self.resolve_atr_period_values()),
-            len(self.resolve_atr_trail_multipliers()),
+            len(self.resolve_atr_mult_low_vol_values()),
+            len(self.resolve_atr_mult_high_vol_values()),
+            len(self.resolve_vol_regime_lookback_values()),
+            len(self.resolve_vol_regime_threshold_values()),
             len(self.resolve_regime_band_values()),
         ):
             if size <= 0:
@@ -191,8 +221,8 @@ class BacktestConfigV2:
         return split
 
 
-class BacktestServiceV2:
-    def backtest_daily_strategy(self, daily_bars: list[CandleBar], params: StrategyParamsV2) -> BacktestResultV2:
+class BacktestServiceV5:
+    def backtest_daily_strategy(self, daily_bars: list[CandleBar], params: StrategyParamsV5) -> BacktestResultV5:
         if daily_bars is None or len(daily_bars) < 2:
             raise ValueError("At least 2 daily bars are required")
         self._validate_params(params)
@@ -206,6 +236,15 @@ class BacktestServiceV2:
         regime_ema = self._exponential_moving_average(close, params.regime_ema_len)
         atr = self._wilder_atr(high, low, close, params.atr_period)
         regimes, anchor, upper, lower = self._resolve_regimes(close, regime_ema, params.regime_band)
+        atr_price_ratio = self._resolve_atr_price_ratio(atr, close)
+        vol_percentile, volatility_is_high = self._resolve_volatility_states(
+            atr_price_ratio,
+            params.vol_regime_lookback,
+            params.vol_regime_threshold,
+        )
+        atr_trail_multiplier_applied = [
+            params.atr_mult_high_vol if volatility_is_high[i] else params.atr_mult_low_vol for i in range(n)
+        ]
 
         buy_signal = [False] * n
         sell_signal = [False] * n
@@ -247,7 +286,7 @@ class BacktestServiceV2:
                 atr,
                 highest_close_since_entry,
                 current_open_units,
-                params,
+                atr_trail_multiplier_applied[i],
             )
 
             target_units = current_open_units
@@ -284,7 +323,7 @@ class BacktestServiceV2:
         trades = self._count_trade_executions(trade)
 
         rows = [
-            BacktestRowV2(
+            BacktestRowV5(
                 timestamp=daily_bars[i].timestamp,
                 open=open_[i],
                 close=close[i],
@@ -299,6 +338,10 @@ class BacktestServiceV2:
                 regime_anchor=anchor[i],
                 regime_upper=upper[i],
                 regime_lower=lower[i],
+                volatility_is_high=volatility_is_high[i],
+                atr_price_ratio=atr_price_ratio[i],
+                vol_percentile=vol_percentile[i],
+                atr_trail_multiplier_applied=atr_trail_multiplier_applied[i],
                 atr_trail_stop=atr_trail_stop[i],
                 pos_open=pos_open_exposure[i],
                 ret_oo=ret_oo[i],
@@ -316,7 +359,7 @@ class BacktestServiceV2:
             trades=trades,
             range=f"{daily_bars[0].timestamp} -> {daily_bars[-1].timestamp}",
         )
-        return BacktestResultV2(rows=rows, summary=summary)
+        return BacktestResultV5(rows=rows, summary=summary)
 
     @staticmethod
     def _base_buy_signal(index: int, regimes: list[MarketRegime]) -> bool:
@@ -337,14 +380,43 @@ class BacktestServiceV2:
         atr: list[float],
         highest_close_since_entry: float,
         current_open_units: int,
-        params: StrategyParamsV2,
+        atr_trail_multiplier: float,
     ) -> tuple[float, bool]:
-        if params.atr_trail_multiplier <= 0.0 or current_open_units <= 0:
+        if atr_trail_multiplier <= 0.0 or current_open_units <= 0:
             return (math.nan, False)
         if not math.isfinite(atr[index]) or not math.isfinite(highest_close_since_entry):
             return (math.nan, False)
-        stop = highest_close_since_entry - (params.atr_trail_multiplier * atr[index])
+        stop = highest_close_since_entry - (atr_trail_multiplier * atr[index])
         return (stop, close[index] <= stop)
+
+    @staticmethod
+    def _resolve_atr_price_ratio(atr: list[float], close: list[float]) -> list[float]:
+        out = [math.nan] * len(close)
+        for i in range(len(close)):
+            if math.isfinite(atr[i]) and math.isfinite(close[i]) and close[i] > 0.0:
+                out[i] = atr[i] / close[i]
+        return out
+
+    @staticmethod
+    def _resolve_volatility_states(
+        atr_price_ratio: list[float],
+        lookback: int,
+        threshold: float,
+    ) -> tuple[list[float], list[bool]]:
+        n = len(atr_price_ratio)
+        percentile = [math.nan] * n
+        is_high = [False] * n
+        for i in range(n):
+            start = max(0, i - lookback + 1)
+            window = [value for value in atr_price_ratio[start : i + 1] if math.isfinite(value)]
+            current = atr_price_ratio[i]
+            if not math.isfinite(current) or not window:
+                continue
+            below_or_equal = sum(1 for value in window if value <= current)
+            rank = below_or_equal / float(len(window))
+            percentile[i] = rank
+            is_high[i] = rank >= threshold
+        return (percentile, is_high)
 
     @staticmethod
     def _resolve_regimes(close: list[float], anchor: list[float], regime_band: float) -> tuple[list[MarketRegime], list[float], list[float], list[float]]:
@@ -378,15 +450,23 @@ class BacktestServiceV2:
         return (regimes, anchor, upper, lower)
 
     @staticmethod
-    def _validate_params(params: StrategyParamsV2) -> None:
+    def _validate_params(params: StrategyParamsV5) -> None:
         if params is None:
             raise ValueError("strategy params are required")
         if params.fee_per_side < 0 or params.slippage < 0:
             raise ValueError("fee/slippage must be >= 0")
         if params.regime_ema_len <= 0:
             raise ValueError("regime-ema-len must be > 0")
-        if params.atr_period <= 0 or params.atr_trail_multiplier < 0.0:
+        if params.atr_period <= 0:
+            raise ValueError("atr-period must be > 0")
+        if params.atr_mult_low_vol < 0.0 or params.atr_mult_high_vol < 0.0:
             raise ValueError("atr parameters are invalid")
+        if params.atr_mult_high_vol < params.atr_mult_low_vol:
+            raise ValueError("atr-mult-high-vol must be >= atr-mult-low-vol")
+        if params.vol_regime_lookback <= 0:
+            raise ValueError("vol-regime-lookback must be > 0")
+        if params.vol_regime_threshold <= 0.0 or params.vol_regime_threshold > 1.0:
+            raise ValueError("vol-regime-threshold must be in (0,1]")
         if params.regime_band < 0.0 or params.regime_band >= 1.0:
             raise ValueError("regime-band must be in [0,1)")
 
@@ -441,43 +521,55 @@ class BacktestServiceV2:
         return sum(1 for turnover in trade if turnover > 1e-12)
 
 
-class GridSearchServiceV2:
-    def __init__(self, backtest_service: BacktestServiceV2) -> None:
+class GridSearchServiceV5:
+    def __init__(self, backtest_service: BacktestServiceV5) -> None:
         self.backtest_service = backtest_service
 
-    def search(self, daily_bars: list[CandleBar], config: BacktestConfigV2) -> list[GridSearchRowV2]:
+    def search(self, daily_bars: list[CandleBar], config: BacktestConfigV5) -> list[GridSearchRowV5]:
         ma_len_values = config.resolve_ma_len_values()
         atr_period_values = config.resolve_atr_period_values()
-        atr_trail_values = config.resolve_atr_trail_multipliers()
+        atr_mult_low_values = config.resolve_atr_mult_low_vol_values()
+        atr_mult_high_values = config.resolve_atr_mult_high_vol_values()
+        vol_lookback_values = config.resolve_vol_regime_lookback_values()
+        vol_threshold_values = config.resolve_vol_regime_threshold_values()
         regime_band_values = config.resolve_regime_band_values()
 
         sizes = [
             len(ma_len_values),
             len(atr_period_values),
-            len(atr_trail_values),
+            len(atr_mult_low_values),
+            len(atr_mult_high_values),
+            len(vol_lookback_values),
+            len(vol_threshold_values),
             len(regime_band_values),
         ]
         total = config.combination_count()
         strides = _build_strides(sizes)
 
-        def evaluator(index: int) -> GridSearchRowV2:
+        def evaluator(index: int) -> GridSearchRowV5:
             c0 = _coord(index, strides[0], sizes[0])
             c1 = _coord(index, strides[1], sizes[1])
             c2 = _coord(index, strides[2], sizes[2])
             c3 = _coord(index, strides[3], sizes[3])
-            params = StrategyParamsV2(
+            c4 = _coord(index, strides[4], sizes[4])
+            c5 = _coord(index, strides[5], sizes[5])
+            c6 = _coord(index, strides[6], sizes[6])
+            params = StrategyParamsV5(
                 fee_per_side=config.fee_per_side,
                 slippage=config.slippage,
                 regime_ema_len=ma_len_values[c0],
                 atr_period=atr_period_values[c1],
-                atr_trail_multiplier=atr_trail_values[c2],
-                regime_band=regime_band_values[c3],
+                atr_mult_low_vol=atr_mult_low_values[c2],
+                atr_mult_high_vol=atr_mult_high_values[c3],
+                vol_regime_lookback=vol_lookback_values[c4],
+                vol_regime_threshold=vol_threshold_values[c5],
+                regime_band=regime_band_values[c6],
             )
             result = self.backtest_service.backtest_daily_strategy(daily_bars, params)
             cagr = result.summary.cagr
             mdd = result.summary.mdd
             calmar_like = math.nan if mdd == 0.0 else cagr / abs(mdd)
-            return GridSearchRowV2(
+            return GridSearchRowV5(
                 params=params,
                 calmar_like=calmar_like,
                 cagr=cagr,
@@ -503,11 +595,11 @@ class GridSearchServiceV2:
         return rows[: config.top_k]
 
 
-class UpbitDataServiceV2:
+class UpbitDataServiceV5:
     def __init__(self) -> None:
         self._last_request_at_ms = 0
 
-    def load_bars(self, config: BacktestConfigV2) -> list[CandleBar]:
+    def load_bars(self, config: BacktestConfigV5) -> list[CandleBar]:
         cache_path = self._resolve_cache_path(
             config.market,
             config.from_dt,
@@ -616,28 +708,28 @@ class UpbitDataServiceV2:
 
 
 @dataclass(frozen=True)
-class BacktestRunOutputV2:
-    validation_result: BacktestResultV2
-    test_result: BacktestResultV2
-    full_result: BacktestResultV2
-    selected_params: StrategyParamsV2
-    candidates: list[GridSearchRowV2]
+class BacktestRunOutputV5:
+    validation_result: BacktestResultV5
+    test_result: BacktestResultV5
+    full_result: BacktestResultV5
+    selected_params: StrategyParamsV5
+    candidates: list[GridSearchRowV5]
 
 
-class BacktestRunnerV2:
+class BacktestRunnerV5:
     def __init__(
         self,
-        config: BacktestConfigV2,
-        upbit_data_service: UpbitDataServiceV2 | None = None,
-        backtest_service: BacktestServiceV2 | None = None,
-        grid_search_service: GridSearchServiceV2 | None = None,
+        config: BacktestConfigV5,
+        upbit_data_service: UpbitDataServiceV5 | None = None,
+        backtest_service: BacktestServiceV5 | None = None,
+        grid_search_service: GridSearchServiceV5 | None = None,
     ) -> None:
         self.config = config
-        self.upbit_data_service = upbit_data_service or UpbitDataServiceV2()
-        self.backtest_service = backtest_service or BacktestServiceV2()
-        self.grid_search_service = grid_search_service or GridSearchServiceV2(self.backtest_service)
+        self.upbit_data_service = upbit_data_service or UpbitDataServiceV5()
+        self.backtest_service = backtest_service or BacktestServiceV5()
+        self.grid_search_service = grid_search_service or GridSearchServiceV5(self.backtest_service)
 
-    def run(self) -> BacktestRunOutputV2 | None:
+    def run(self) -> BacktestRunOutputV5 | None:
         if not self.config.enabled:
             return None
 
@@ -654,7 +746,7 @@ class BacktestRunnerV2:
         validation_result = self.backtest_service.backtest_daily_strategy(validation_bars, selected_params)
         test_result = self.backtest_service.backtest_daily_strategy(test_bars, selected_params)
         full_result = self.backtest_service.backtest_daily_strategy(bars, selected_params)
-        return BacktestRunOutputV2(
+        return BacktestRunOutputV5(
             validation_result=validation_result,
             test_result=test_result,
             full_result=full_result,
