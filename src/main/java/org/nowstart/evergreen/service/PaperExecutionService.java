@@ -1,6 +1,5 @@
 package org.nowstart.evergreen.service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.nowstart.evergreen.data.entity.Fill;
 import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.entity.TradingOrder;
@@ -20,7 +19,6 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.UUID;
 
-@Slf4j
 @Service
 @RefreshScope
 public class PaperExecutionService {
@@ -71,15 +69,6 @@ public class PaperExecutionService {
         fillRepository.save(fill);
 
         upsertPosition(order.getSymbol(), order.getSide(), execQty, execPrice);
-        log.info(
-                "Paper execution completed. clientOrderId={}, market={}, side={}, executedQty={}, executedPrice={}, fee={}",
-                order.getClientOrderId(),
-                order.getSymbol(),
-                order.getSide(),
-                execQty,
-                execPrice,
-                fee
-        );
 
         return order;
     }
@@ -118,13 +107,5 @@ public class PaperExecutionService {
         }
 
         positionRepository.save(position);
-        log.info(
-                "Paper position updated. market={}, side={}, qty={}, avgPrice={}, state={}",
-                symbol,
-                side,
-                position.getQty(),
-                position.getAvgPrice(),
-                position.getState()
-        );
     }
 }

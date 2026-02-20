@@ -1,6 +1,5 @@
 package org.nowstart.evergreen.service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.nowstart.evergreen.data.entity.Fill;
 import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.entity.TradingOrder;
@@ -19,7 +18,6 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 
-@Slf4j
 @Service
 public class OrderReconciliationService {
 
@@ -91,18 +89,6 @@ public class OrderReconciliationService {
                     : safe(order.getAvgExecutedPrice());
             applyPositionDelta(order, deltaQtyToApply, deltaPriceToApply);
         }
-
-        log.info(
-                "Order reconciled. clientOrderId={}, exchangeOrderId={}, state={}, status={}, previousExecutedVolume={}, latestExecutedVolume={}, deltaExecutedVolume={}, newFillCount={}",
-                order.getClientOrderId(),
-                order.getExchangeOrderId(),
-                response.state(),
-                order.getStatus(),
-                previousExecutedVolume,
-                latestExecutedVolume,
-                deltaExecutedVolume,
-                newFillCount
-        );
 
         return order;
     }

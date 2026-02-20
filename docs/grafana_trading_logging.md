@@ -11,7 +11,9 @@
 - `event=position_snapshot`
   - fields: `mode`, `symbol`, `qty`, `avgPrice`, `state`
 - `event=candle_signal_v5`
-  - fields: `market`, `ts`, `close`, `regime`, `prev_regime`, `regime_anchor`, `regime_upper`, `regime_lower`, `atr`, `atr_trail_multiplier`, `atr_trail_stop`, `has_position`, `position_qty`, `volatility_is_high`, `atr_price_ratio`, `vol_percentile`, `buy_signal`, `sell_signal`, `signal_reason`
+  - fields: `market`, `ts`, `close`, `regime`, `prev_regime`, `regime_anchor`, `regime_upper`, `regime_lower`, `atr`, `atr_trail_multiplier`, `atr_trail_stop`, `has_position`, `position_qty`, `position_avg_price`, `unrealized_return_pct`, `realized_pnl_krw`, `realized_return_pct`, `max_drawdown_pct`, `trade_count`, `trade_win_rate_pct`, `trade_avg_win_pct`, `trade_avg_loss_pct`, `trade_rr_ratio`, `trade_expectancy_pct`, `signal_quality_1d_avg_pct`, `signal_quality_3d_avg_pct`, `signal_quality_7d_avg_pct`, `volatility_is_high`, `atr_price_ratio`, `vol_percentile`, `buy_signal`, `sell_signal`, `signal_reason`
+- `event=trade_execution_v1`
+  - fields: `market`, `side`, `signal_ts`, `signal_close`, `client_order_id`, `order_status`, `mode`, `executed_price`, `executed_volume`, `fee_amount`, `slippage_pct`, `slippage_bps`
 - `event=http_request_completed`
   - fields: `requestId`, `method`, `path`, `status`, `durationMs`
 - `event=api_error`
@@ -57,6 +59,28 @@ max_over_time({app="evergreen"} |= "event=candle_signal_v5" | logfmt | label_for
 ```logql
 max_over_time({app="evergreen"} |= "event=candle_signal_v5" |= "buy_signal=true" | logfmt | label_format market="{{.market}}" | unwrap close [1m])
 max_over_time({app="evergreen"} |= "event=candle_signal_v5" |= "sell_signal=true" | logfmt | label_format market="{{.market}}" | unwrap close [1m])
+```
+- Unrealized return (%)
+```logql
+max_over_time({app="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap unrealized_return_pct [1m])
+```
+- Volatility percentile
+```logql
+max_over_time({app="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap vol_percentile [1m])
+```
+- Signal reason count (1h)
+```logql
+sum(count_over_time({app="evergreen"} |= "event=candle_signal_v5" | logfmt | signal_reason="BUY_REGIME_TRANSITION" [1h]))
+sum(count_over_time({app="evergreen"} |= "event=candle_signal_v5" | logfmt | signal_reason="SELL_REGIME_TRANSITION" [1h]))
+sum(count_over_time({app="evergreen"} |= "event=candle_signal_v5" | logfmt | signal_reason="SELL_TRAIL_STOP" [1h]))
+```
+- Realized PnL / MDD / WinRate / Signal quality / Slippage
+```logql
+max_over_time({app="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap realized_pnl_krw [1m])
+min_over_time({app="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap max_drawdown_pct [30d])
+max_over_time({app="evergreen"} |= "event=candle_signal_v5" | logfmt | unwrap trade_win_rate_pct [1m])
+max_over_time({app="evergreen"} |= "event=candle_signal_v5" | logfmt | unwrap signal_quality_7d_avg_pct [1m])
+max_over_time({app="evergreen"} |= "event=trade_execution_v1" | logfmt | unwrap slippage_bps [1m])
 ```
 
 ## Notes

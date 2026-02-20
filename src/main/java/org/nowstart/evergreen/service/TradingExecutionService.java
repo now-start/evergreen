@@ -1,6 +1,5 @@
 package org.nowstart.evergreen.service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.nowstart.evergreen.data.entity.AuditEvent;
 import org.nowstart.evergreen.data.entity.TradingOrder;
 import org.nowstart.evergreen.data.property.TradingProperties;
@@ -33,7 +32,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-@Slf4j
 @Service
 @RefreshScope
 public class TradingExecutionService {
@@ -84,16 +82,6 @@ public class TradingExecutionService {
 
     @Transactional
     public OrderDto createOrder(CreateOrderRequest request) {
-        log.info(
-                "Create order requested. market={}, side={}, orderType={}, mode={}, quantity={}, price={}, reason={}",
-                request.market(),
-                request.side(),
-                request.orderType(),
-                request.mode(),
-                request.quantity(),
-                request.price(),
-                request.reason()
-        );
         validateOrderRequest(request);
 
         TradingOrder order = buildOrder(request);
@@ -102,15 +90,6 @@ public class TradingExecutionService {
             tradingOrderRepository.save(order);
             TradingOrder filled = paperExecutionService.execute(order);
             writeAudit("PAPER_ORDER_EXECUTED", "clientOrderId=" + filled.getClientOrderId());
-            log.info(
-                    "Paper order executed. clientOrderId={}, market={}, side={}, status={}, executedVolume={}, avgPrice={}",
-                    filled.getClientOrderId(),
-                    filled.getSymbol(),
-                    filled.getSide(),
-                    filled.getStatus(),
-                    filled.getExecutedVolume(),
-                    filled.getAvgExecutedPrice()
-            );
             return toOrderDto(filled);
         }
 
@@ -121,20 +100,11 @@ public class TradingExecutionService {
         UpbitOrderResponse created = upbitFeignClient.createOrder(upbitRequest);
         TradingOrder reconciled = orderReconciliationService.reconcile(order, created);
         writeAudit("LIVE_ORDER_SUBMITTED", "clientOrderId=" + reconciled.getClientOrderId());
-        log.info(
-                "Live order submitted. clientOrderId={}, exchangeOrderId={}, market={}, side={}, status={}",
-                reconciled.getClientOrderId(),
-                reconciled.getExchangeOrderId(),
-                reconciled.getSymbol(),
-                reconciled.getSide(),
-                reconciled.getStatus()
-        );
         return toOrderDto(reconciled);
     }
 
     @Transactional
     public OrderDto cancelOrder(String clientOrderId) {
-        log.info("Cancel order requested. clientOrderId={}", clientOrderId);
         TradingOrder order = tradingOrderRepository.findByClientOrderId(clientOrderId)
                 .orElseThrow(() -> new TradingApiException(HttpStatus.NOT_FOUND, "order_not_found", "Order not found"));
 
@@ -144,7 +114,6 @@ public class TradingExecutionService {
             }
             order.setStatus(OrderStatus.CANCELED);
             tradingOrderRepository.save(order);
-            log.info("Paper order canceled. clientOrderId={}", clientOrderId);
             return toOrderDto(order);
         }
 
@@ -155,12 +124,6 @@ public class TradingExecutionService {
         UpbitOrderResponse canceled = upbitFeignClient.cancelOrder(order.getExchangeOrderId());
         TradingOrder reconciled = orderReconciliationService.reconcile(order, canceled);
         writeAudit("LIVE_ORDER_CANCELED", "clientOrderId=" + reconciled.getClientOrderId());
-        log.info(
-                "Live order canceled. clientOrderId={}, exchangeOrderId={}, status={}",
-                reconciled.getClientOrderId(),
-                reconciled.getExchangeOrderId(),
-                reconciled.getStatus()
-        );
         return toOrderDto(reconciled);
     }
 
@@ -181,14 +144,6 @@ public class TradingExecutionService {
 
     @Transactional
     public OrderDto executeSignal(SignalExecuteRequest request) {
-        log.info(
-                "Signal execution requested. market={}, side={}, orderType={}, mode={}, signalTs={}",
-                request.market(),
-                request.side(),
-                request.orderType(),
-                request.mode(),
-                request.signalTimestamp()
-        );
         String signalReason = request.signalTimestamp() == null || request.signalTimestamp().isBlank()
                 ? "signal"
                 : "signal:" + request.signalTimestamp();
@@ -287,12 +242,6 @@ public class TradingExecutionService {
     private void guardLiveOrder(TradingOrder order) {
         UpbitOrderChanceResponse chance = upbitFeignClient.getOrderChance(order.getSymbol());
         BigDecimal requestedNotional = estimateRequestedNotional(order, chance);
-        log.info(
-                "Live order chance evaluated. clientOrderId={}, market={}, requestedNotional={}",
-                order.getClientOrderId(),
-                order.getSymbol(),
-                requestedNotional
-        );
         order.setRequestedNotional(requestedNotional);
         if (order.getOrderType() == TradeOrderType.MARKET_BUY
                 && safe(order.getPrice()).compareTo(BigDecimal.ZERO) <= 0) {

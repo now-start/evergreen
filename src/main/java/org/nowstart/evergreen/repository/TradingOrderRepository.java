@@ -13,4 +13,6 @@ public interface TradingOrderRepository extends JpaRepository<TradingOrder, Stri
     Optional<TradingOrder> findByClientOrderId(String clientOrderId);
 
     boolean existsByModeAndSymbolAndStatusIn(ExecutionMode mode, String symbol, List<OrderStatus> statuses);
+
+    List<TradingOrder> findBySymbolAndModeAndStatusOrderByCreatedAtAsc(String symbol, ExecutionMode mode, OrderStatus status);
 }

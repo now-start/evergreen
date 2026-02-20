@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.nowstart.evergreen.data.dto.OrderDto;
 import org.nowstart.evergreen.data.dto.SignalExecuteRequest;
 import org.nowstart.evergreen.data.dto.UpbitDayCandleResponse;
+import org.nowstart.evergreen.data.entity.TradingOrder;
 import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.property.TradingProperties;
 import org.nowstart.evergreen.data.type.ExecutionMode;
@@ -66,11 +67,6 @@ public class TradingSignalScheduler {
 
     @Scheduled(fixedDelayString = "${evergreen.trading.interval:30s}")
     public void run() {
-        log.info(
-                "Trading scheduler tick started. mode={}, marketCount={}",
-                tradingProperties.executionMode(),
-                tradingProperties.markets().size()
-        );
         for (String marketValue : tradingProperties.markets()) {
             String market = normalizeMarket(marketValue);
             if (market.isBlank()) {
@@ -88,12 +84,10 @@ public class TradingSignalScheduler {
         List<DayCandle> candles = fetchDailyCandles(market);
         int signalIndex = resolveSignalIndex(candles.size());
         if (signalIndex < 1) {
-            log.info("Skipping signal evaluation due to insufficient candles. market={}, candles={}", market, candles.size());
             return;
         }
 
         if (hasActiveOrder(market)) {
-            log.info("Skipping signal evaluation due to active order. market={}", market);
             return;
         }
 
@@ -102,6 +96,9 @@ public class TradingSignalScheduler {
         Optional<TradingPosition> positionOpt = positionRepository.findBySymbol(market);
         BigDecimal positionQty = positionOpt.map(TradingPosition::getQty)
                 .filter(qty -> qty != null)
+                .orElse(BigDecimal.ZERO);
+        BigDecimal positionAvgPrice = positionOpt.map(TradingPosition::getAvgPrice)
+                .filter(avgPrice -> avgPrice != null)
                 .orElse(BigDecimal.ZERO);
         boolean hasPosition = positionQty.compareTo(tradingProperties.minPositionQty()) > 0;
 
@@ -142,9 +139,16 @@ public class TradingSignalScheduler {
         double regimeLowerValue = Double.isFinite(regimeAnchorValue)
                 ? regimeAnchorValue * (1.0 - tradingProperties.regimeBand().doubleValue())
                 : Double.NaN;
+        ExecutionMetrics executionMetrics = resolveExecutionMetrics(market);
+        double unrealizedReturnPct = resolveUnrealizedReturnPct(
+                hasPosition,
+                signalCandle.close().doubleValue(),
+                positionAvgPrice.doubleValue()
+        );
+        SignalQualityStats signalQuality = resolveSignalQualityStats(close, regimes, signalIndex);
 
         log.info(
-                "event=candle_signal_v5 market={} ts={} close={} regime={} prev_regime={} regime_anchor={} regime_upper={} regime_lower={} atr={} atr_trail_multiplier={} atr_trail_stop={} has_position={} position_qty={} volatility_is_high={} atr_price_ratio={} vol_percentile={} buy_signal={} sell_signal={} signal_reason={}",
+                "event=candle_signal_v5 market={} ts={} close={} regime={} prev_regime={} regime_anchor={} regime_upper={} regime_lower={} atr={} atr_trail_multiplier={} atr_trail_stop={} has_position={} position_qty={} position_avg_price={} unrealized_return_pct={} realized_pnl_krw={} realized_return_pct={} max_drawdown_pct={} trade_count={} trade_win_rate_pct={} trade_avg_win_pct={} trade_avg_loss_pct={} trade_rr_ratio={} trade_expectancy_pct={} signal_quality_1d_avg_pct={} signal_quality_3d_avg_pct={} signal_quality_7d_avg_pct={} volatility_is_high={} atr_price_ratio={} vol_percentile={} buy_signal={} sell_signal={} signal_reason={}",
                 market,
                 signalCandle.timestamp(),
                 signalCandle.close(),
@@ -158,6 +162,20 @@ public class TradingSignalScheduler {
                 trailStop.stopPrice(),
                 hasPosition,
                 positionQty,
+                positionAvgPrice,
+                unrealizedReturnPct,
+                executionMetrics.realizedPnlKrw(),
+                executionMetrics.realizedReturnPct(),
+                executionMetrics.maxDrawdownPct(),
+                executionMetrics.tradeCount(),
+                executionMetrics.winRatePct(),
+                executionMetrics.avgWinPct(),
+                executionMetrics.avgLossPct(),
+                executionMetrics.rrRatio(),
+                executionMetrics.expectancyPct(),
+                signalQuality.avg1dPct(),
+                signalQuality.avg3dPct(),
+                signalQuality.avg7dPct(),
                 volatility.isHigh()[signalIndex],
                 volatility.atrPriceRatio()[signalIndex],
                 volatility.percentile()[signalIndex],
@@ -167,37 +185,18 @@ public class TradingSignalScheduler {
         );
 
         if (buySignal) {
-            log.info("Buy signal detected. market={}, signalTs={}, mode={}", market, signalCandle.timestamp(), tradingProperties.executionMode());
             submitBuySignal(market, signalCandle);
             return;
         }
 
         if (sellSignal) {
-            log.info(
-                    "Sell signal detected. market={}, signalTs={}, mode={}, trailStopTriggered={}",
-                    market,
-                    signalCandle.timestamp(),
-                    tradingProperties.executionMode(),
-                    trailStop.triggered()
-            );
             submitSellSignal(market, signalCandle, positionQty);
             return;
         }
-
-        log.info(
-                "No trade signal. market={}, signalTs={}, hasPosition={}, prevRegime={}, currentRegime={}, trailStopTriggered={}",
-                market,
-                signalCandle.timestamp(),
-                hasPosition,
-                prevRegime,
-                currentRegime,
-                trailStop.triggered()
-        );
     }
 
     private void submitBuySignal(String market, DayCandle signalCandle) {
         if (isDuplicateSignal(market, OrderSide.BUY, signalCandle.timestamp())) {
-            log.info("Skipping duplicate buy signal. market={}, signalTs={}", market, signalCandle.timestamp());
             return;
         }
 
@@ -239,17 +238,10 @@ public class TradingSignalScheduler {
 
     private void submitSellSignal(String market, DayCandle signalCandle, BigDecimal positionQty) {
         if (isDuplicateSignal(market, OrderSide.SELL, signalCandle.timestamp())) {
-            log.info("Skipping duplicate sell signal. market={}, signalTs={}", market, signalCandle.timestamp());
             return;
         }
 
         if (positionQty == null || positionQty.compareTo(tradingProperties.minPositionQty()) <= 0) {
-            log.info(
-                    "Skipping sell signal due to small position. market={}, positionQty={}, minPositionQty={}",
-                    market,
-                    positionQty,
-                    tradingProperties.minPositionQty()
-            );
             return;
         }
 
@@ -270,14 +262,27 @@ public class TradingSignalScheduler {
 
     private void submitSignal(String market, DayCandle signalCandle, OrderSide side, SignalExecuteRequest request) {
         OrderDto submittedOrder = tradingExecutionService.executeSignal(request);
+        double executedPrice = submittedOrder.avgExecutedPrice() == null
+                ? Double.NaN
+                : submittedOrder.avgExecutedPrice().doubleValue();
+        double signalClose = signalCandle.close().doubleValue();
+        double slippagePct = resolveSlippagePct(signalClose, executedPrice);
+        double slippageBps = Double.isFinite(slippagePct) ? slippagePct * 100.0 : Double.NaN;
+
         log.info(
-                "Signal order submitted. market={}, side={}, signalTs={}, clientOrderId={}, status={}, mode={}",
+                "event=trade_execution_v1 market={} side={} signal_ts={} signal_close={} client_order_id={} order_status={} mode={} executed_price={} executed_volume={} fee_amount={} slippage_pct={} slippage_bps={}",
                 market,
                 side,
                 signalCandle.timestamp(),
+                signalClose,
                 submittedOrder.clientOrderId(),
                 submittedOrder.status(),
-                submittedOrder.mode()
+                submittedOrder.mode(),
+                executedPrice,
+                submittedOrder.executedVolume(),
+                submittedOrder.feeAmount(),
+                slippagePct,
+                slippageBps
         );
         recordSubmittedSignal(market, side, signalCandle.timestamp());
     }
@@ -314,17 +319,6 @@ public class TradingSignalScheduler {
             log.warn("No valid daily candles after normalization. market={}, rawCount={}", market, rows.size());
             return candles;
         }
-
-        DayCandle first = candles.get(0);
-        DayCandle last = candles.get(candles.size() - 1);
-        log.info(
-                "Fetched daily candles. market={}, rawCount={}, validCount={}, firstTs={}, lastTs={}",
-                market,
-                rows.size(),
-                candles.size(),
-                first.timestamp(),
-                last.timestamp()
-        );
         return candles;
     }
 
@@ -346,7 +340,7 @@ public class TradingSignalScheduler {
                     row.trade_price()
             );
         } catch (Exception e) {
-            log.info("Failed to parse day candle row. row={}", row, e);
+            log.warn("Failed to parse day candle row. row={}", row, e);
             return null;
         }
     }
@@ -557,6 +551,187 @@ public class TradingSignalScheduler {
         return "NONE";
     }
 
+    private double resolveUnrealizedReturnPct(boolean hasPosition, double closePrice, double avgPrice) {
+        if (!hasPosition || !Double.isFinite(closePrice) || !Double.isFinite(avgPrice) || avgPrice <= 0.0) {
+            return Double.NaN;
+        }
+        return ((closePrice / avgPrice) - 1.0) * 100.0;
+    }
+
+    private ExecutionMetrics resolveExecutionMetrics(String market) {
+        List<TradingOrder> filledOrders = tradingOrderRepository.findBySymbolAndModeAndStatusOrderByCreatedAtAsc(
+                market,
+                tradingProperties.executionMode(),
+                OrderStatus.FILLED
+        );
+        if (filledOrders.isEmpty()) {
+            return ExecutionMetrics.empty();
+        }
+
+        double positionQty = 0.0;
+        double avgCost = 0.0;
+        double realizedPnlKrw = 0.0;
+        double realizedCostKrw = 0.0;
+        int tradeCount = 0;
+        int winCount = 0;
+        int lossCount = 0;
+        double winSumPct = 0.0;
+        double lossSumAbsPct = 0.0;
+
+        double equityCurve = 1.0;
+        double peakEquityCurve = 1.0;
+        double maxDrawdownPct = 0.0;
+
+        for (TradingOrder order : filledOrders) {
+            if (order == null || order.getSide() == null) {
+                continue;
+            }
+
+            double qty = toPositiveDouble(order.getExecutedVolume());
+            double price = toPositiveDouble(order.getAvgExecutedPrice());
+            double fee = toNonNegativeDouble(order.getFeeAmount());
+            if (!Double.isFinite(qty) || !Double.isFinite(price) || qty <= 0.0 || price <= 0.0) {
+                continue;
+            }
+
+            if (order.getSide() == OrderSide.BUY) {
+                double newQty = positionQty + qty;
+                if (newQty > 0.0) {
+                    double currentCostBasis = avgCost * positionQty;
+                    double buyCostWithFee = (price * qty) + fee;
+                    avgCost = (currentCostBasis + buyCostWithFee) / newQty;
+                    positionQty = newQty;
+                }
+                continue;
+            }
+
+            double sellQty = Math.min(positionQty, qty);
+            if (sellQty <= 0.0 || avgCost <= 0.0) {
+                continue;
+            }
+
+            double proceedsAfterFee = (price * sellQty) - fee;
+            double costBasis = avgCost * sellQty;
+            double pnl = proceedsAfterFee - costBasis;
+            double retPct = costBasis > 0.0 ? (pnl / costBasis) * 100.0 : Double.NaN;
+
+            realizedPnlKrw += pnl;
+            realizedCostKrw += costBasis;
+
+            if (Double.isFinite(retPct)) {
+                tradeCount++;
+                if (retPct > 0.0) {
+                    winCount++;
+                    winSumPct += retPct;
+                } else {
+                    lossCount++;
+                    lossSumAbsPct += Math.abs(retPct);
+                }
+
+                equityCurve *= (1.0 + (retPct / 100.0));
+                if (equityCurve > peakEquityCurve) {
+                    peakEquityCurve = equityCurve;
+                }
+                if (peakEquityCurve > 0.0) {
+                    double drawdown = ((equityCurve / peakEquityCurve) - 1.0) * 100.0;
+                    if (drawdown < maxDrawdownPct) {
+                        maxDrawdownPct = drawdown;
+                    }
+                }
+            }
+
+            positionQty = Math.max(0.0, positionQty - sellQty);
+            if (positionQty == 0.0) {
+                avgCost = 0.0;
+            }
+        }
+
+        double realizedReturnPct = realizedCostKrw > 0.0
+                ? (realizedPnlKrw / realizedCostKrw) * 100.0
+                : Double.NaN;
+        double winRatePct = tradeCount > 0 ? (winCount * 100.0) / tradeCount : Double.NaN;
+        double avgWinPct = winCount > 0 ? winSumPct / winCount : Double.NaN;
+        double avgLossPct = lossCount > 0 ? lossSumAbsPct / lossCount : Double.NaN;
+        double rrRatio = (Double.isFinite(avgWinPct) && Double.isFinite(avgLossPct) && avgLossPct > 0.0)
+                ? avgWinPct / avgLossPct
+                : Double.NaN;
+        double expectancyPct = (Double.isFinite(winRatePct) && Double.isFinite(avgWinPct) && Double.isFinite(avgLossPct))
+                ? ((winRatePct / 100.0) * avgWinPct) - ((1.0 - (winRatePct / 100.0)) * avgLossPct)
+                : Double.NaN;
+
+        return new ExecutionMetrics(
+                realizedPnlKrw,
+                realizedReturnPct,
+                maxDrawdownPct,
+                tradeCount,
+                winRatePct,
+                avgWinPct,
+                avgLossPct,
+                rrRatio,
+                expectancyPct
+        );
+    }
+
+    private SignalQualityStats resolveSignalQualityStats(double[] close, Regime[] regimes, int signalIndex) {
+        double sum1d = 0.0;
+        double sum3d = 0.0;
+        double sum7d = 0.0;
+        int count1d = 0;
+        int count3d = 0;
+        int count7d = 0;
+
+        for (int i = 1; i <= signalIndex; i++) {
+            Regime prev = regimes[i - 1];
+            Regime current = regimes[i];
+            boolean buy = prev == Regime.BEAR && current == Regime.BULL;
+            if (!buy || !Double.isFinite(close[i]) || close[i] <= 0.0) {
+                continue;
+            }
+
+            if (i + 1 <= signalIndex && Double.isFinite(close[i + 1])) {
+                sum1d += ((close[i + 1] / close[i]) - 1.0) * 100.0;
+                count1d++;
+            }
+            if (i + 3 <= signalIndex && Double.isFinite(close[i + 3])) {
+                sum3d += ((close[i + 3] / close[i]) - 1.0) * 100.0;
+                count3d++;
+            }
+            if (i + 7 <= signalIndex && Double.isFinite(close[i + 7])) {
+                sum7d += ((close[i + 7] / close[i]) - 1.0) * 100.0;
+                count7d++;
+            }
+        }
+
+        return new SignalQualityStats(
+                count1d == 0 ? Double.NaN : sum1d / count1d,
+                count3d == 0 ? Double.NaN : sum3d / count3d,
+                count7d == 0 ? Double.NaN : sum7d / count7d
+        );
+    }
+
+    private double resolveSlippagePct(double signalClose, double executedPrice) {
+        if (!Double.isFinite(signalClose) || !Double.isFinite(executedPrice) || signalClose <= 0.0 || executedPrice <= 0.0) {
+            return Double.NaN;
+        }
+        return ((executedPrice / signalClose) - 1.0) * 100.0;
+    }
+
+    private double toPositiveDouble(BigDecimal value) {
+        if (value == null) {
+            return Double.NaN;
+        }
+        double v = value.doubleValue();
+        return v > 0.0 ? v : Double.NaN;
+    }
+
+    private double toNonNegativeDouble(BigDecimal value) {
+        if (value == null) {
+            return 0.0;
+        }
+        double v = value.doubleValue();
+        return Math.max(v, 0.0);
+    }
+
     private boolean isDuplicateSignal(String market, OrderSide side, Instant signalTs) {
         Instant last = side == OrderSide.BUY
                 ? lastSubmittedBuySignalByMarket.get(market)
@@ -612,5 +787,38 @@ public class TradingSignalScheduler {
             double stopPrice,
             boolean triggered
     ) {
+    }
+
+    private record SignalQualityStats(
+            double avg1dPct,
+            double avg3dPct,
+            double avg7dPct
+    ) {
+    }
+
+    private record ExecutionMetrics(
+            double realizedPnlKrw,
+            double realizedReturnPct,
+            double maxDrawdownPct,
+            int tradeCount,
+            double winRatePct,
+            double avgWinPct,
+            double avgLossPct,
+            double rrRatio,
+            double expectancyPct
+    ) {
+        private static ExecutionMetrics empty() {
+            return new ExecutionMetrics(
+                    Double.NaN,
+                    Double.NaN,
+                    Double.NaN,
+                    0,
+                    Double.NaN,
+                    Double.NaN,
+                    Double.NaN,
+                    Double.NaN,
+                    Double.NaN
+            );
+        }
     }
 }
