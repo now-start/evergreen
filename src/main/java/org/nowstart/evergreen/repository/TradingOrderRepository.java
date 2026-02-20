@@ -2,6 +2,7 @@ package org.nowstart.evergreen.repository;
 
 import org.nowstart.evergreen.data.type.OrderStatus;
 import org.nowstart.evergreen.data.entity.TradingOrder;
+import org.nowstart.evergreen.data.type.ExecutionMode;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -11,5 +12,5 @@ public interface TradingOrderRepository extends JpaRepository<TradingOrder, Stri
 
     Optional<TradingOrder> findByClientOrderId(String clientOrderId);
 
-    List<TradingOrder> findByStatusOrderByUpdatedAtAsc(OrderStatus status);
+    boolean existsByModeAndSymbolAndStatusIn(ExecutionMode mode, String symbol, List<OrderStatus> statuses);
 }

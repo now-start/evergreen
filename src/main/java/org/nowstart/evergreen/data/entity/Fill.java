@@ -7,6 +7,9 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,10 +18,12 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+@Entity
 @Getter
 @Setter
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Entity
 public class Fill extends AuditableEntity {
 
     @EmbeddedId
@@ -35,5 +40,17 @@ public class Fill extends AuditableEntity {
     private BigDecimal fee;
 
     @Embeddable
-    public record FillKey(String orderId, Instant filledAt) implements Serializable {}
+    @Getter
+    @Setter
+    @NoArgsConstructor(access = AccessLevel.PROTECTED)
+    @AllArgsConstructor
+    @EqualsAndHashCode
+    public static class FillKey implements Serializable {
+
+        private String orderId;
+
+        private Instant filledAt;
+
+        private String tradeUuid;
+    }
 }
