@@ -381,6 +381,201 @@
       ],
       "title": "Recent API Errors",
       "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 2,
+            "showPoints": "never"
+          },
+          "unit": "currencyKRW"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "max_over_time({app=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap close [1m])",
+          "legendFormat": "{{market}} close",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "max_over_time({app=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_anchor [1m])",
+          "legendFormat": "{{market}} anchor",
+          "queryType": "range",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "max_over_time({app=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_upper [1m])",
+          "legendFormat": "{{market}} upper",
+          "queryType": "range",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "max_over_time({app=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_lower [1m])",
+          "legendFormat": "{{market}} lower",
+          "queryType": "range",
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "max_over_time({app=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap atr_trail_stop [1m])",
+          "legendFormat": "{{market}} trail_stop",
+          "queryType": "range",
+          "refId": "E"
+        }
+      ],
+      "title": "V5 Signal Price + Bands",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 0,
+            "pointSize": 6,
+            "showPoints": "always"
+          },
+          "unit": "currencyKRW"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "BUY"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SELL"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "max_over_time({app=\"evergreen\"} |= \"event=candle_signal_v5\" |= \"buy_signal=true\" | logfmt | label_format market=\"{{.market}}\" | unwrap close [1m])",
+          "legendFormat": "BUY {{market}}",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "max_over_time({app=\"evergreen\"} |= \"event=candle_signal_v5\" |= \"sell_signal=true\" | logfmt | label_format market=\"{{.market}}\" | unwrap close [1m])",
+          "legendFormat": "SELL {{market}}",
+          "queryType": "range",
+          "refId": "B"
+        }
+      ],
+      "title": "V5 Buy/Sell Markers",
+      "type": "timeseries"
     }
   ],
   "refresh": "10s",

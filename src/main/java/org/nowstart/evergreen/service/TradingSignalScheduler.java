@@ -133,6 +133,38 @@ public class TradingSignalScheduler {
         TrailStopResult trailStop = evaluateTrailStop(candles, signalIndex, atr, atrMultiplier, positionOpt.orElse(null), hasPosition);
         boolean buySignal = !hasPosition && baseBuy;
         boolean sellSignal = hasPosition && (baseSell || trailStop.triggered());
+        String signalReason = resolveSignalReason(buySignal, sellSignal, baseBuy, baseSell, trailStop.triggered());
+
+        double regimeAnchorValue = regimeAnchor[signalIndex];
+        double regimeUpperValue = Double.isFinite(regimeAnchorValue)
+                ? regimeAnchorValue * (1.0 + tradingProperties.regimeBand().doubleValue())
+                : Double.NaN;
+        double regimeLowerValue = Double.isFinite(regimeAnchorValue)
+                ? regimeAnchorValue * (1.0 - tradingProperties.regimeBand().doubleValue())
+                : Double.NaN;
+
+        log.info(
+                "event=candle_signal_v5 market={} ts={} close={} regime={} prev_regime={} regime_anchor={} regime_upper={} regime_lower={} atr={} atr_trail_multiplier={} atr_trail_stop={} has_position={} position_qty={} volatility_is_high={} atr_price_ratio={} vol_percentile={} buy_signal={} sell_signal={} signal_reason={}",
+                market,
+                signalCandle.timestamp(),
+                signalCandle.close(),
+                currentRegime,
+                prevRegime,
+                regimeAnchorValue,
+                regimeUpperValue,
+                regimeLowerValue,
+                atr[signalIndex],
+                atrMultiplier,
+                trailStop.stopPrice(),
+                hasPosition,
+                positionQty,
+                volatility.isHigh()[signalIndex],
+                volatility.atrPriceRatio()[signalIndex],
+                volatility.percentile()[signalIndex],
+                buySignal,
+                sellSignal,
+                signalReason
+        );
 
         if (buySignal) {
             log.info("Buy signal detected. market={}, signalTs={}, mode={}", market, signalCandle.timestamp(), tradingProperties.executionMode());
@@ -495,6 +527,34 @@ public class TradingSignalScheduler {
         }
 
         return highest;
+    }
+
+    private String resolveSignalReason(
+            boolean buySignal,
+            boolean sellSignal,
+            boolean baseBuy,
+            boolean baseSell,
+            boolean trailStopTriggered
+    ) {
+        if (buySignal) {
+            return "BUY_REGIME_TRANSITION";
+        }
+        if (sellSignal && baseSell && trailStopTriggered) {
+            return "SELL_REGIME_AND_TRAIL_STOP";
+        }
+        if (sellSignal && trailStopTriggered) {
+            return "SELL_TRAIL_STOP";
+        }
+        if (sellSignal) {
+            return "SELL_REGIME_TRANSITION";
+        }
+        if (baseBuy) {
+            return "SETUP_BUY";
+        }
+        if (baseSell) {
+            return "SETUP_SELL";
+        }
+        return "NONE";
     }
 
     private boolean isDuplicateSignal(String market, OrderSide side, Instant signalTs) {
