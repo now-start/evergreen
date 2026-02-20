@@ -106,14 +106,13 @@
       },
       "id": 2,
       "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         }
       },
       "targets": [
@@ -123,14 +122,14 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "min_over_time({app=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap max_drawdown_pct [30d])",
-          "legendFormat": "{{market}} drawdown (30d min)",
-          "queryType": "range",
+          "expr": "max_over_time({app=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap max_drawdown_pct [$__auto])",
+          "legendFormat": "{{market}} MDD",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
       "title": "최대 낙폭 (MDD)",
-      "type": "timeseries"
+      "type": "stat"
     },
     {
       "datasource": {
