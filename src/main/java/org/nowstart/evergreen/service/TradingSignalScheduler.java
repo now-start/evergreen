@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.nowstart.evergreen.data.dto.OrderDto;
 import org.nowstart.evergreen.data.dto.SignalExecuteRequest;
 import org.nowstart.evergreen.data.dto.UpbitDayCandleResponse;
+import org.nowstart.evergreen.data.dto.UpbitTickerResponse;
 import org.nowstart.evergreen.data.entity.TradingOrder;
 import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.property.TradingProperties;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -36,6 +38,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @RefreshScope
 public class TradingSignalScheduler {
 
+    private static final Duration MIN_CANDLE_SIGNAL_LOG_INTERVAL = Duration.ofMinutes(1);
+
     private static final List<OrderStatus> ACTIVE_ORDER_STATUSES = List.of(
             OrderStatus.CREATED,
             OrderStatus.SUBMITTED,
@@ -50,6 +54,7 @@ public class TradingSignalScheduler {
 
     private final Map<String, Instant> lastSubmittedBuySignalByMarket = new ConcurrentHashMap<>();
     private final Map<String, Instant> lastSubmittedSellSignalByMarket = new ConcurrentHashMap<>();
+    private final Map<String, CandleSignalLogState> lastLoggedCandleSignalByMarket = new ConcurrentHashMap<>();
 
     public TradingSignalScheduler(
             TradingExecutionService tradingExecutionService,
@@ -146,43 +151,91 @@ public class TradingSignalScheduler {
                 positionAvgPrice.doubleValue()
         );
         SignalQualityStats signalQuality = resolveSignalQualityStats(close, regimes, signalIndex);
+        double livePriceForLog = sanitizeMetricForLog(resolveLivePrice(market, signalCandle.close().doubleValue()));
 
-        log.info(
-                "event=candle_signal_v5 market={} ts={} close={} regime={} prev_regime={} regime_anchor={} regime_upper={} regime_lower={} atr={} atr_trail_multiplier={} atr_trail_stop={} has_position={} position_qty={} position_avg_price={} unrealized_return_pct={} realized_pnl_krw={} realized_return_pct={} max_drawdown_pct={} trade_count={} trade_win_rate_pct={} trade_avg_win_pct={} trade_avg_loss_pct={} trade_rr_ratio={} trade_expectancy_pct={} signal_quality_1d_avg_pct={} signal_quality_3d_avg_pct={} signal_quality_7d_avg_pct={} volatility_is_high={} atr_price_ratio={} vol_percentile={} buy_signal={} sell_signal={} signal_reason={}",
-                market,
-                signalCandle.timestamp(),
-                signalCandle.close(),
-                currentRegime,
-                prevRegime,
-                regimeAnchorValue,
-                regimeUpperValue,
-                regimeLowerValue,
-                atr[signalIndex],
-                atrMultiplier,
-                trailStop.stopPrice(),
-                hasPosition,
-                positionQty,
-                positionAvgPrice,
-                unrealizedReturnPct,
-                executionMetrics.realizedPnlKrw(),
-                executionMetrics.realizedReturnPct(),
-                executionMetrics.maxDrawdownPct(),
-                executionMetrics.tradeCount(),
-                executionMetrics.winRatePct(),
-                executionMetrics.avgWinPct(),
-                executionMetrics.avgLossPct(),
-                executionMetrics.rrRatio(),
-                executionMetrics.expectancyPct(),
-                signalQuality.avg1dPct(),
-                signalQuality.avg3dPct(),
-                signalQuality.avg7dPct(),
-                volatility.isHigh()[signalIndex],
-                volatility.atrPriceRatio()[signalIndex],
-                volatility.percentile()[signalIndex],
-                buySignal,
-                sellSignal,
+        double unrealizedReturnPctForLog = sanitizeMetricForLog(unrealizedReturnPct);
+        double realizedPnlKrwForLog = sanitizeMetricForLog(executionMetrics.realizedPnlKrw());
+        double realizedReturnPctForLog = sanitizeMetricForLog(executionMetrics.realizedReturnPct());
+        double maxDrawdownPctForLog = sanitizeMetricForLog(executionMetrics.maxDrawdownPct());
+        double winRatePctForLog = sanitizeMetricForLog(executionMetrics.winRatePct());
+        double avgWinPctForLog = sanitizeMetricForLog(executionMetrics.avgWinPct());
+        double avgLossPctForLog = sanitizeMetricForLog(executionMetrics.avgLossPct());
+        double rrRatioForLog = sanitizeMetricForLog(executionMetrics.rrRatio());
+        double expectancyPctForLog = sanitizeMetricForLog(executionMetrics.expectancyPct());
+        double signalQuality1dForLog = sanitizeMetricForLog(signalQuality.avg1dPct());
+        double signalQuality3dForLog = sanitizeMetricForLog(signalQuality.avg3dPct());
+        double signalQuality7dForLog = sanitizeMetricForLog(signalQuality.avg7dPct());
+        double atrPriceRatioForLog = sanitizeMetricForLog(volatility.atrPriceRatio()[signalIndex]);
+        double volPercentileForLog = sanitizeMetricForLog(volatility.percentile()[signalIndex]);
+
+        String candleSignalLogDigest = String.join(
+                "|",
+                signalCandle.timestamp().toString(),
+                currentRegime.name(),
+                prevRegime.name(),
+                Boolean.toString(hasPosition),
+                positionQty.toPlainString(),
+                positionAvgPrice.toPlainString(),
+                Double.toString(unrealizedReturnPctForLog),
+                Double.toString(realizedPnlKrwForLog),
+                Double.toString(realizedReturnPctForLog),
+                Double.toString(maxDrawdownPctForLog),
+                Integer.toString(executionMetrics.tradeCount()),
+                Double.toString(winRatePctForLog),
+                Double.toString(avgWinPctForLog),
+                Double.toString(avgLossPctForLog),
+                Double.toString(rrRatioForLog),
+                Double.toString(expectancyPctForLog),
+                Double.toString(signalQuality1dForLog),
+                Double.toString(signalQuality3dForLog),
+                Double.toString(signalQuality7dForLog),
+                Boolean.toString(volatility.isHigh()[signalIndex]),
+                Double.toString(atrPriceRatioForLog),
+                Double.toString(volPercentileForLog),
+                Boolean.toString(buySignal),
+                Boolean.toString(sellSignal),
                 signalReason
         );
+
+        if (shouldEmitCandleSignalLog(market, candleSignalLogDigest)) {
+            log.info(
+                    "event=candle_signal_v5 market={} ts={} close={} live_price={} regime={} prev_regime={} regime_anchor={} regime_upper={} regime_lower={} atr={} atr_trail_multiplier={} atr_trail_stop={} has_position={} position_qty={} position_avg_price={} unrealized_return_pct={} realized_pnl_krw={} realized_return_pct={} max_drawdown_pct={} trade_count={} trade_win_rate_pct={} trade_avg_win_pct={} trade_avg_loss_pct={} trade_rr_ratio={} trade_expectancy_pct={} signal_quality_1d_avg_pct={} signal_quality_3d_avg_pct={} signal_quality_7d_avg_pct={} volatility_is_high={} atr_price_ratio={} vol_percentile={} buy_signal={} sell_signal={} signal_reason={}",
+                    market,
+                    signalCandle.timestamp(),
+                    signalCandle.close(),
+                    livePriceForLog,
+                    currentRegime,
+                    prevRegime,
+                    regimeAnchorValue,
+                    regimeUpperValue,
+                    regimeLowerValue,
+                    atr[signalIndex],
+                    atrMultiplier,
+                    trailStop.stopPrice(),
+                    hasPosition,
+                    positionQty,
+                    positionAvgPrice,
+                    unrealizedReturnPctForLog,
+                    realizedPnlKrwForLog,
+                    realizedReturnPctForLog,
+                    maxDrawdownPctForLog,
+                    executionMetrics.tradeCount(),
+                    winRatePctForLog,
+                    avgWinPctForLog,
+                    avgLossPctForLog,
+                    rrRatioForLog,
+                    expectancyPctForLog,
+                    signalQuality1dForLog,
+                    signalQuality3dForLog,
+                    signalQuality7dForLog,
+                    volatility.isHigh()[signalIndex],
+                    atrPriceRatioForLog,
+                    volPercentileForLog,
+                    buySignal,
+                    sellSignal,
+                    signalReason
+            );
+        }
 
         if (buySignal) {
             submitBuySignal(market, signalCandle);
@@ -716,6 +769,24 @@ public class TradingSignalScheduler {
         return ((executedPrice / signalClose) - 1.0) * 100.0;
     }
 
+    private double resolveLivePrice(String market, double fallbackClose) {
+        double fallback = (Double.isFinite(fallbackClose) && fallbackClose > 0.0) ? fallbackClose : Double.NaN;
+        try {
+            List<UpbitTickerResponse> tickers = upbitFeignClient.getTickers(market);
+            if (tickers == null || tickers.isEmpty() || tickers.get(0) == null || tickers.get(0).trade_price() == null) {
+                return fallback;
+            }
+            double tradePrice = tickers.get(0).trade_price().doubleValue();
+            if (!Double.isFinite(tradePrice) || tradePrice <= 0.0) {
+                return fallback;
+            }
+            return tradePrice;
+        } catch (Exception e) {
+            log.debug("Failed to resolve live price for market={}", market, e);
+            return fallback;
+        }
+    }
+
     private double toPositiveDouble(BigDecimal value) {
         if (value == null) {
             return Double.NaN;
@@ -745,6 +816,26 @@ public class TradingSignalScheduler {
             return;
         }
         lastSubmittedSellSignalByMarket.put(market, signalTs);
+    }
+
+    private boolean shouldEmitCandleSignalLog(String market, String digest) {
+        Instant now = Instant.now();
+        CandleSignalLogState previous = lastLoggedCandleSignalByMarket.get(market);
+        boolean changed = previous == null || !previous.digest().equals(digest);
+        boolean intervalElapsed = previous == null
+                || Duration.between(previous.loggedAt(), now).compareTo(MIN_CANDLE_SIGNAL_LOG_INTERVAL) >= 0;
+        if (!changed && !intervalElapsed) {
+            return false;
+        }
+        lastLoggedCandleSignalByMarket.put(market, new CandleSignalLogState(now, digest));
+        return true;
+    }
+
+    private double sanitizeMetricForLog(double value) {
+        if (!Double.isFinite(value)) {
+            return 0.0;
+        }
+        return value == -0.0 ? 0.0 : value;
     }
 
     private String normalizeMarket(String value) {
@@ -820,5 +911,11 @@ public class TradingSignalScheduler {
                     Double.NaN
             );
         }
+    }
+
+    private record CandleSignalLogState(
+            Instant loggedAt,
+            String digest
+    ) {
     }
 }

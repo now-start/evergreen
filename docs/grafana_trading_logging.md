@@ -4,6 +4,8 @@
 - File: `docs/grafana_trading_dashboard.json`
 - Data source: Loki (`${DS_LOKI}`)
 - Dashboard UID: `evergreen-trading-plot`
+- `docs/grafana_dashboard_sample_full_top6cards.svg` is a visual mock-up, not a rendered export.
+- `docs/img.png`, `docs/img_1.png` are live Grafana captures from Loki data.
 
 ## Required Log Events
 - `event=trade_marker`
@@ -11,7 +13,8 @@
 - `event=position_snapshot`
   - fields: `mode`, `symbol`, `qty`, `avgPrice`, `state`
 - `event=candle_signal_v5`
-  - fields: `market`, `ts`, `close`, `regime`, `prev_regime`, `regime_anchor`, `regime_upper`, `regime_lower`, `atr`, `atr_trail_multiplier`, `atr_trail_stop`, `has_position`, `position_qty`, `position_avg_price`, `unrealized_return_pct`, `realized_pnl_krw`, `realized_return_pct`, `max_drawdown_pct`, `trade_count`, `trade_win_rate_pct`, `trade_avg_win_pct`, `trade_avg_loss_pct`, `trade_rr_ratio`, `trade_expectancy_pct`, `signal_quality_1d_avg_pct`, `signal_quality_3d_avg_pct`, `signal_quality_7d_avg_pct`, `volatility_is_high`, `atr_price_ratio`, `vol_percentile`, `buy_signal`, `sell_signal`, `signal_reason`
+  - fields: `market`, `ts`, `close`, `live_price`, `regime`, `prev_regime`, `regime_anchor`, `regime_upper`, `regime_lower`, `atr`, `atr_trail_multiplier`, `atr_trail_stop`, `has_position`, `position_qty`, `position_avg_price`, `unrealized_return_pct`, `realized_pnl_krw`, `realized_return_pct`, `max_drawdown_pct`, `trade_count`, `trade_win_rate_pct`, `trade_avg_win_pct`, `trade_avg_loss_pct`, `trade_rr_ratio`, `trade_expectancy_pct`, `signal_quality_1d_avg_pct`, `signal_quality_3d_avg_pct`, `signal_quality_7d_avg_pct`, `volatility_is_high`, `atr_price_ratio`, `vol_percentile`, `buy_signal`, `sell_signal`, `signal_reason`
+  - non-finite numeric metrics are normalized to `0.0` in logs for LogQL compatibility
 - `event=trade_execution_v1`
   - fields: `market`, `side`, `signal_ts`, `signal_close`, `client_order_id`, `order_status`, `mode`, `executed_price`, `executed_volume`, `fee_amount`, `slippage_pct`, `slippage_bps`
 - `event=http_request_completed`
@@ -42,9 +45,9 @@ TRADING_SCHEDULER_SIGNAL_ORDER_NOTIONAL=100000
 ```
 
 ## LogQL (V5 Plot)
-- Price line
+- Price line (`live_price` preferred, fallback to daily `close`)
 ```logql
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap close [1m])
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | live_price!="NaN" | unwrap live_price [1m]) or max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap close [1m])
 ```
 - Regime band upper/lower
 ```logql
@@ -53,16 +56,16 @@ max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | 
 ```
 - ATR trailing stop line
 ```logql
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap atr_trail_stop [1m])
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | atr_trail_stop!="NaN" | unwrap atr_trail_stop [1m])
 ```
 - Buy/Sell markers (point series)
 ```logql
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" |= "buy_signal=true" | logfmt | label_format market="{{.market}}" | unwrap close [1m])
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" |= "sell_signal=true" | logfmt | label_format market="{{.market}}" | unwrap close [1m])
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | buy_signal="true" | unwrap close [1m])
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | sell_signal="true" | unwrap close [1m])
 ```
 - Unrealized return (%)
 ```logql
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap unrealized_return_pct [1m])
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unrealized_return_pct!="NaN" | unwrap unrealized_return_pct [1m])
 ```
 - Volatility percentile
 ```logql
@@ -76,14 +79,17 @@ sum(count_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | log
 ```
 - Realized PnL / MDD / WinRate / Signal quality / Slippage
 ```logql
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap realized_pnl_krw [1m])
-min_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap max_drawdown_pct [30d])
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | unwrap trade_win_rate_pct [1m])
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | unwrap signal_quality_7d_avg_pct [1m])
-max_over_time({service_name="evergreen"} |= "event=trade_execution_v1" | logfmt | unwrap slippage_bps [1m])
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | realized_pnl_krw!="NaN" | unwrap realized_pnl_krw [1m]) or (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap trade_count [1m]) * 0)
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | max_drawdown_pct!="NaN" | unwrap max_drawdown_pct [1m]) or (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap trade_count [1m]) * 0)
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | trade_win_rate_pct!="NaN" | unwrap trade_win_rate_pct [1m]) or (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | unwrap trade_count [1m]) * 0)
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | signal_quality_7d_avg_pct!="NaN" | unwrap signal_quality_7d_avg_pct [1m]) or (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | unwrap trade_count [1m]) * 0)
+max_over_time({service_name="evergreen"} |= "event=trade_execution_v1" | logfmt | slippage_bps!="NaN" | unwrap slippage_bps [1m])
 ```
 
 ## Notes
 - `requestId` is injected into MDC and response header `X-Request-Id`.
 - Health checks (`/actuator/health`) are excluded from request-complete logs.
 - Keep Loki labels minimal; parse business fields from log body (`logfmt`) in panel queries.
+- `event=candle_signal_v5` is throttled to once per minute per market when state is unchanged, reducing Loki cardinality/volume.
+- Logs panel uses `line_format` summary output to keep payload compact.
+- `close` is based on daily candle close, so short ranges can appear flat; use `live_price` for intraday movement in time-series panels.
