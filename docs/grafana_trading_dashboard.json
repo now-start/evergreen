@@ -397,6 +397,28 @@
           "legendFormat": "Scheduler errors (5m)",
           "queryType": "instant",
           "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=position_sync\" [5m]))",
+          "legendFormat": "Position sync (5m)",
+          "queryType": "instant",
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"Failed to sync exchange positions\" [5m]))",
+          "legendFormat": "Position sync errors (5m)",
+          "queryType": "instant",
+          "refId": "E"
         }
       ],
       "title": "전략 상태",
@@ -843,6 +865,28 @@
           "legendFormat": "SELL_TRAIL (1h)",
           "queryType": "range",
           "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=position_sync\" [1h]))",
+          "legendFormat": "POSITION_SYNC (1h)",
+          "queryType": "range",
+          "refId": "E"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"Failed to sync exchange positions\" [1h]))",
+          "legendFormat": "POSITION_SYNC_ERROR (1h)",
+          "queryType": "range",
+          "refId": "F"
         }
       ],
       "title": "V5 변동성 + 신호 사유 집계",
@@ -881,9 +925,19 @@
           "expr": "{service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | line_format \"ts={{.ts}} market={{.market}} close={{.close}} live_price={{.live_price}} regime={{.regime}} reason={{.signal_reason}} buy={{.buy_signal}} sell={{.sell_signal}} unrealized_pct={{.unrealized_return_pct}} realized_pnl_krw={{.realized_pnl_krw}}\"",
           "queryType": "range",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "{service_name=\"evergreen\"} |= \"event=position_sync\" | logfmt | line_format \"market={{.market}} asset={{.asset}} qty={{.qty}} avg_price={{.avg_price}} state={{.state}}\"",
+          "queryType": "range",
+          "refId": "B"
         }
       ],
-      "title": "최근 V5 캔들 신호 로그 (요약)",
+      "title": "최근 V5 신호/동기화 로그 (요약)",
       "type": "logs"
     }
   ],

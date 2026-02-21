@@ -3,6 +3,7 @@ package org.nowstart.evergreen.service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nowstart.evergreen.data.dto.TradingDayCandleDto;
@@ -39,14 +40,27 @@ public class TradingSignalWorkflowService {
     private final TradingSignalMetricsService tradingSignalMetricsService;
     private final TradingSignalStateService tradingSignalStateService;
     private final TradingSignalOrderService tradingSignalOrderService;
+    private final TradingPositionSyncService tradingPositionSyncService;
 
     public void runOnce() {
-        for (String marketValue : tradingProperties.markets()) {
-            String market = tradingSignalMarketDataService.normalizeMarket(marketValue);
-            if (market.isBlank()) {
-                continue;
-            }
+        List<String> markets = tradingProperties.markets().stream()
+                .map(tradingSignalMarketDataService::normalizeMarket)
+                .filter(market -> !market.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
 
+        if (markets.isEmpty()) {
+            return;
+        }
+
+        try {
+            tradingPositionSyncService.syncPositions(markets);
+        } catch (Exception e) {
+            log.error("Failed to sync exchange positions. Skipping signal evaluation for this cycle.", e);
+            return;
+        }
+
+        for (String market : markets) {
             try {
                 evaluateMarket(market);
             } catch (Exception e) {

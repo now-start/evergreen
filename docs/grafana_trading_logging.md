@@ -12,6 +12,8 @@
   - fields: `mode`, `clientOrderId`, `symbol`, `side`, `tradePrice`, `tradeQty`
 - `event=position_snapshot`
   - fields: `mode`, `symbol`, `qty`, `avgPrice`, `state`
+- `event=position_sync`
+    - fields: `market`, `asset`, `qty`, `avg_price`, `state`
 - `event=candle_signal`
   - fields: `market`, `ts`, `close`, `live_price`, `regime`, `prev_regime`, `regime_anchor`, `regime_upper`, `regime_lower`, `atr`, `atr_trail_multiplier`, `atr_trail_stop`, `has_position`, `position_qty`, `position_avg_price`, `unrealized_return_pct`, `realized_pnl_krw`, `realized_return_pct`, `max_drawdown_pct`, `trade_count`, `trade_win_rate_pct`, `trade_avg_win_pct`, `trade_avg_loss_pct`, `trade_rr_ratio`, `trade_expectancy_pct`, `signal_quality_1d_avg_pct`, `signal_quality_3d_avg_pct`, `signal_quality_7d_avg_pct`, `volatility_is_high`, `atr_price_ratio`, `vol_percentile`, `buy_signal`, `sell_signal`, `signal_reason`
   - non-finite numeric metrics are normalized to `0.0` in logs for LogQL compatibility
