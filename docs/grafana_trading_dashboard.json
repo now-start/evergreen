@@ -69,7 +69,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | realized_pnl_krw!=\"NaN\" | unwrap realized_pnl_krw [1m]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count [1m]) * 0)",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | realized_pnl_krw!=\"NaN\" | unwrap realized_pnl_krw | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
           "legendFormat": "{{market}} realized pnl",
           "queryType": "range",
           "refId": "A"
@@ -123,7 +123,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | max_drawdown_pct!=\"NaN\" | unwrap max_drawdown_pct [1m]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count [1m]) * 0)",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | max_drawdown_pct!=\"NaN\" | unwrap max_drawdown_pct | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
           "legendFormat": "{{market}} MDD",
           "queryType": "instant",
           "refId": "A"
@@ -169,7 +169,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | trade_win_rate_pct!=\"NaN\" | unwrap trade_win_rate_pct [1m]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | unwrap trade_count [1m]) * 0)",
+          "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | trade_win_rate_pct!=\"NaN\" | unwrap trade_win_rate_pct | __error__=\"\" [$__interval]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | unwrap trade_count | __error__=\"\" [$__interval]) * 0)",
           "legendFormat": "Win rate %",
           "queryType": "instant",
           "refId": "A"
@@ -180,7 +180,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | trade_rr_ratio!=\"NaN\" | unwrap trade_rr_ratio [1m]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | unwrap trade_count [1m]) * 0)",
+          "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | trade_rr_ratio!=\"NaN\" | unwrap trade_rr_ratio | __error__=\"\" [$__interval]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | unwrap trade_count | __error__=\"\" [$__interval]) * 0)",
           "legendFormat": "R/R",
           "queryType": "instant",
           "refId": "B"
@@ -191,7 +191,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | trade_expectancy_pct!=\"NaN\" | unwrap trade_expectancy_pct [1m]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | unwrap trade_count [1m]) * 0)",
+          "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | trade_expectancy_pct!=\"NaN\" | unwrap trade_expectancy_pct | __error__=\"\" [$__interval]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | unwrap trade_count | __error__=\"\" [$__interval]) * 0)",
           "legendFormat": "Expectancy %",
           "queryType": "instant",
           "refId": "C"
@@ -247,7 +247,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | signal_quality_1d_avg_pct!=\"NaN\" | unwrap signal_quality_1d_avg_pct [1m]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count [1m]) * 0)",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | signal_quality_1d_avg_pct!=\"NaN\" | unwrap signal_quality_1d_avg_pct | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
           "legendFormat": "{{market}} 1d",
           "queryType": "range",
           "refId": "A"
@@ -258,7 +258,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | signal_quality_3d_avg_pct!=\"NaN\" | unwrap signal_quality_3d_avg_pct [1m]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count [1m]) * 0)",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | signal_quality_3d_avg_pct!=\"NaN\" | unwrap signal_quality_3d_avg_pct | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
           "legendFormat": "{{market}} 3d",
           "queryType": "range",
           "refId": "B"
@@ -269,7 +269,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | signal_quality_7d_avg_pct!=\"NaN\" | unwrap signal_quality_7d_avg_pct [1m]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count [1m]) * 0)",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | signal_quality_7d_avg_pct!=\"NaN\" | unwrap signal_quality_7d_avg_pct | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
           "legendFormat": "{{market}} 7d",
           "queryType": "range",
           "refId": "C"
@@ -325,7 +325,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=trade_execution_v1\" | logfmt | label_format market=\"{{.market}}\" | slippage_bps!=\"NaN\" | unwrap slippage_bps [1m]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count [1m]) * 0)",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=trade_execution_v1\" | logfmt | label_format market=\"{{.market}}\" | slippage_bps!=\"NaN\" | unwrap slippage_bps | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
           "legendFormat": "{{market}} slippage bps",
           "queryType": "range",
           "refId": "A"
@@ -628,7 +628,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=ticker_price_v1\" | logfmt | label_format market=\"{{.market}}\" | live_price!=\"NaN\" | unwrap live_price | __error__=\"\" [30s])) or avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | live_price!=\"NaN\" | unwrap live_price | __error__=\"\" [1m])) or avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap close | __error__=\"\" [1m]))",
+          "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=ticker_price_v1\" | logfmt | label_format market=\"{{.market}}\" | live_price!=\"NaN\" | unwrap live_price | __error__=\"\" [$__interval])) or avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | live_price!=\"NaN\" | unwrap live_price | __error__=\"\" [$__interval])) or avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap close | __error__=\"\" [$__interval]))",
           "legendFormat": "{{market}} live price",
           "queryType": "range",
           "refId": "A"
@@ -639,7 +639,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_anchor | __error__=\"\" [1m]))",
+          "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_anchor | __error__=\"\" [$__interval]))",
           "legendFormat": "{{market}} anchor",
           "queryType": "range",
           "refId": "B"
@@ -650,7 +650,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_upper | __error__=\"\" [1m]))",
+          "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_upper | __error__=\"\" [$__interval]))",
           "legendFormat": "{{market}} upper",
           "queryType": "range",
           "refId": "C"
@@ -661,7 +661,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_lower | __error__=\"\" [1m]))",
+          "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_lower | __error__=\"\" [$__interval]))",
           "legendFormat": "{{market}} lower",
           "queryType": "range",
           "refId": "D"
@@ -672,7 +672,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | atr_trail_stop!=\"NaN\" | unwrap atr_trail_stop | __error__=\"\" [1m]))",
+          "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | atr_trail_stop!=\"NaN\" | unwrap atr_trail_stop | __error__=\"\" [$__interval]))",
           "legendFormat": "{{market}} trail_stop",
           "queryType": "range",
           "refId": "E"
@@ -683,7 +683,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | buy_signal=\"true\" | unwrap close | __error__=\"\" [1m]))",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | buy_signal=\"true\" | unwrap close | __error__=\"\" [$__interval]))",
           "legendFormat": "BUY {{market}}",
           "queryType": "range",
           "refId": "F"
@@ -694,7 +694,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | sell_signal=\"true\" | unwrap close | __error__=\"\" [1m]))",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | sell_signal=\"true\" | unwrap close | __error__=\"\" [$__interval]))",
           "legendFormat": "SELL {{market}}",
           "queryType": "range",
           "refId": "G"
@@ -750,7 +750,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unrealized_return_pct!=\"NaN\" | unwrap unrealized_return_pct [1m]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count [1m]) * 0)",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unrealized_return_pct!=\"NaN\" | unwrap unrealized_return_pct | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
           "legendFormat": "{{market}} unrealized return",
           "queryType": "range",
           "refId": "A"
@@ -806,7 +806,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap vol_percentile [1m])",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal_v5\" | logfmt | label_format market=\"{{.market}}\" | unwrap vol_percentile | __error__=\"\" [$__interval]))",
           "legendFormat": "{{market}} vol_percentile",
           "queryType": "range",
           "refId": "A"

@@ -47,31 +47,31 @@ TRADING_SCHEDULER_SIGNAL_ORDER_NOTIONAL=100000
 ## LogQL (V5 Plot)
 - Price line (`live_price` preferred, fallback to daily `close`)
 ```logql
-avg by (market) (avg_over_time({service_name="evergreen"} |= "event=ticker_price_v1" | logfmt | label_format market="{{.market}}" | live_price!="NaN" | unwrap live_price | __error__="" [30s]))
-or avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | live_price!="NaN" | unwrap live_price | __error__="" [1m]))
-or avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap close | __error__="" [1m]))
+avg by (market) (avg_over_time({service_name="evergreen"} |= "event=ticker_price_v1" | logfmt | label_format market="{{.market}}" | live_price!="NaN" | unwrap live_price | __error__="" [$__interval]))
+or avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | live_price!="NaN" | unwrap live_price | __error__="" [$__interval]))
+or avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap close | __error__="" [$__interval]))
 ```
 - Regime band upper/lower
 ```logql
-avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap regime_upper | __error__="" [1m]))
-avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap regime_lower | __error__="" [1m]))
+avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap regime_upper | __error__="" [$__interval]))
+avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap regime_lower | __error__="" [$__interval]))
 ```
 - ATR trailing stop line
 ```logql
-avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | atr_trail_stop!="NaN" | unwrap atr_trail_stop | __error__="" [1m]))
+avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | atr_trail_stop!="NaN" | unwrap atr_trail_stop | __error__="" [$__interval]))
 ```
 - Buy/Sell markers (point series)
 ```logql
-max by (market) (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | buy_signal="true" | unwrap close | __error__="" [1m]))
-max by (market) (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | sell_signal="true" | unwrap close | __error__="" [1m]))
+max by (market) (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | buy_signal="true" | unwrap close | __error__="" [$__interval]))
+max by (market) (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | sell_signal="true" | unwrap close | __error__="" [$__interval]))
 ```
 - Unrealized return (%)
 ```logql
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unrealized_return_pct!="NaN" | unwrap unrealized_return_pct [1m])
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unrealized_return_pct!="NaN" | unwrap unrealized_return_pct | __error__="" [$__interval])
 ```
 - Volatility percentile
 ```logql
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap vol_percentile [1m])
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap vol_percentile | __error__="" [$__interval])
 ```
 - Signal reason count (1h)
 ```logql
@@ -81,11 +81,11 @@ sum(count_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | log
 ```
 - Realized PnL / MDD / WinRate / Signal quality / Slippage
 ```logql
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | realized_pnl_krw!="NaN" | unwrap realized_pnl_krw [1m]) or (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap trade_count [1m]) * 0)
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | max_drawdown_pct!="NaN" | unwrap max_drawdown_pct [1m]) or (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap trade_count [1m]) * 0)
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | trade_win_rate_pct!="NaN" | unwrap trade_win_rate_pct [1m]) or (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | unwrap trade_count [1m]) * 0)
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | signal_quality_7d_avg_pct!="NaN" | unwrap signal_quality_7d_avg_pct [1m]) or (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | unwrap trade_count [1m]) * 0)
-max_over_time({service_name="evergreen"} |= "event=trade_execution_v1" | logfmt | slippage_bps!="NaN" | unwrap slippage_bps [1m])
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | realized_pnl_krw!="NaN" | unwrap realized_pnl_krw | __error__="" [$__interval]) or (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap trade_count | __error__="" [$__interval]) * 0)
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | max_drawdown_pct!="NaN" | unwrap max_drawdown_pct | __error__="" [$__interval]) or (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap trade_count | __error__="" [$__interval]) * 0)
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | trade_win_rate_pct!="NaN" | unwrap trade_win_rate_pct | __error__="" [$__interval]) or (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | unwrap trade_count | __error__="" [$__interval]) * 0)
+max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | signal_quality_7d_avg_pct!="NaN" | unwrap signal_quality_7d_avg_pct | __error__="" [$__interval]) or (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | unwrap trade_count | __error__="" [$__interval]) * 0)
+max_over_time({service_name="evergreen"} |= "event=trade_execution_v1" | logfmt | slippage_bps!="NaN" | unwrap slippage_bps | __error__="" [$__interval])
 ```
 
 ## Notes
@@ -96,3 +96,4 @@ max_over_time({service_name="evergreen"} |= "event=trade_execution_v1" | logfmt 
 - Logs panel uses `line_format` summary output to keep payload compact.
 - `close` is based on daily candle close, so short ranges can appear flat; use `live_price` for intraday movement in time-series panels.
 - In panel `V5 가격 + 밴드 + 매수/매도 포인트`, use dual axis (`live_price`: left, regime bands/trail stop: right) to avoid flat-looking price lines caused by scale compression.
+- For heavy traffic windows, keep metric queries aggregated by market (`... by (market)`) and add `| __error__=""` right after `unwrap` to avoid pipeline parse failures.
