@@ -1,39 +1,30 @@
 package org.nowstart.evergreen.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import lombok.RequiredArgsConstructor;
+import org.nowstart.evergreen.data.dto.UpbitOrderResponse;
 import org.nowstart.evergreen.data.entity.Fill;
-import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.entity.TradingOrder;
+import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.type.OrderSide;
 import org.nowstart.evergreen.data.type.OrderStatus;
 import org.nowstart.evergreen.data.type.PositionState;
 import org.nowstart.evergreen.repository.FillRepository;
 import org.nowstart.evergreen.repository.PositionRepository;
 import org.nowstart.evergreen.repository.TradingOrderRepository;
-import org.nowstart.evergreen.data.dto.UpbitOrderResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-
 @Service
+@RequiredArgsConstructor
 public class OrderReconciliationService {
 
     private final TradingOrderRepository tradingOrderRepository;
     private final FillRepository fillRepository;
     private final PositionRepository positionRepository;
-
-    public OrderReconciliationService(
-            TradingOrderRepository tradingOrderRepository,
-            FillRepository fillRepository,
-            PositionRepository positionRepository
-    ) {
-        this.tradingOrderRepository = tradingOrderRepository;
-        this.fillRepository = fillRepository;
-        this.positionRepository = positionRepository;
-    }
 
     @Transactional
     public TradingOrder reconcile(TradingOrder order, UpbitOrderResponse response) {

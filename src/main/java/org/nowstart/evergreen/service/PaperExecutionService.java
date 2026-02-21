@@ -1,8 +1,13 @@
 package org.nowstart.evergreen.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.nowstart.evergreen.data.entity.Fill;
-import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.entity.TradingOrder;
+import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.property.TradingProperties;
 import org.nowstart.evergreen.data.type.OrderSide;
 import org.nowstart.evergreen.data.type.OrderStatus;
@@ -14,31 +19,15 @@ import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Instant;
-import java.util.UUID;
-
 @Service
 @RefreshScope
+@RequiredArgsConstructor
 public class PaperExecutionService {
 
     private final TradingOrderRepository tradingOrderRepository;
     private final FillRepository fillRepository;
     private final PositionRepository positionRepository;
     private final TradingProperties tradingProperties;
-
-    public PaperExecutionService(
-            TradingOrderRepository tradingOrderRepository,
-            FillRepository fillRepository,
-            PositionRepository positionRepository,
-            TradingProperties tradingProperties
-    ) {
-        this.tradingOrderRepository = tradingOrderRepository;
-        this.fillRepository = fillRepository;
-        this.positionRepository = positionRepository;
-        this.tradingProperties = tradingProperties;
-    }
 
     @Transactional
     public TradingOrder execute(TradingOrder order) {

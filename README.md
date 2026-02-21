@@ -1,7 +1,7 @@
 # Evergreen
 
 Upbit 기반 자동매매(Spring Boot) 프로젝트입니다.  
-일봉 전략 신호를 생성하고(`candle_signal_v5`), `PAPER`/`LIVE` 모드로 주문을 실행하며, Loki/Grafana로 지표를 시각화합니다.
+일봉 전략 신호를 생성하고(`candle_signal`), `PAPER`/`LIVE` 모드로 주문을 실행하며, Loki/Grafana로 지표를 시각화합니다.
 
 ## 주요 기능
 - 일봉 기반 V5 전략 신호 계산 (`regime`, `ATR`, `trail stop`, `volatility percentile`)

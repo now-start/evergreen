@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -12,16 +11,14 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 public class UpbitAuthRequestInterceptor implements RequestInterceptor {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final UpbitJwtSigner upbitJwtSigner;
-
-    public UpbitAuthRequestInterceptor(UpbitJwtSigner upbitJwtSigner) {
-        this.upbitJwtSigner = upbitJwtSigner;
-    }
 
     @Override
     public void apply(RequestTemplate template) {

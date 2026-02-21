@@ -1,5 +1,18 @@
 package org.nowstart.evergreen.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,20 +35,6 @@ import org.nowstart.evergreen.data.type.TradeOrderType;
 import org.nowstart.evergreen.repository.AuditEventRepository;
 import org.nowstart.evergreen.repository.TradingOrderRepository;
 import org.nowstart.evergreen.repository.UpbitFeignClient;
-
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class TradingExecutionServiceTest {
@@ -417,7 +416,9 @@ class TradingExecutionServiceTest {
                 auditEventRepository,
                 orderReconciliationService,
                 paperExecutionService,
-                properties
+                properties,
+                new OrderRequestValidationService(),
+                new TradingOrderFactory()
         );
     }
 

@@ -1,39 +1,39 @@
 package org.nowstart.evergreen.service;
 
-import org.nowstart.evergreen.data.entity.AuditEvent;
-import org.nowstart.evergreen.data.entity.TradingOrder;
-import org.nowstart.evergreen.data.property.TradingProperties;
-import org.nowstart.evergreen.data.type.OrderSide;
-import org.nowstart.evergreen.data.type.OrderStatus;
-import org.nowstart.evergreen.repository.AuditEventRepository;
-import org.nowstart.evergreen.repository.TradingOrderRepository;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.List;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.nowstart.evergreen.data.dto.BalanceDto;
 import org.nowstart.evergreen.data.dto.CreateOrderRequest;
 import org.nowstart.evergreen.data.dto.OrderChanceDto;
 import org.nowstart.evergreen.data.dto.OrderDto;
 import org.nowstart.evergreen.data.dto.SignalExecuteRequest;
-import org.nowstart.evergreen.data.exception.TradingApiException;
-import org.nowstart.evergreen.data.type.ExecutionMode;
-import org.nowstart.evergreen.data.type.TradeOrderType;
-import org.nowstart.evergreen.repository.UpbitFeignClient;
 import org.nowstart.evergreen.data.dto.UpbitAccountResponse;
 import org.nowstart.evergreen.data.dto.UpbitCreateOrderRequest;
 import org.nowstart.evergreen.data.dto.UpbitOrderChanceResponse;
 import org.nowstart.evergreen.data.dto.UpbitOrderResponse;
 import org.nowstart.evergreen.data.dto.UpbitTickerResponse;
+import org.nowstart.evergreen.data.entity.AuditEvent;
+import org.nowstart.evergreen.data.entity.TradingOrder;
+import org.nowstart.evergreen.data.exception.TradingApiException;
+import org.nowstart.evergreen.data.property.TradingProperties;
+import org.nowstart.evergreen.data.type.ExecutionMode;
+import org.nowstart.evergreen.data.type.OrderSide;
+import org.nowstart.evergreen.data.type.OrderStatus;
+import org.nowstart.evergreen.data.type.TradeOrderType;
+import org.nowstart.evergreen.repository.AuditEventRepository;
+import org.nowstart.evergreen.repository.TradingOrderRepository;
+import org.nowstart.evergreen.repository.UpbitFeignClient;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-
 @Service
 @RefreshScope
+@RequiredArgsConstructor
 public class TradingExecutionService {
 
     private final UpbitFeignClient upbitFeignClient;
@@ -42,22 +42,8 @@ public class TradingExecutionService {
     private final OrderReconciliationService orderReconciliationService;
     private final PaperExecutionService paperExecutionService;
     private final TradingProperties tradingProperties;
-
-    public TradingExecutionService(
-            UpbitFeignClient upbitFeignClient,
-            TradingOrderRepository tradingOrderRepository,
-            AuditEventRepository auditEventRepository,
-            OrderReconciliationService orderReconciliationService,
-            PaperExecutionService paperExecutionService,
-            TradingProperties tradingProperties
-    ) {
-        this.upbitFeignClient = upbitFeignClient;
-        this.tradingOrderRepository = tradingOrderRepository;
-        this.auditEventRepository = auditEventRepository;
-        this.orderReconciliationService = orderReconciliationService;
-        this.paperExecutionService = paperExecutionService;
-        this.tradingProperties = tradingProperties;
-    }
+    private final OrderRequestValidationService orderRequestValidationService;
+    private final TradingOrderFactory tradingOrderFactory;
 
     public List<BalanceDto> getBalances(String currency) {
         return upbitFeignClient.getAccounts().stream()
@@ -82,9 +68,9 @@ public class TradingExecutionService {
 
     @Transactional
     public OrderDto createOrder(CreateOrderRequest request) {
-        validateOrderRequest(request);
+        orderRequestValidationService.validate(request);
 
-        TradingOrder order = buildOrder(request);
+        TradingOrder order = tradingOrderFactory.build(request);
         if (request.mode() == ExecutionMode.PAPER) {
             normalizePaperOrder(order);
             tradingOrderRepository.save(order);
@@ -158,85 +144,6 @@ public class TradingExecutionService {
                 signalReason
         );
         return createOrder(orderRequest);
-    }
-
-    private void validateOrderRequest(CreateOrderRequest request) {
-        if (request.side() == OrderSide.BUY && request.orderType() == TradeOrderType.MARKET_SELL) {
-            throw new TradingApiException(HttpStatus.UNPROCESSABLE_ENTITY, "invalid_order", "BUY side cannot use MARKET_SELL");
-        }
-
-        if (request.side() == OrderSide.SELL && request.orderType() == TradeOrderType.MARKET_BUY) {
-            throw new TradingApiException(HttpStatus.UNPROCESSABLE_ENTITY, "invalid_order", "SELL side cannot use MARKET_BUY");
-        }
-
-        if (request.orderType() == TradeOrderType.LIMIT) {
-            if (request.quantity() == null || request.price() == null) {
-                throw new TradingApiException(HttpStatus.UNPROCESSABLE_ENTITY, "invalid_order", "LIMIT order requires quantity and price");
-            }
-            return;
-        }
-
-        if (request.orderType() == TradeOrderType.MARKET_BUY) {
-            if (request.mode() == ExecutionMode.PAPER
-                    && (request.quantity() == null || request.quantity().compareTo(BigDecimal.ZERO) <= 0)) {
-                throw new TradingApiException(
-                        HttpStatus.UNPROCESSABLE_ENTITY,
-                        "invalid_order",
-                        "PAPER MARKET_BUY requires quantity to simulate execution price"
-                );
-            }
-            if (request.mode() == ExecutionMode.PAPER
-                    && (request.price() == null || request.price().compareTo(BigDecimal.ZERO) <= 0)) {
-                throw new TradingApiException(HttpStatus.UNPROCESSABLE_ENTITY, "invalid_order", "MARKET_BUY requires price(notional)");
-            }
-            if (request.mode() == ExecutionMode.LIVE
-                    && request.price() != null
-                    && request.price().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new TradingApiException(HttpStatus.UNPROCESSABLE_ENTITY, "invalid_order", "MARKET_BUY price must be greater than zero");
-            }
-            return;
-        }
-
-        if (request.orderType() == TradeOrderType.MARKET_SELL) {
-            if (request.quantity() == null || request.quantity().compareTo(BigDecimal.ZERO) <= 0) {
-                throw new TradingApiException(HttpStatus.UNPROCESSABLE_ENTITY, "invalid_order", "MARKET_SELL requires quantity");
-            }
-            if (request.mode() == ExecutionMode.PAPER
-                    && (request.price() == null || request.price().compareTo(BigDecimal.ZERO) <= 0)) {
-                throw new TradingApiException(
-                        HttpStatus.UNPROCESSABLE_ENTITY,
-                        "invalid_order",
-                        "PAPER MARKET_SELL requires price"
-                );
-            }
-            return;
-        }
-
-        throw new TradingApiException(HttpStatus.UNPROCESSABLE_ENTITY, "invalid_order", "Unsupported order type");
-    }
-
-    private TradingOrder buildOrder(CreateOrderRequest request) {
-        BigDecimal requestedNotional;
-        if (request.orderType() == TradeOrderType.MARKET_BUY) {
-            requestedNotional = request.price();
-        } else if (request.orderType() == TradeOrderType.MARKET_SELL) {
-            requestedNotional = safe(request.quantity()).multiply(safe(request.price()));
-        } else {
-            requestedNotional = safe(request.quantity()).multiply(safe(request.price()));
-        }
-
-        return TradingOrder.builder()
-                .clientOrderId(UUID.randomUUID().toString())
-                .symbol(request.market())
-                .side(request.side())
-                .orderType(request.orderType())
-                .mode(request.mode())
-                .quantity(request.quantity())
-                .price(request.price())
-                .status(OrderStatus.CREATED)
-                .reason(request.reason())
-                .requestedNotional(requestedNotional)
-                .build();
     }
 
     private void guardLiveOrder(TradingOrder order) {

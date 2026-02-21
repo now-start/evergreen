@@ -2,9 +2,6 @@ package org.nowstart.evergreen.service.auth;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -12,18 +9,17 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 public class UpbitJwtSigner {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final String accessKey;
     private final String secretKey;
-
-    public UpbitJwtSigner(String accessKey, String secretKey) {
-        this.accessKey = accessKey;
-        this.secretKey = secretKey;
-    }
 
     public String createToken(String canonicalQuery) {
         Map<String, Object> header = Map.of(
