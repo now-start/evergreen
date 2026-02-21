@@ -4,7 +4,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,10 +13,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.nowstart.evergreen.data.type.PositionState;
 
-import java.math.BigDecimal;
-
 @Entity
-@Table(name = "trading_positions")
 @Getter
 @Setter
 @Builder
