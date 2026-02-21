@@ -42,6 +42,26 @@ Windows:
 gradlew.bat bootRun --no-daemon
 ```
 
+### 4) 로컬 OTEL + Grafana(LGTM) 통합 테스트
+Linux/macOS:
+```bash
+./ops/local/otel-lgtm/run-evergreen-with-otel.sh
+```
+
+Windows PowerShell:
+```powershell
+.\ops\local\otel-lgtm\run-evergreen-with-otel.ps1
+```
+
+- Grafana: `http://localhost:3000` (`admin/admin`)
+- 중지:
+```bash
+./ops/local/otel-lgtm/stop-lgtm.sh
+```
+```powershell
+.\ops\local\otel-lgtm\stop-lgtm.ps1
+```
+
 ## 핵심 환경변수
 - DB
   - `DB_URL`
@@ -62,6 +82,7 @@ gradlew.bat bootRun --no-daemon
 ## 대시보드
 - 대시보드 JSON: `docs/grafana_trading_dashboard.json`
 - 로그 가이드: `docs/grafana_trading_logging.md`
+- 로컬 LGTM 테스트: `docs/local_otel_lgtm_test.md`
 - 샘플 레이아웃: `docs/grafana_dashboard_sample_full_top6cards.svg`
 
 ## 배포 준비

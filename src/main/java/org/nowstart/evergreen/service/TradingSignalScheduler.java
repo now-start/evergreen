@@ -153,6 +153,18 @@ public class TradingSignalScheduler {
         SignalQualityStats signalQuality = resolveSignalQualityStats(close, regimes, signalIndex);
         double livePriceForLog = sanitizeMetricForLog(resolveLivePrice(market, signalCandle.close().doubleValue()));
 
+        log.info(
+                "event=ticker_price_v1 market={} ts={} live_price={} close={} regime={} buy_signal={} sell_signal={} signal_reason={}",
+                market,
+                signalCandle.timestamp(),
+                livePriceForLog,
+                signalCandle.close(),
+                currentRegime,
+                buySignal,
+                sellSignal,
+                signalReason
+        );
+
         double unrealizedReturnPctForLog = sanitizeMetricForLog(unrealizedReturnPct);
         double realizedPnlKrwForLog = sanitizeMetricForLog(executionMetrics.realizedPnlKrw());
         double realizedReturnPctForLog = sanitizeMetricForLog(executionMetrics.realizedReturnPct());

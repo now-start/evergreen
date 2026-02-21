@@ -47,21 +47,23 @@ TRADING_SCHEDULER_SIGNAL_ORDER_NOTIONAL=100000
 ## LogQL (V5 Plot)
 - Price line (`live_price` preferred, fallback to daily `close`)
 ```logql
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | live_price!="NaN" | unwrap live_price [1m]) or max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap close [1m])
+avg by (market) (avg_over_time({service_name="evergreen"} |= "event=ticker_price_v1" | logfmt | label_format market="{{.market}}" | live_price!="NaN" | unwrap live_price | __error__="" [30s]))
+or avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | live_price!="NaN" | unwrap live_price | __error__="" [1m]))
+or avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap close | __error__="" [1m]))
 ```
 - Regime band upper/lower
 ```logql
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap regime_upper [1m])
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap regime_lower [1m])
+avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap regime_upper | __error__="" [1m]))
+avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | unwrap regime_lower | __error__="" [1m]))
 ```
 - ATR trailing stop line
 ```logql
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | atr_trail_stop!="NaN" | unwrap atr_trail_stop [1m])
+avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | atr_trail_stop!="NaN" | unwrap atr_trail_stop | __error__="" [1m]))
 ```
 - Buy/Sell markers (point series)
 ```logql
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | buy_signal="true" | unwrap close [1m])
-max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | sell_signal="true" | unwrap close [1m])
+max by (market) (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | buy_signal="true" | unwrap close | __error__="" [1m]))
+max by (market) (max_over_time({service_name="evergreen"} |= "event=candle_signal_v5" | logfmt | label_format market="{{.market}}" | sell_signal="true" | unwrap close | __error__="" [1m]))
 ```
 - Unrealized return (%)
 ```logql
@@ -93,3 +95,4 @@ max_over_time({service_name="evergreen"} |= "event=trade_execution_v1" | logfmt 
 - `event=candle_signal_v5` is throttled to once per minute per market when state is unchanged, reducing Loki cardinality/volume.
 - Logs panel uses `line_format` summary output to keep payload compact.
 - `close` is based on daily candle close, so short ranges can appear flat; use `live_price` for intraday movement in time-series panels.
+- In panel `V5 가격 + 밴드 + 매수/매도 포인트`, use dual axis (`live_price`: left, regime bands/trail stop: right) to avoid flat-looking price lines caused by scale compression.
