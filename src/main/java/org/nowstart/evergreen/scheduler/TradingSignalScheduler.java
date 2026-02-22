@@ -7,7 +7,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 @Service
-@RefreshScope
 @RequiredArgsConstructor
 public class TradingSignalScheduler {
 
