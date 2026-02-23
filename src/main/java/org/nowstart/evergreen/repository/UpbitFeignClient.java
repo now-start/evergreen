@@ -1,5 +1,6 @@
 package org.nowstart.evergreen.repository;
 
+import java.util.List;
 import org.nowstart.evergreen.config.UpbitFeignConfig;
 import org.nowstart.evergreen.data.dto.UpbitAccountResponse;
 import org.nowstart.evergreen.data.dto.UpbitCreateOrderRequest;
@@ -13,8 +14,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
-
-import java.util.List;
 
 @FeignClient(
         name = "upbitClient",
@@ -46,4 +45,10 @@ public interface UpbitFeignClient {
 
     @DeleteMapping("/v1/order")
     UpbitOrderResponse cancelOrder(@RequestParam("uuid") String uuid);
+
+    @GetMapping("/v1/orders")
+    List<UpbitOrderResponse> getOpenOrders(
+            @RequestParam("market") String market,
+            @RequestParam("state") String state
+    );
 }

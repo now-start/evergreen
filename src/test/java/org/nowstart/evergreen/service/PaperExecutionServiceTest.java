@@ -1,5 +1,14 @@
 package org.nowstart.evergreen.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -7,8 +16,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.nowstart.evergreen.data.entity.Fill;
-import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.entity.TradingOrder;
+import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.property.TradingProperties;
 import org.nowstart.evergreen.data.type.ExecutionMode;
 import org.nowstart.evergreen.data.type.OrderSide;
@@ -17,16 +26,6 @@ import org.nowstart.evergreen.data.type.PositionState;
 import org.nowstart.evergreen.repository.FillRepository;
 import org.nowstart.evergreen.repository.PositionRepository;
 import org.nowstart.evergreen.repository.TradingOrderRepository;
-
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PaperExecutionServiceTest {
@@ -59,8 +58,7 @@ class PaperExecutionServiceTest {
                 30,
                 new BigDecimal("0.7"),
                 new BigDecimal("0.02"),
-                new BigDecimal("100000"),
-                new BigDecimal("0.00000001")
+                new BigDecimal("100000")
         );
 
         paperExecutionService = new PaperExecutionService(
@@ -97,7 +95,6 @@ class PaperExecutionServiceTest {
         ArgumentCaptor<TradingPosition> positionCaptor = ArgumentCaptor.forClass(TradingPosition.class);
         verify(positionRepository).save(positionCaptor.capture());
         TradingPosition savedPosition = positionCaptor.getValue();
-
         assertThat(savedPosition.getQty()).isEqualByComparingTo("0.5");
         assertThat(savedPosition.getAvgPrice()).isEqualByComparingTo("100");
         assertThat(savedPosition.getState()).isEqualTo(PositionState.LONG);
@@ -128,7 +125,6 @@ class PaperExecutionServiceTest {
         ArgumentCaptor<TradingPosition> positionCaptor = ArgumentCaptor.forClass(TradingPosition.class);
         verify(positionRepository).save(positionCaptor.capture());
         TradingPosition savedPosition = positionCaptor.getValue();
-
         assertThat(savedPosition.getQty()).isEqualByComparingTo("0");
         assertThat(savedPosition.getAvgPrice()).isEqualByComparingTo("0");
         assertThat(savedPosition.getState()).isEqualTo(PositionState.FLAT);

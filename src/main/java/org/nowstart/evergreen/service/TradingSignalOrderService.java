@@ -29,9 +29,9 @@ public class TradingSignalOrderService {
             return;
         }
 
-        BigDecimal paperQuantity = null;
-        BigDecimal orderPrice = null;
-        if (tradingProperties.executionMode() == ExecutionMode.PAPER) {
+        ExecutionMode mode = tradingProperties.executionMode();
+        SignalExecuteRequest request;
+        if (mode == ExecutionMode.PAPER) {
             BigDecimal signalOrderNotional = tradingProperties.signalOrderNotional();
             if (signalCandle.close().compareTo(BigDecimal.ZERO) <= 0) {
                 log.warn("Skipping buy signal due to non-positive close price. market={}, close={}", market, signalCandle.close());
@@ -48,19 +48,27 @@ public class TradingSignalOrderService {
                 );
                 return;
             }
-            paperQuantity = quantity;
-            orderPrice = signalOrderNotional;
+            request = new SignalExecuteRequest(
+                    market,
+                    OrderSide.BUY,
+                    TradeOrderType.MARKET_BUY,
+                    quantity,
+                    signalOrderNotional,
+                    mode,
+                    signalCandle.timestamp().toString()
+            );
+        } else {
+            // LIVE 모드에서는 가격(주문금액)을 비워서 가드 로직에서 가용 KRW 전액을 사용한다.
+            request = new SignalExecuteRequest(
+                    market,
+                    OrderSide.BUY,
+                    TradeOrderType.MARKET_BUY,
+                    null,
+                    null,
+                    mode,
+                    signalCandle.timestamp().toString()
+            );
         }
-
-        SignalExecuteRequest request = new SignalExecuteRequest(
-                market,
-                OrderSide.BUY,
-                TradeOrderType.MARKET_BUY,
-                paperQuantity,
-                orderPrice,
-                tradingProperties.executionMode(),
-                signalCandle.timestamp().toString()
-        );
 
         submitSignal(market, signalCandle, OrderSide.BUY, request);
     }
@@ -70,7 +78,7 @@ public class TradingSignalOrderService {
             return;
         }
 
-        if (positionQty == null || positionQty.compareTo(tradingProperties.minPositionQty()) <= 0) {
+        if (positionQty == null || positionQty.compareTo(BigDecimal.ZERO) <= 0) {
             return;
         }
 

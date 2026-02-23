@@ -48,8 +48,7 @@ class TradingSignalMetricsServiceTest {
                 40,
                 new BigDecimal("0.6"),
                 new BigDecimal("0.01"),
-                new BigDecimal("100000"),
-                new BigDecimal("0.00000001")
+                new BigDecimal("100000")
         );
         service = new TradingSignalMetricsService(tradingOrderRepository, properties);
     }
@@ -61,9 +60,9 @@ class TradingSignalMetricsServiceTest {
                 ExecutionMode.PAPER,
                 OrderStatus.FILLED
         )).thenReturn(List.of(
-                filledOrder("b1", OrderSide.BUY, "1.0", "100", "0"),
-                filledOrder("s1", OrderSide.SELL, "0.4", "120", "0"),
-                filledOrder("s2", OrderSide.SELL, "0.6", "110", "0")
+                filledOrder("b1", OrderSide.BUY, "1.0", "100"),
+                filledOrder("s1", OrderSide.SELL, "0.4", "120"),
+                filledOrder("s2", OrderSide.SELL, "0.6", "110")
         ));
 
         TradingExecutionMetrics metrics = service.resolveExecutionMetrics(MARKET);
@@ -86,10 +85,10 @@ class TradingSignalMetricsServiceTest {
                 ExecutionMode.PAPER,
                 OrderStatus.FILLED
         )).thenReturn(List.of(
-                filledOrder("b1", OrderSide.BUY, "1.0", "100", "0"),
-                filledOrder("s1", OrderSide.SELL, "1.0", "110", "0"),
-                filledOrder("b2", OrderSide.BUY, "1.0", "100", "0"),
-                filledOrder("s2", OrderSide.SELL, "1.0", "90", "0")
+                filledOrder("b1", OrderSide.BUY, "1.0", "100"),
+                filledOrder("s1", OrderSide.SELL, "1.0", "110"),
+                filledOrder("b2", OrderSide.BUY, "1.0", "100"),
+                filledOrder("s2", OrderSide.SELL, "1.0", "90")
         ));
 
         TradingExecutionMetrics metrics = service.resolveExecutionMetrics(MARKET);
@@ -112,7 +111,7 @@ class TradingSignalMetricsServiceTest {
                 ExecutionMode.PAPER,
                 OrderStatus.FILLED
         )).thenReturn(List.of(
-                filledOrder("b1", OrderSide.BUY, "1.0", "100", "0")
+                filledOrder("b1", OrderSide.BUY, "1.0", "100")
         ));
 
         TradingExecutionMetrics metrics = service.resolveExecutionMetrics(MARKET);
@@ -128,7 +127,7 @@ class TradingSignalMetricsServiceTest {
         assertThat(metrics.maxDrawdownPct()).isNaN();
     }
 
-    private TradingOrder filledOrder(String clientOrderId, OrderSide side, String qty, String price, String fee) {
+    private TradingOrder filledOrder(String clientOrderId, OrderSide side, String qty, String price) {
         return TradingOrder.builder()
                 .clientOrderId(clientOrderId)
                 .symbol(MARKET)
@@ -137,7 +136,7 @@ class TradingSignalMetricsServiceTest {
                 .status(OrderStatus.FILLED)
                 .executedVolume(new BigDecimal(qty))
                 .avgExecutedPrice(new BigDecimal(price))
-                .feeAmount(new BigDecimal(fee))
+                .feeAmount(new BigDecimal("0"))
                 .build();
     }
 

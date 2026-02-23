@@ -18,9 +18,8 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
+  "id": 0,
   "links": [],
-  "liveNow": false,
   "panels": [
     {
       "datasource": {
@@ -33,12 +32,52 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 2,
+            "scaleDistribution": {
+              "type": "linear"
+            },
             "showPoints": "never",
-            "spanNulls": true
+            "showValues": false,
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
           },
           "unit": "currencyKRW"
         },
@@ -59,10 +98,12 @@
           "showLegend": false
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -89,12 +130,21 @@
           "color": {
             "mode": "palette-classic"
           },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 2,
-            "showPoints": "never"
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
           },
           "unit": "percent"
         },
@@ -108,15 +158,23 @@
       },
       "id": 2,
       "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -142,6 +200,20 @@
         "defaults": {
           "color": {
             "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
           }
         },
         "overrides": [
@@ -199,15 +271,23 @@
       },
       "id": 3,
       "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -257,12 +337,52 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 2,
+            "scaleDistribution": {
+              "type": "linear"
+            },
             "showPoints": "never",
-            "spanNulls": true
+            "showValues": false,
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
           },
           "unit": "percent"
         },
@@ -283,10 +403,12 @@
           "showLegend": false
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -336,12 +458,52 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 2,
+            "scaleDistribution": {
+              "type": "linear"
+            },
             "showPoints": "never",
-            "spanNulls": true
+            "showValues": false,
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
           },
           "unit": "short"
         },
@@ -362,10 +524,12 @@
           "showLegend": false
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -391,6 +555,20 @@
         "defaults": {
           "color": {
             "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
           }
         },
         "overrides": [
@@ -464,15 +642,23 @@
       },
       "id": 6,
       "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -544,12 +730,321 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 2,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=position_snapshot\" | logfmt | label_format market=\"{{.market}}\" | unwrap total_qty | __error__=\"\" [$__interval]))",
+          "legendFormat": "{{market}} 총 수량",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=position_snapshot\" | logfmt | label_format market=\"{{.market}}\" | unwrap managed_qty | __error__=\"\" [$__interval]))",
+          "legendFormat": "{{market}} 봇 관리 수량",
+          "queryType": "range",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=position_snapshot\" | logfmt | label_format market=\"{{.market}}\" | unwrap external_qty | __error__=\"\" [$__interval]))",
+          "legendFormat": "{{market}} 외부 수량",
+          "queryType": "range",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=position_snapshot\" | logfmt | label_format market=\"{{.market}}\" | unwrap sellable_qty | __error__=\"\" [$__interval]))",
+          "legendFormat": "{{market}} 매도 가능 수량",
+          "queryType": "range",
+          "refId": "D"
+        }
+      ],
+      "title": "포지션 구성 (총/봇/외부/매도가능)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 6
+      },
+      "id": 14,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=external_position_drift\" [10m]))",
+          "legendFormat": "최근 10분 외부 체결 감지 건수",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "외부 체결 감지 (10분)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 6
+      },
+      "id": 15,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.3.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=external_order_guard\" | logfmt | blocked=\"true\" [10m]))",
+          "legendFormat": "최근 10분 차단 건수",
+          "queryType": "instant",
+          "refId": "A"
+        }
+      ],
+      "title": "외부 주문 가드 차단 (10분)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 2,
+            "scaleDistribution": {
+              "type": "linear"
+            },
             "showPoints": "never",
-            "spanNulls": true
+            "showValues": false,
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
           },
           "unit": "currencyKRW"
         },
@@ -737,7 +1232,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 6
+        "y": 12
       },
       "id": 7,
       "options": {
@@ -748,16 +1243,19 @@
           "showLegend": false
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
             "type": "loki",
             "uid": "loki"
           },
+          "direction": "backward",
           "editorMode": "code",
           "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=ticker_price\" | logfmt | label_format market=\"{{.market}}\" | live_price!=\"NaN\" | unwrap live_price | __error__=\"\" [$__interval])) or avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | live_price!=\"NaN\" | unwrap live_price | __error__=\"\" [$__interval])) or avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap close | __error__=\"\" [$__interval]))",
           "legendFormat": "{{market}} 실시간가",
@@ -769,6 +1267,7 @@
             "type": "loki",
             "uid": "loki"
           },
+          "direction": "backward",
           "editorMode": "code",
           "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_anchor | __error__=\"\" [$__interval]))",
           "legendFormat": "{{market}} 기준선",
@@ -780,6 +1279,7 @@
             "type": "loki",
             "uid": "loki"
           },
+          "direction": "backward",
           "editorMode": "code",
           "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_upper | __error__=\"\" [$__interval]))",
           "legendFormat": "{{market}} 상단밴드",
@@ -791,6 +1291,7 @@
             "type": "loki",
             "uid": "loki"
           },
+          "direction": "backward",
           "editorMode": "code",
           "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_lower | __error__=\"\" [$__interval]))",
           "legendFormat": "{{market}} 하단밴드",
@@ -802,6 +1303,7 @@
             "type": "loki",
             "uid": "loki"
           },
+          "direction": "backward",
           "editorMode": "code",
           "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | atr_trail_stop!=\"NaN\" | unwrap atr_trail_stop | __error__=\"\" [$__interval]))",
           "legendFormat": "{{market}} 트레일링스탑",
@@ -813,6 +1315,7 @@
             "type": "loki",
             "uid": "loki"
           },
+          "direction": "backward",
           "editorMode": "code",
           "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | buy_signal=\"true\" | unwrap close | __error__=\"\" [$__interval]))",
           "legendFormat": "매수 {{market}}",
@@ -824,6 +1327,7 @@
             "type": "loki",
             "uid": "loki"
           },
+          "direction": "backward",
           "editorMode": "code",
           "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | sell_signal=\"true\" | unwrap close | __error__=\"\" [$__interval]))",
           "legendFormat": "매도 {{market}}",
@@ -845,12 +1349,52 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 2,
+            "scaleDistribution": {
+              "type": "linear"
+            },
             "showPoints": "never",
-            "spanNulls": true
+            "showValues": false,
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
           },
           "unit": "percent"
         },
@@ -860,7 +1404,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 15
+        "y": 21
       },
       "id": 9,
       "options": {
@@ -871,10 +1415,12 @@
           "showLegend": false
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -902,12 +1448,52 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 2,
+            "scaleDistribution": {
+              "type": "linear"
+            },
             "showPoints": "never",
-            "spanNulls": true
+            "showValues": false,
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
           },
           "unit": "percentunit"
         },
@@ -950,7 +1536,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 15
+        "y": 21
       },
       "id": 10,
       "options": {
@@ -961,10 +1547,12 @@
           "showLegend": false
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -1052,24 +1640,31 @@
         "type": "loki",
         "uid": "loki"
       },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
       "gridPos": {
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 29
       },
       "id": 12,
       "options": {
         "dedupStrategy": "none",
+        "enableInfiniteScrolling": false,
         "enableLogDetails": true,
+        "maxLines": 200,
         "prettifyLogMessage": false,
         "showCommonLabels": false,
+        "showControls": false,
         "showLabels": false,
         "showTime": true,
         "sortOrder": "Descending",
-        "wrapLogMessage": true,
-        "maxLines": 200
+        "wrapLogMessage": true
       },
+      "pluginVersion": "12.3.3",
       "targets": [
         {
           "datasource": {
@@ -1077,7 +1672,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | line_format \"시각={{.ts}} 시장={{.market}} 종가={{.close}} 실시간가={{.live_price}} 레짐={{.regime}} 사유={{.signal_reason}} 매수={{.buy_signal}} 매도={{.sell_signal}} 미실현수익률={{.unrealized_return_pct}} 실현손익_원화={{.realized_pnl_krw}}\"",
+          "expr": "{service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | line_format \"시각={{.ts}} 시장={{.market}} 종가={{.close}} 실시간가={{.live_price}} 레짐={{.regime}} 사유={{.signal_reason}} 매수={{.buy_signal}} 매도={{.sell_signal}} 총수량={{.total_qty}} 봇수량={{.managed_qty}} 외부수량={{.external_qty}} 매도가능={{.sellable_qty}} 미실현수익률={{.unrealized_return_pct}} 실현손익_원화={{.realized_pnl_krw}}\"",
           "queryType": "range",
           "refId": "A"
         },
@@ -1090,15 +1685,25 @@
           "expr": "{service_name=\"evergreen\"} |= \"event=position_sync\" | logfmt | line_format \"시장={{.market}} 자산={{.asset}} 수량={{.qty}} 평균가={{.avg_price}} 상태={{.state}}\"",
           "queryType": "range",
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "{service_name=\"evergreen\"} |= \"event=external_position_drift\" | logfmt | line_format \"시장={{.market}} 총={{.total_qty}} 봇={{.managed_qty}} 외부={{.external_qty}} 드리프트={{.drift_qty}}\"",
+          "queryType": "range",
+          "refId": "C"
         }
       ],
       "title": "최근 신호/동기화 로그 (요약)",
       "type": "logs"
     }
   ],
+  "preload": false,
   "refresh": "auto",
   "schemaVersion": 42,
-  "style": "dark",
   "tags": [
     "evergreen",
     "trading",
@@ -1113,8 +1718,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "에버그린 트레이딩 - 플롯 스타일",
+  "title": "에버그린 트레이딩",
   "uid": "evergreen-trading-plot",
-  "version": 1,
-  "weekStart": ""
+  "version": 49
 }

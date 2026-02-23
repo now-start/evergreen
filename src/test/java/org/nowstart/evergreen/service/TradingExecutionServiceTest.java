@@ -406,8 +406,7 @@ class TradingExecutionServiceTest {
                 30,
                 new BigDecimal("0.7"),
                 new BigDecimal("0.02"),
-                new BigDecimal("100000"),
-                new BigDecimal("0.00000001")
+                new BigDecimal("100000")
         );
 
         return new TradingExecutionService(

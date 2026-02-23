@@ -26,6 +26,7 @@ public class TradingPositionSyncService {
 
     private final UpbitFeignClient upbitFeignClient;
     private final PositionRepository positionRepository;
+    private final PositionDriftService positionDriftService;
     private final TradingProperties tradingProperties;
 
     @Transactional
@@ -42,7 +43,7 @@ public class TradingPositionSyncService {
                 .collect(java.util.stream.Collectors.toMap(
                         account -> account.currency().toUpperCase(Locale.ROOT),
                         Function.identity(),
-                        (left, right) -> left
+                        (left, _) -> left
                 ));
 
         for (String market : markets) {
@@ -58,8 +59,17 @@ public class TradingPositionSyncService {
 
         UpbitAccountResponse account = accountByCurrency.get(assetCurrency);
         BigDecimal qty = resolveTotalQty(account);
-        boolean hasPosition = qty.compareTo(tradingProperties.minPositionQty()) > 0;
-        BigDecimal avgPrice = hasPosition ? parseDecimal(account == null ? null : account.avg_buy_price()) : BigDecimal.ZERO;
+        boolean hasPosition = qty.compareTo(BigDecimal.ZERO) > 0;
+        BigDecimal avgPrice;
+        if (hasPosition) {
+            if (account == null) {
+                avgPrice = parseDecimal(null);
+            } else {
+                avgPrice = parseDecimal(account.avg_buy_price());
+            }
+        } else {
+            avgPrice = BigDecimal.ZERO;
+        }
 
         TradingPosition position = positionRepository.findBySymbol(market).orElseGet(() -> TradingPosition.builder()
                 .symbol(market)
@@ -72,6 +82,7 @@ public class TradingPositionSyncService {
         position.setAvgPrice(avgPrice);
         position.setState(hasPosition ? PositionState.LONG : PositionState.FLAT);
         positionRepository.save(position);
+        positionDriftService.captureSnapshot(market, qty, qty);
 
         log.info(
                 "event=position_sync market={} asset={} qty={} avg_price={} state={}",
@@ -109,8 +120,9 @@ public class TradingPositionSyncService {
         }
         try {
             return new BigDecimal(value);
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException _) {
             return BigDecimal.ZERO;
         }
     }
+
 }

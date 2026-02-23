@@ -1,6 +1,9 @@
 package org.nowstart.evergreen.config;
 
 import feign.FeignException;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import java.util.List;
 import org.nowstart.evergreen.data.exception.TradingApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -8,8 +11,6 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.util.List;
 
 @RestControllerAdvice
 public class TradingExceptionHandler {
@@ -35,6 +36,19 @@ public class TradingExceptionHandler {
         return problemDetail;
     }
 
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ProblemDetail handleConstraintViolationException(ConstraintViolationException exception) {
+        List<String> details = exception.getConstraintViolations()
+                .stream()
+                .map(ConstraintViolation::getMessage)
+                .toList();
+
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
+        problemDetail.setProperty("code", "validation_error");
+        problemDetail.setProperty("details", details);
+        return problemDetail;
+    }
+
     @ExceptionHandler(FeignException.class)
     public ProblemDetail handleFeignException(FeignException exception) {
         HttpStatus status = HttpStatus.resolve(exception.status());
@@ -50,7 +64,7 @@ public class TradingExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ProblemDetail handleUnexpectedException(Exception exception) {
+    public ProblemDetail handleUnexpectedException() {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Unexpected server error"

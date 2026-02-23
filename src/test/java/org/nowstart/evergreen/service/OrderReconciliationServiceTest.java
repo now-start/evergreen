@@ -1,5 +1,15 @@
 package org.nowstart.evergreen.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -7,25 +17,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.nowstart.evergreen.data.dto.UpbitOrderResponse;
-import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.entity.TradingOrder;
+import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.type.OrderSide;
 import org.nowstart.evergreen.data.type.OrderStatus;
 import org.nowstart.evergreen.data.type.PositionState;
 import org.nowstart.evergreen.repository.FillRepository;
 import org.nowstart.evergreen.repository.PositionRepository;
 import org.nowstart.evergreen.repository.TradingOrderRepository;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OrderReconciliationServiceTest {
@@ -41,7 +40,11 @@ class OrderReconciliationServiceTest {
 
     @BeforeEach
     void setUp() {
-        orderReconciliationService = new OrderReconciliationService(tradingOrderRepository, fillRepository, positionRepository);
+        orderReconciliationService = new OrderReconciliationService(
+                tradingOrderRepository,
+                fillRepository,
+                positionRepository
+        );
 
         lenient().when(tradingOrderRepository.save(any(TradingOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(positionRepository.save(any(TradingPosition.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -59,14 +62,14 @@ class OrderReconciliationServiceTest {
                 .avgExecutedPrice(new BigDecimal("100"))
                 .build();
 
-        TradingPosition position = TradingPosition.builder()
+        TradingPosition totalPosition = TradingPosition.builder()
                 .symbol("KRW-BTC")
                 .qty(new BigDecimal("1.0"))
                 .avgPrice(new BigDecimal("100"))
                 .state(PositionState.LONG)
                 .build();
 
-        when(positionRepository.findBySymbol("KRW-BTC")).thenReturn(Optional.of(position));
+        when(positionRepository.findBySymbol("KRW-BTC")).thenReturn(Optional.of(totalPosition));
         when(fillRepository.existsById(any())).thenReturn(false, true);
 
         UpbitOrderResponse response = orderResponse(
@@ -77,10 +80,10 @@ class OrderReconciliationServiceTest {
         );
 
         orderReconciliationService.reconcile(order, response);
-        assertThat(position.getQty()).isEqualByComparingTo("2.0");
+        assertThat(totalPosition.getQty()).isEqualByComparingTo("2.0");
 
         orderReconciliationService.reconcile(order, response);
-        assertThat(position.getQty()).isEqualByComparingTo("2.0");
+        assertThat(totalPosition.getQty()).isEqualByComparingTo("2.0");
 
         verify(fillRepository, times(1)).save(any());
     }
@@ -96,14 +99,14 @@ class OrderReconciliationServiceTest {
                 .avgExecutedPrice(new BigDecimal("100"))
                 .build();
 
-        TradingPosition position = TradingPosition.builder()
+        TradingPosition totalPosition = TradingPosition.builder()
                 .symbol("KRW-BTC")
                 .qty(new BigDecimal("1.0"))
                 .avgPrice(new BigDecimal("100"))
                 .state(PositionState.LONG)
                 .build();
 
-        when(positionRepository.findBySymbol("KRW-BTC")).thenReturn(Optional.of(position));
+        when(positionRepository.findBySymbol("KRW-BTC")).thenReturn(Optional.of(totalPosition));
         when(fillRepository.existsById(any())).thenReturn(false);
 
         UpbitOrderResponse response = orderResponse(
@@ -116,8 +119,8 @@ class OrderReconciliationServiceTest {
         TradingOrder reconciled = orderReconciliationService.reconcile(order, response);
 
         assertThat(reconciled.getStatus()).isEqualTo(OrderStatus.FILLED);
-        assertThat(position.getQty()).isEqualByComparingTo("0.6");
-        assertThat(position.getState()).isEqualTo(PositionState.LONG);
+        assertThat(totalPosition.getQty()).isEqualByComparingTo("0.6");
+        assertThat(totalPosition.getState()).isEqualTo(PositionState.LONG);
     }
 
     @Test

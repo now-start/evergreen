@@ -40,7 +40,6 @@ public class OrderReconciliationService {
 
         BigDecimal deltaQtyFromNewFills = BigDecimal.ZERO;
         BigDecimal deltaFundsFromNewFills = BigDecimal.ZERO;
-        int newFillCount = 0;
 
         if (response.trades() != null) {
             for (int index = 0; index < response.trades().size(); index++) {
@@ -60,7 +59,6 @@ public class OrderReconciliationService {
                         .fee(BigDecimal.ZERO)
                         .build();
                 fillRepository.save(fill);
-                newFillCount++;
 
                 BigDecimal tradeQty = parseDecimal(trade.volume());
                 BigDecimal tradeFunds = parseDecimal(trade.funds());
@@ -74,11 +72,10 @@ public class OrderReconciliationService {
 
         BigDecimal deltaExecutedVolume = latestExecutedVolume.subtract(previousExecutedVolume);
         if (deltaExecutedVolume.compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal deltaQtyToApply = deltaExecutedVolume;
             BigDecimal deltaPriceToApply = deltaQtyFromNewFills.compareTo(BigDecimal.ZERO) > 0
                     ? deltaFundsFromNewFills.divide(deltaQtyFromNewFills, 12, RoundingMode.HALF_UP)
                     : safe(order.getAvgExecutedPrice());
-            applyPositionDelta(order, deltaQtyToApply, deltaPriceToApply);
+            applyPositionDelta(order, deltaExecutedVolume, deltaPriceToApply);
         }
 
         return order;
@@ -158,7 +155,7 @@ public class OrderReconciliationService {
         }
         try {
             return OffsetDateTime.parse(value).toInstant();
-        } catch (Exception e) {
+        } catch (Exception _) {
             return Instant.EPOCH;
         }
     }

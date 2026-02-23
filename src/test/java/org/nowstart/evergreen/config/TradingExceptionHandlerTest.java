@@ -1,17 +1,16 @@
 package org.nowstart.evergreen.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import feign.FeignException;
 import feign.Request;
 import feign.Response;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.nowstart.evergreen.data.exception.TradingApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class TradingExceptionHandlerTest {
 
@@ -30,7 +29,7 @@ class TradingExceptionHandlerTest {
 
     @Test
     void handleUnexpectedException_returnsInternalErrorProblemDetail() {
-        ProblemDetail detail = handler.handleUnexpectedException(new IllegalStateException("boom"));
+        ProblemDetail detail = handler.handleUnexpectedException();
 
         assertThat(detail.getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR.value());
         assertThat(detail.getDetail()).isEqualTo("Unexpected server error");

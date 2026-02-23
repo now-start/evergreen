@@ -31,9 +31,10 @@ class TradingPositionSyncServiceTest {
 
     @Mock
     private UpbitFeignClient upbitFeignClient;
-
     @Mock
     private PositionRepository positionRepository;
+    @Mock
+    private PositionDriftService positionDriftService;
 
     @BeforeEach
     void setUp() {
@@ -41,7 +42,7 @@ class TradingPositionSyncServiceTest {
     }
 
     @Test
-    void syncPositions_liveModeUpdatesPositionFromExchangeBalanceAndLocked() {
+    void syncPositions_liveModeUpdatesPositionAndDelegatesDriftCapture() {
         TradingPositionSyncService service = createService(ExecutionMode.LIVE);
         TradingPosition existing = TradingPosition.builder()
                 .symbol("KRW-BTC")
@@ -57,12 +58,13 @@ class TradingPositionSyncServiceTest {
 
         service.syncPositions(List.of("KRW-BTC"));
 
-        ArgumentCaptor<TradingPosition> captor = ArgumentCaptor.forClass(TradingPosition.class);
-        verify(positionRepository).save(captor.capture());
-        TradingPosition synced = captor.getValue();
+        ArgumentCaptor<TradingPosition> positionCaptor = ArgumentCaptor.forClass(TradingPosition.class);
+        verify(positionRepository).save(positionCaptor.capture());
+        TradingPosition synced = positionCaptor.getValue();
         assertThat(synced.getQty()).isEqualByComparingTo("0.12");
         assertThat(synced.getAvgPrice()).isEqualByComparingTo("50000000");
         assertThat(synced.getState()).isEqualTo(PositionState.LONG);
+        verify(positionDriftService).captureSnapshot("KRW-BTC", new BigDecimal("0.12"), new BigDecimal("0.12"));
     }
 
     @Test
@@ -88,6 +90,7 @@ class TradingPositionSyncServiceTest {
         assertThat(synced.getQty()).isEqualByComparingTo("0");
         assertThat(synced.getAvgPrice()).isEqualByComparingTo("0");
         assertThat(synced.getState()).isEqualTo(PositionState.FLAT);
+        verify(positionDriftService).captureSnapshot("KRW-BTC", BigDecimal.ZERO, BigDecimal.ZERO);
     }
 
     @Test
@@ -98,6 +101,7 @@ class TradingPositionSyncServiceTest {
 
         verify(upbitFeignClient, never()).getAccounts();
         verifyNoInteractions(positionRepository);
+        verifyNoInteractions(positionDriftService);
     }
 
     private TradingPositionSyncService createService(ExecutionMode mode) {
@@ -118,9 +122,13 @@ class TradingPositionSyncServiceTest {
                 40,
                 new BigDecimal("0.6"),
                 new BigDecimal("0.01"),
-                new BigDecimal("100000"),
-                new BigDecimal("0.00000001")
+                new BigDecimal("100000")
         );
-        return new TradingPositionSyncService(upbitFeignClient, positionRepository, properties);
+        return new TradingPositionSyncService(
+                upbitFeignClient,
+                positionRepository,
+                positionDriftService,
+                properties
+        );
     }
 }

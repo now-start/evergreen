@@ -5,14 +5,13 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.util.List;
 import org.nowstart.evergreen.data.type.ExecutionMode;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
-
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.util.List;
 
 @Validated
 @ConfigurationProperties(prefix = "evergreen.trading")
@@ -50,8 +49,6 @@ public record TradingProperties(
         // 레짐 밴드 비율
         @DecimalMin("0") @DecimalMax("0.999999") @DefaultValue("0.01") BigDecimal regimeBand,
         // PAPER 모드 시그널 진입 시도 주문 금액(KRW 기준)
-        @DecimalMin(value = "0", inclusive = false) @DefaultValue("100000") BigDecimal signalOrderNotional,
-        // 포지션 보유로 판단할 최소 수량
-        @DecimalMin("0") @DefaultValue("0.00000001") BigDecimal minPositionQty
+        @DecimalMin(value = "0", inclusive = false) @DefaultValue("100000") BigDecimal signalOrderNotional
 ) {
 }

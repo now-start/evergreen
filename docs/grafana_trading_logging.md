@@ -11,11 +11,21 @@
 - `event=trade_marker`
   - fields: `mode`, `clientOrderId`, `symbol`, `side`, `tradePrice`, `tradeQty`
 - `event=position_snapshot`
-  - fields: `mode`, `symbol`, `qty`, `avgPrice`, `state`
+    - fields: `market`, `total_qty`, `managed_qty`, `external_qty`, `sellable_qty`, `drift_qty`, `drift_detected`
 - `event=position_sync`
     - fields: `market`, `asset`, `qty`, `avg_price`, `state`
+- `event=external_position_drift`
+    - fields: `market`, `total_qty`, `managed_qty`, `external_qty`, `drift_qty`
+- `event=external_order_guard`
+    - fields: `market`, `blocked`, `reason`, `open_order_count`
 - `event=candle_signal`
-  - fields: `market`, `ts`, `close`, `live_price`, `regime`, `prev_regime`, `regime_anchor`, `regime_upper`, `regime_lower`, `atr`, `atr_trail_multiplier`, `atr_trail_stop`, `has_position`, `position_qty`, `position_avg_price`, `unrealized_return_pct`, `realized_pnl_krw`, `realized_return_pct`, `max_drawdown_pct`, `trade_count`, `trade_win_rate_pct`, `trade_avg_win_pct`, `trade_avg_loss_pct`, `trade_rr_ratio`, `trade_expectancy_pct`, `signal_quality_1d_avg_pct`, `signal_quality_3d_avg_pct`, `signal_quality_7d_avg_pct`, `volatility_is_high`, `atr_price_ratio`, `vol_percentile`, `buy_signal`, `sell_signal`, `signal_reason`
+    - fields: `market`, `ts`, `close`, `live_price`, `regime`, `prev_regime`, `regime_anchor`, `regime_upper`,
+      `regime_lower`, `atr`, `atr_trail_multiplier`, `atr_trail_stop`, `has_position`, `position_qty`,
+      `position_avg_price`, `total_qty`, `unrealized_return_pct`, `realized_pnl_krw`, `realized_return_pct`,
+      `max_drawdown_pct`, `trade_count`, `trade_win_rate_pct`, `trade_avg_win_pct`, `trade_avg_loss_pct`,
+      `trade_rr_ratio`, `trade_expectancy_pct`, `signal_quality_1d_avg_pct`, `signal_quality_3d_avg_pct`,
+      `signal_quality_7d_avg_pct`, `volatility_is_high`, `atr_price_ratio`, `vol_percentile`, `buy_signal`,
+      `sell_signal`, `signal_reason`
   - non-finite numeric metrics are normalized to `0.0` in logs for LogQL compatibility
 - `event=trade_execution`
   - fields: `market`, `side`, `signal_ts`, `signal_close`, `client_order_id`, `order_status`, `mode`, `executed_price`, `executed_volume`, `fee_amount`, `slippage_pct`, `slippage_bps`
@@ -90,11 +100,39 @@ max_over_time({service_name="evergreen"} |= "event=candle_signal" | logfmt | sig
 max_over_time({service_name="evergreen"} |= "event=trade_execution" | logfmt | slippage_bps!="NaN" | unwrap slippage_bps | __error__="" [$__interval])
 ```
 
+- Position composition (total / managed / external / sellable)
+
+```logql
+max by (market) (max_over_time({service_name="evergreen"} |= "event=position_snapshot" | logfmt | label_format market="{{.market}}" | unwrap total_qty | __error__="" [$__interval]))
+max by (market) (max_over_time({service_name="evergreen"} |= "event=position_snapshot" | logfmt | label_format market="{{.market}}" | unwrap managed_qty | __error__="" [$__interval]))
+max by (market) (max_over_time({service_name="evergreen"} |= "event=position_snapshot" | logfmt | label_format market="{{.market}}" | unwrap external_qty | __error__="" [$__interval]))
+max by (market) (max_over_time({service_name="evergreen"} |= "event=position_snapshot" | logfmt | label_format market="{{.market}}" | unwrap sellable_qty | __error__="" [$__interval]))
+```
+
+- External fill detection / guard count
+
+```logql
+sum(count_over_time({service_name="evergreen"} |= "event=external_position_drift" [10m]))
+sum(count_over_time({service_name="evergreen"} |= "event=external_order_guard" | logfmt | blocked="true" [10m]))
+```
+
+- Guard reason topN (10m)
+
+```logql
+topk(5, sum by (reason) (count_over_time({service_name="evergreen"} |= "event=external_order_guard" | logfmt [10m])))
+```
+
 ## Notes
 - `requestId` is injected into MDC and response header `X-Request-Id`.
 - Health checks (`/actuator/health`) are excluded from request-complete logs.
 - Keep Loki labels minimal; parse business fields from log body (`logfmt`) in panel queries.
 - `event=candle_signal` is emitted every scheduler cycle per market.
+- `event=position_snapshot` is emitted every position sync cycle per market.
+- `event=external_position_drift` is emitted when account position drift is detected versus previously managed
+  quantity (external fill detection signal in LIVE flow).
+- `event=external_order_guard` is emitted when external open-order guard blocks scheduler execution in LIVE flow.
+- Single-position integration mode: `managed_qty` mirrors `total_qty`, so `external_qty` is expected to be `0` in normal
+  operation.
 - Logs panel uses `line_format` summary output to keep payload compact.
 - `close` is based on daily candle close, so short ranges can appear flat; use `live_price` for intraday movement in time-series panels.
 - In panel `가격 + 밴드 + 매수/매도 포인트`, all price/band/trail series are configured on a single left Y-axis for consistent scale reading.
