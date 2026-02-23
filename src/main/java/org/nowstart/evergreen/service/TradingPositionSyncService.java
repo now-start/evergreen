@@ -8,11 +8,14 @@ import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nowstart.evergreen.data.dto.UpbitAccountResponse;
+import org.nowstart.evergreen.data.entity.TradingOrder;
 import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.property.TradingProperties;
 import org.nowstart.evergreen.data.type.ExecutionMode;
+import org.nowstart.evergreen.data.type.OrderSide;
 import org.nowstart.evergreen.data.type.PositionState;
 import org.nowstart.evergreen.repository.PositionRepository;
+import org.nowstart.evergreen.repository.TradingOrderRepository;
 import org.nowstart.evergreen.repository.UpbitFeignClient;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
@@ -26,6 +29,7 @@ public class TradingPositionSyncService {
 
     private final UpbitFeignClient upbitFeignClient;
     private final PositionRepository positionRepository;
+    private final TradingOrderRepository tradingOrderRepository;
     private final PositionDriftService positionDriftService;
     private final TradingProperties tradingProperties;
 
@@ -58,8 +62,9 @@ public class TradingPositionSyncService {
         }
 
         UpbitAccountResponse account = accountByCurrency.get(assetCurrency);
-        BigDecimal qty = resolveTotalQty(account);
-        boolean hasPosition = qty.compareTo(BigDecimal.ZERO) > 0;
+        BigDecimal totalQty = resolveTotalQty(account);
+        BigDecimal managedQty = resolveManagedQty(market);
+        boolean hasPosition = totalQty.compareTo(BigDecimal.ZERO) > 0;
         BigDecimal avgPrice;
         if (hasPosition) {
             if (account == null) {
@@ -78,20 +83,55 @@ public class TradingPositionSyncService {
                 .state(PositionState.FLAT)
                 .build());
 
-        position.setQty(qty);
+        position.setQty(totalQty);
         position.setAvgPrice(avgPrice);
         position.setState(hasPosition ? PositionState.LONG : PositionState.FLAT);
         positionRepository.save(position);
-        positionDriftService.captureSnapshot(market, qty, qty);
+        positionDriftService.captureSnapshot(market, totalQty, managedQty);
 
         log.info(
-                "event=position_sync market={} asset={} qty={} avg_price={} state={}",
+                "event=position_sync market={} asset={} qty={} managed_qty={} avg_price={} state={}",
                 market,
                 assetCurrency,
-                qty,
+                totalQty,
+                managedQty,
                 avgPrice,
                 position.getState()
         );
+    }
+
+    private BigDecimal resolveManagedQty(String market) {
+        List<TradingOrder> orders = tradingOrderRepository.findBySymbolAndModeOrderByCreatedAtAsc(
+                market,
+                tradingProperties.executionMode()
+        );
+        if (orders == null || orders.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal managedQty = BigDecimal.ZERO;
+        for (TradingOrder order : orders) {
+            if (order == null || order.getSide() == null) {
+                continue;
+            }
+            BigDecimal executedVolume = safe(order.getExecutedVolume());
+            if (executedVolume.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+
+            if (order.getSide() == OrderSide.BUY) {
+                managedQty = managedQty.add(executedVolume);
+                continue;
+            }
+
+            if (order.getSide() == OrderSide.SELL) {
+                managedQty = managedQty.subtract(executedVolume);
+                if (managedQty.compareTo(BigDecimal.ZERO) < 0) {
+                    managedQty = BigDecimal.ZERO;
+                }
+            }
+        }
+        return managedQty;
     }
 
     private String resolveAssetCurrency(String market) {
@@ -123,6 +163,10 @@ public class TradingPositionSyncService {
         } catch (NumberFormatException _) {
             return BigDecimal.ZERO;
         }
+    }
+
+    private BigDecimal safe(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
 }

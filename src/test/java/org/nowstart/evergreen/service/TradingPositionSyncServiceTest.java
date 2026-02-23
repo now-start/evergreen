@@ -19,11 +19,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.nowstart.evergreen.data.dto.UpbitAccountResponse;
+import org.nowstart.evergreen.data.entity.TradingOrder;
 import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.property.TradingProperties;
 import org.nowstart.evergreen.data.type.ExecutionMode;
+import org.nowstart.evergreen.data.type.OrderSide;
 import org.nowstart.evergreen.data.type.PositionState;
 import org.nowstart.evergreen.repository.PositionRepository;
+import org.nowstart.evergreen.repository.TradingOrderRepository;
 import org.nowstart.evergreen.repository.UpbitFeignClient;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,15 +37,18 @@ class TradingPositionSyncServiceTest {
     @Mock
     private PositionRepository positionRepository;
     @Mock
+    private TradingOrderRepository tradingOrderRepository;
+    @Mock
     private PositionDriftService positionDriftService;
 
     @BeforeEach
     void setUp() {
         lenient().when(positionRepository.save(any(TradingPosition.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(tradingOrderRepository.findBySymbolAndModeOrderByCreatedAtAsc(any(), any())).thenReturn(List.of());
     }
 
     @Test
-    void syncPositions_liveModeUpdatesPositionAndDelegatesDriftCapture() {
+    void syncPositions_liveModeUsesBotManagedQtyForDriftSnapshot() {
         TradingPositionSyncService service = createService(ExecutionMode.LIVE);
         TradingPosition existing = TradingPosition.builder()
                 .symbol("KRW-BTC")
@@ -55,6 +61,13 @@ class TradingPositionSyncServiceTest {
         when(upbitFeignClient.getAccounts()).thenReturn(List.of(
                 new UpbitAccountResponse("BTC", "0.1", "0.02", "50000000", "KRW")
         ));
+        when(tradingOrderRepository.findBySymbolAndModeOrderByCreatedAtAsc("KRW-BTC", ExecutionMode.LIVE))
+                .thenReturn(List.of(
+                        TradingOrder.builder()
+                                .side(OrderSide.BUY)
+                                .executedVolume(new BigDecimal("0.10"))
+                                .build()
+                ));
 
         service.syncPositions(List.of("KRW-BTC"));
 
@@ -64,7 +77,7 @@ class TradingPositionSyncServiceTest {
         assertThat(synced.getQty()).isEqualByComparingTo("0.12");
         assertThat(synced.getAvgPrice()).isEqualByComparingTo("50000000");
         assertThat(synced.getState()).isEqualTo(PositionState.LONG);
-        verify(positionDriftService).captureSnapshot("KRW-BTC", new BigDecimal("0.12"), new BigDecimal("0.12"));
+        verify(positionDriftService).captureSnapshot("KRW-BTC", new BigDecimal("0.12"), new BigDecimal("0.10"));
     }
 
     @Test
@@ -104,6 +117,37 @@ class TradingPositionSyncServiceTest {
         verifyNoInteractions(positionDriftService);
     }
 
+    @Test
+    void syncPositions_liveModeClampsManagedQtyAtZeroWhenSellExceedsBotPosition() {
+        TradingPositionSyncService service = createService(ExecutionMode.LIVE);
+        TradingPosition existing = TradingPosition.builder()
+                .symbol("KRW-BTC")
+                .qty(new BigDecimal("0.2"))
+                .avgPrice(new BigDecimal("50000000"))
+                .state(PositionState.LONG)
+                .build();
+
+        when(positionRepository.findBySymbol("KRW-BTC")).thenReturn(Optional.of(existing));
+        when(upbitFeignClient.getAccounts()).thenReturn(List.of(
+                new UpbitAccountResponse("BTC", "0.12", "0", "50000000", "KRW")
+        ));
+        when(tradingOrderRepository.findBySymbolAndModeOrderByCreatedAtAsc("KRW-BTC", ExecutionMode.LIVE))
+                .thenReturn(List.of(
+                        TradingOrder.builder()
+                                .side(OrderSide.BUY)
+                                .executedVolume(new BigDecimal("0.03"))
+                                .build(),
+                        TradingOrder.builder()
+                                .side(OrderSide.SELL)
+                                .executedVolume(new BigDecimal("0.05"))
+                                .build()
+                ));
+
+        service.syncPositions(List.of("KRW-BTC"));
+
+        verify(positionDriftService).captureSnapshot("KRW-BTC", new BigDecimal("0.12"), BigDecimal.ZERO);
+    }
+
     private TradingPositionSyncService createService(ExecutionMode mode) {
         TradingProperties properties = new TradingProperties(
                 "https://api.upbit.com",
@@ -127,6 +171,7 @@ class TradingPositionSyncServiceTest {
         return new TradingPositionSyncService(
                 upbitFeignClient,
                 positionRepository,
+                tradingOrderRepository,
                 positionDriftService,
                 properties
         );
