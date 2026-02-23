@@ -10,7 +10,7 @@
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
-        "name": "Annotations & Alerts",
+        "name": "주석 및 알림",
         "type": "dashboard"
       }
     ]
@@ -37,7 +37,8 @@
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 2,
-            "showPoints": "never"
+            "showPoints": "never",
+            "spanNulls": true
           },
           "unit": "currencyKRW"
         },
@@ -70,7 +71,7 @@
           },
           "editorMode": "code",
           "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | realized_pnl_krw!=\"NaN\" | unwrap realized_pnl_krw | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
-          "legendFormat": "{{market}} realized pnl",
+          "legendFormat": "{{market}} 실현 손익",
           "queryType": "range",
           "refId": "A"
         }
@@ -124,7 +125,7 @@
           },
           "editorMode": "code",
           "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | max_drawdown_pct!=\"NaN\" | unwrap max_drawdown_pct | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
-          "legendFormat": "{{market}} MDD",
+          "legendFormat": "{{market}} 최대 낙폭(MDD)",
           "queryType": "instant",
           "refId": "A"
         }
@@ -152,7 +153,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Win rate %"
+                "value": "승률 %"
               },
               {
                 "id": "unit",
@@ -168,7 +169,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "R/R"
+                "value": "손익비 (R/R)"
               }
             ]
           },
@@ -180,7 +181,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Expectancy %"
+                "value": "기대값 %"
               },
               {
                 "id": "unit",
@@ -215,7 +216,7 @@
           },
           "editorMode": "code",
           "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | trade_win_rate_pct!=\"NaN\" | unwrap trade_win_rate_pct | __error__=\"\" [$__interval]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | unwrap trade_count | __error__=\"\" [$__interval]) * 0)",
-          "legendFormat": "Win rate %",
+          "legendFormat": "승률 %",
           "queryType": "instant",
           "refId": "A"
         },
@@ -226,7 +227,7 @@
           },
           "editorMode": "code",
           "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | trade_rr_ratio!=\"NaN\" | unwrap trade_rr_ratio | __error__=\"\" [$__interval]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | unwrap trade_count | __error__=\"\" [$__interval]) * 0)",
-          "legendFormat": "R/R",
+          "legendFormat": "손익비 (R/R)",
           "queryType": "instant",
           "refId": "B"
         },
@@ -237,7 +238,7 @@
           },
           "editorMode": "code",
           "expr": "max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | trade_expectancy_pct!=\"NaN\" | unwrap trade_expectancy_pct | __error__=\"\" [$__interval]) or (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | unwrap trade_count | __error__=\"\" [$__interval]) * 0)",
-          "legendFormat": "Expectancy %",
+          "legendFormat": "기대값 %",
           "queryType": "instant",
           "refId": "C"
         }
@@ -260,7 +261,8 @@
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 2,
-            "showPoints": "never"
+            "showPoints": "never",
+            "spanNulls": true
           },
           "unit": "percent"
         },
@@ -293,7 +295,7 @@
           },
           "editorMode": "code",
           "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | signal_quality_1d_avg_pct!=\"NaN\" | unwrap signal_quality_1d_avg_pct | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
-          "legendFormat": "{{market}} 1d",
+          "legendFormat": "{{market}} 1일",
           "queryType": "range",
           "refId": "A"
         },
@@ -304,7 +306,7 @@
           },
           "editorMode": "code",
           "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | signal_quality_3d_avg_pct!=\"NaN\" | unwrap signal_quality_3d_avg_pct | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
-          "legendFormat": "{{market}} 3d",
+          "legendFormat": "{{market}} 3일",
           "queryType": "range",
           "refId": "B"
         },
@@ -315,7 +317,7 @@
           },
           "editorMode": "code",
           "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | signal_quality_7d_avg_pct!=\"NaN\" | unwrap signal_quality_7d_avg_pct | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
-          "legendFormat": "{{market}} 7d",
+          "legendFormat": "{{market}} 7일",
           "queryType": "range",
           "refId": "C"
         }
@@ -338,7 +340,8 @@
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 2,
-            "showPoints": "never"
+            "showPoints": "never",
+            "spanNulls": true
           },
           "unit": "short"
         },
@@ -371,7 +374,7 @@
           },
           "editorMode": "code",
           "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=trade_execution\" | logfmt | label_format market=\"{{.market}}\" | slippage_bps!=\"NaN\" | unwrap slippage_bps | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
-          "legendFormat": "{{market}} slippage bps",
+          "legendFormat": "{{market}} 슬리피지 (bps)",
           "queryType": "range",
           "refId": "A"
         }
@@ -399,7 +402,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Scheduler signals (5m)"
+                "value": "스케줄러 신호 (5분)"
               }
             ]
           },
@@ -411,7 +414,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "API errors (5m)"
+                "value": "API 오류 (5분)"
               }
             ]
           },
@@ -423,7 +426,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Scheduler errors (5m)"
+                "value": "스케줄러 오류 (5분)"
               }
             ]
           },
@@ -435,7 +438,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Position sync (5m)"
+                "value": "포지션 동기화 (5분)"
               }
             ]
           },
@@ -447,7 +450,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Position sync errors (5m)"
+                "value": "포지션 동기화 오류 (5분)"
               }
             ]
           }
@@ -478,7 +481,7 @@
           },
           "editorMode": "code",
           "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" [5m]))",
-          "legendFormat": "Scheduler signals (5m)",
+          "legendFormat": "스케줄러 신호 (5분)",
           "queryType": "instant",
           "refId": "A"
         },
@@ -489,7 +492,7 @@
           },
           "editorMode": "code",
           "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=api_error\" [5m]))",
-          "legendFormat": "API errors (5m)",
+          "legendFormat": "API 오류 (5분)",
           "queryType": "instant",
           "refId": "B"
         },
@@ -500,7 +503,7 @@
           },
           "editorMode": "code",
           "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"Failed to evaluate market=\" [5m]))",
-          "legendFormat": "Scheduler errors (5m)",
+          "legendFormat": "스케줄러 오류 (5분)",
           "queryType": "instant",
           "refId": "C"
         },
@@ -511,7 +514,7 @@
           },
           "editorMode": "code",
           "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=position_sync\" [5m]))",
-          "legendFormat": "Position sync (5m)",
+          "legendFormat": "포지션 동기화 (5분)",
           "queryType": "instant",
           "refId": "D"
         },
@@ -522,7 +525,7 @@
           },
           "editorMode": "code",
           "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"Failed to sync exchange positions\" [5m]))",
-          "legendFormat": "Position sync errors (5m)",
+          "legendFormat": "포지션 동기화 오류 (5분)",
           "queryType": "instant",
           "refId": "E"
         }
@@ -554,7 +557,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "BUY .*"
+              "options": "매수 .*"
             },
             "properties": [
               {
@@ -581,7 +584,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "SELL .*"
+              "options": "매도 .*"
             },
             "properties": [
               {
@@ -608,7 +611,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": ".* live price"
+              "options": ".* 실시간가"
             },
             "properties": [
               {
@@ -639,7 +642,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": ".* anchor"
+              "options": ".* 기준선"
             },
             "properties": [
               {
@@ -655,14 +658,14 @@
               },
               {
                 "id": "custom.axisPlacement",
-                "value": "left"
+                "value": "right"
               }
             ]
           },
           {
             "matcher": {
               "id": "byRegexp",
-              "options": ".* upper"
+              "options": ".* 상단밴드"
             },
             "properties": [
               {
@@ -678,14 +681,14 @@
               },
               {
                 "id": "custom.axisPlacement",
-                "value": "left"
+                "value": "right"
               }
             ]
           },
           {
             "matcher": {
               "id": "byRegexp",
-              "options": ".* lower"
+              "options": ".* 하단밴드"
             },
             "properties": [
               {
@@ -701,14 +704,14 @@
               },
               {
                 "id": "custom.axisPlacement",
-                "value": "left"
+                "value": "right"
               }
             ]
           },
           {
             "matcher": {
               "id": "byRegexp",
-              "options": ".* trail_stop"
+              "options": ".* 트레일링스탑"
             },
             "properties": [
               {
@@ -724,7 +727,7 @@
               },
               {
                 "id": "custom.axisPlacement",
-                "value": "left"
+                "value": "right"
               }
             ]
           }
@@ -757,7 +760,7 @@
           },
           "editorMode": "code",
           "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=ticker_price\" | logfmt | label_format market=\"{{.market}}\" | live_price!=\"NaN\" | unwrap live_price | __error__=\"\" [$__interval])) or avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | live_price!=\"NaN\" | unwrap live_price | __error__=\"\" [$__interval])) or avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap close | __error__=\"\" [$__interval]))",
-          "legendFormat": "{{market}} live price",
+          "legendFormat": "{{market}} 실시간가",
           "queryType": "range",
           "refId": "A"
         },
@@ -768,7 +771,7 @@
           },
           "editorMode": "code",
           "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_anchor | __error__=\"\" [$__interval]))",
-          "legendFormat": "{{market}} anchor",
+          "legendFormat": "{{market}} 기준선",
           "queryType": "range",
           "refId": "B"
         },
@@ -779,7 +782,7 @@
           },
           "editorMode": "code",
           "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_upper | __error__=\"\" [$__interval]))",
-          "legendFormat": "{{market}} upper",
+          "legendFormat": "{{market}} 상단밴드",
           "queryType": "range",
           "refId": "C"
         },
@@ -790,7 +793,7 @@
           },
           "editorMode": "code",
           "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_lower | __error__=\"\" [$__interval]))",
-          "legendFormat": "{{market}} lower",
+          "legendFormat": "{{market}} 하단밴드",
           "queryType": "range",
           "refId": "D"
         },
@@ -801,7 +804,7 @@
           },
           "editorMode": "code",
           "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | atr_trail_stop!=\"NaN\" | unwrap atr_trail_stop | __error__=\"\" [$__interval]))",
-          "legendFormat": "{{market}} trail_stop",
+          "legendFormat": "{{market}} 트레일링스탑",
           "queryType": "range",
           "refId": "E"
         },
@@ -812,7 +815,7 @@
           },
           "editorMode": "code",
           "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | buy_signal=\"true\" | unwrap close | __error__=\"\" [$__interval]))",
-          "legendFormat": "BUY {{market}}",
+          "legendFormat": "매수 {{market}}",
           "queryType": "range",
           "refId": "F"
         },
@@ -823,7 +826,7 @@
           },
           "editorMode": "code",
           "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | sell_signal=\"true\" | unwrap close | __error__=\"\" [$__interval]))",
-          "legendFormat": "SELL {{market}}",
+          "legendFormat": "매도 {{market}}",
           "queryType": "range",
           "refId": "G"
         }
@@ -846,7 +849,8 @@
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 2,
-            "showPoints": "never"
+            "showPoints": "never",
+            "spanNulls": true
           },
           "unit": "percent"
         },
@@ -878,8 +882,8 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unrealized_return_pct!=\"NaN\" | unwrap unrealized_return_pct | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
-          "legendFormat": "{{market}} unrealized return",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unrealized_return_pct!=\"NaN\" | unwrap unrealized_return_pct | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=ticker_price\" | logfmt | label_format market=\"{{.market}}\" | unwrap close | __error__=\"\" [$__interval])) * 0)",
+          "legendFormat": "{{market}} 미실현 수익률",
           "queryType": "range",
           "refId": "A"
         }
@@ -902,11 +906,45 @@
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "pointSize": 2,
-            "showPoints": "never"
+            "showPoints": "never",
+            "spanNulls": true
           },
           "unit": "percentunit"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "left"
+              },
+              {
+                "id": "unit",
+                "value": "percentunit"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*\\(1시간\\)"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -934,8 +972,8 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap vol_percentile | __error__=\"\" [$__interval]))",
-          "legendFormat": "{{market}} vol_percentile",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap vol_percentile | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=ticker_price\" | logfmt | label_format market=\"{{.market}}\" | unwrap close | __error__=\"\" [$__interval])) * 0)",
+          "legendFormat": "{{market}} 변동성 백분위",
           "queryType": "range",
           "refId": "A"
         },
@@ -946,7 +984,7 @@
           },
           "editorMode": "code",
           "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"BUY_REGIME_TRANSITION\" [1h]))",
-          "legendFormat": "BUY (1h)",
+          "legendFormat": "매수 (1시간)",
           "queryType": "range",
           "refId": "B"
         },
@@ -957,7 +995,7 @@
           },
           "editorMode": "code",
           "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SELL_REGIME_TRANSITION\" [1h]))",
-          "legendFormat": "SELL_REGIME (1h)",
+          "legendFormat": "매도(레짐전환) (1시간)",
           "queryType": "range",
           "refId": "C"
         },
@@ -968,9 +1006,42 @@
           },
           "editorMode": "code",
           "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SELL_TRAIL_STOP\" [1h]))",
-          "legendFormat": "SELL_TRAIL (1h)",
+          "legendFormat": "매도(트레일링) (1시간)",
           "queryType": "range",
           "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SELL_REGIME_AND_TRAIL_STOP\" [1h]))",
+          "legendFormat": "매도(레짐+트레일) (1시간)",
+          "queryType": "range",
+          "refId": "E"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SETUP_SELL\" [1h]))",
+          "legendFormat": "매도 준비 (1시간)",
+          "queryType": "range",
+          "refId": "F"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SETUP_BUY\" [1h]))",
+          "legendFormat": "매수 준비 (1시간)",
+          "queryType": "range",
+          "refId": "G"
         }
       ],
       "title": "변동성 + 신호 사유 집계",
@@ -1006,7 +1077,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | line_format \"ts={{.ts}} market={{.market}} close={{.close}} live_price={{.live_price}} regime={{.regime}} reason={{.signal_reason}} buy={{.buy_signal}} sell={{.sell_signal}} unrealized_pct={{.unrealized_return_pct}} realized_pnl_krw={{.realized_pnl_krw}}\"",
+          "expr": "{service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | line_format \"시각={{.ts}} 시장={{.market}} 종가={{.close}} 실시간가={{.live_price}} 레짐={{.regime}} 사유={{.signal_reason}} 매수={{.buy_signal}} 매도={{.sell_signal}} 미실현수익률={{.unrealized_return_pct}} 실현손익_원화={{.realized_pnl_krw}}\"",
           "queryType": "range",
           "refId": "A"
         },
@@ -1016,7 +1087,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{service_name=\"evergreen\"} |= \"event=position_sync\" | logfmt | line_format \"market={{.market}} asset={{.asset}} qty={{.qty}} avg_price={{.avg_price}} state={{.state}}\"",
+          "expr": "{service_name=\"evergreen\"} |= \"event=position_sync\" | logfmt | line_format \"시장={{.market}} 자산={{.asset}} 수량={{.qty}} 평균가={{.avg_price}} 상태={{.state}}\"",
           "queryType": "range",
           "refId": "B"
         }
@@ -1042,7 +1113,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Evergreen Trading - Plot Style",
+  "title": "에버그린 트레이딩 - 플롯 스타일",
   "uid": "evergreen-trading-plot",
   "version": 1,
   "weekStart": ""

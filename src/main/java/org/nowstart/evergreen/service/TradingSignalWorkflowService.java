@@ -47,7 +47,7 @@ public class TradingSignalWorkflowService {
                 .map(tradingSignalMarketDataService::normalizeMarket)
                 .filter(market -> !market.isBlank())
                 .distinct()
-                .collect(Collectors.toList());
+                .toList();
 
         if (markets.isEmpty()) {
             return;
@@ -84,10 +84,8 @@ public class TradingSignalWorkflowService {
 
         Optional<TradingPosition> positionOpt = positionRepository.findBySymbol(market);
         BigDecimal positionQty = positionOpt.map(TradingPosition::getQty)
-                .filter(qty -> qty != null)
                 .orElse(BigDecimal.ZERO);
         BigDecimal positionAvgPrice = positionOpt.map(TradingPosition::getAvgPrice)
-                .filter(avgPrice -> avgPrice != null)
                 .orElse(BigDecimal.ZERO);
         boolean hasPosition = positionQty.compareTo(tradingProperties.minPositionQty()) > 0;
 
@@ -150,9 +148,10 @@ public class TradingSignalWorkflowService {
                 : Double.NaN;
 
         TradingExecutionMetrics executionMetrics = tradingSignalMetricsService.resolveExecutionMetrics(market);
+        double livePrice = tradingSignalMarketDataService.resolveLivePrice(market, signalCandle.close().doubleValue());
         double unrealizedReturnPct = tradingSignalMetricsService.resolveUnrealizedReturnPct(
                 hasPosition,
-                signalCandle.close().doubleValue(),
+                livePrice,
                 positionAvgPrice.doubleValue()
         );
         TradingSignalQualityStats signalQuality = tradingSignalComputationService.resolveSignalQualityStats(
@@ -161,9 +160,7 @@ public class TradingSignalWorkflowService {
                 signalIndex
         );
 
-        double livePriceForLog = tradingSignalMetricsService.sanitizeMetricForLog(
-                tradingSignalMarketDataService.resolveLivePrice(market, signalCandle.close().doubleValue())
-        );
+        double livePriceForLog = tradingSignalMetricsService.sanitizeMetricForLog(livePrice);
         log.info(
                 "event=ticker_price market={} ts={} live_price={} close={} regime={} buy_signal={} sell_signal={} signal_reason={}",
                 market,
