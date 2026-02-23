@@ -3,7 +3,6 @@ package org.nowstart.evergreen.service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nowstart.evergreen.data.dto.TradingDayCandleDto;
@@ -38,7 +37,6 @@ public class TradingSignalWorkflowService {
     private final TradingSignalMarketDataService tradingSignalMarketDataService;
     private final TradingSignalComputationService tradingSignalComputationService;
     private final TradingSignalMetricsService tradingSignalMetricsService;
-    private final TradingSignalStateService tradingSignalStateService;
     private final TradingSignalOrderService tradingSignalOrderService;
     private final TradingPositionSyncService tradingPositionSyncService;
 
