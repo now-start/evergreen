@@ -87,7 +87,7 @@
         "h": 6,
         "w": 4,
         "x": 0,
-        "y": 0
+        "y": 1
       },
       "id": 1,
       "options": {
@@ -154,7 +154,7 @@
         "h": 6,
         "w": 4,
         "x": 4,
-        "y": 0
+        "y": 1
       },
       "id": 2,
       "options": {
@@ -267,7 +267,7 @@
         "h": 6,
         "w": 4,
         "x": 8,
-        "y": 0
+        "y": 1
       },
       "id": 3,
       "options": {
@@ -392,7 +392,7 @@
         "h": 6,
         "w": 4,
         "x": 12,
-        "y": 0
+        "y": 1
       },
       "id": 4,
       "options": {
@@ -513,7 +513,7 @@
         "h": 6,
         "w": 4,
         "x": 16,
-        "y": 0
+        "y": 1
       },
       "id": 5,
       "options": {
@@ -580,7 +580,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "스케줄러 신호 (5분)"
+                "value": "스케줄러 신호 (자동)"
               }
             ]
           },
@@ -592,7 +592,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "API 오류 (5분)"
+                "value": "API 오류 (자동)"
               }
             ]
           },
@@ -604,7 +604,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "스케줄러 오류 (5분)"
+                "value": "스케줄러 오류 (자동)"
               }
             ]
           },
@@ -616,7 +616,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "포지션 동기화 (5분)"
+                "value": "포지션 동기화 (자동)"
               }
             ]
           },
@@ -628,7 +628,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "포지션 동기화 오류 (5분)"
+                "value": "포지션 동기화 오류 (자동)"
               }
             ]
           }
@@ -638,7 +638,7 @@
         "h": 6,
         "w": 4,
         "x": 20,
-        "y": 0
+        "y": 1
       },
       "id": 6,
       "options": {
@@ -666,8 +666,8 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" [5m]))",
-          "legendFormat": "스케줄러 신호 (5분)",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" [$__interval]))",
+          "legendFormat": "스케줄러 신호 (자동)",
           "queryType": "instant",
           "refId": "A"
         },
@@ -677,8 +677,8 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=api_error\" [5m]))",
-          "legendFormat": "API 오류 (5분)",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=api_error\" [$__interval]))",
+          "legendFormat": "API 오류 (자동)",
           "queryType": "instant",
           "refId": "B"
         },
@@ -688,8 +688,8 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"Failed to evaluate market=\" [5m]))",
-          "legendFormat": "스케줄러 오류 (5분)",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"Failed to evaluate market=\" [$__interval]))",
+          "legendFormat": "스케줄러 오류 (자동)",
           "queryType": "instant",
           "refId": "C"
         },
@@ -699,8 +699,8 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=position_sync\" [5m]))",
-          "legendFormat": "포지션 동기화 (5분)",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=position_sync\" [$__interval]))",
+          "legendFormat": "포지션 동기화 (자동)",
           "queryType": "instant",
           "refId": "D"
         },
@@ -710,8 +710,8 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"Failed to sync exchange positions\" [5m]))",
-          "legendFormat": "포지션 동기화 오류 (5분)",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"Failed to sync exchange positions\" [$__interval]))",
+          "legendFormat": "포지션 동기화 오류 (자동)",
           "queryType": "instant",
           "refId": "E"
         }
@@ -784,7 +784,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 6
+        "y": 25
       },
       "id": 13,
       "options": {
@@ -882,7 +882,7 @@
         "h": 6,
         "w": 6,
         "x": 12,
-        "y": 6
+        "y": 25
       },
       "id": 14,
       "options": {
@@ -910,13 +910,13 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=external_position_drift\" [10m]))",
-          "legendFormat": "최근 10분 외부 체결 감지 건수",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=external_position_drift\" [$__interval]))",
+          "legendFormat": "외부 체결 감지 건수 (자동)",
           "queryType": "instant",
           "refId": "A"
         }
       ],
-      "title": "외부 체결 감지 (10분)",
+      "title": "외부 체결 감지",
       "type": "stat"
     },
     {
@@ -951,7 +951,7 @@
         "h": 6,
         "w": 6,
         "x": 18,
-        "y": 6
+        "y": 25
       },
       "id": 15,
       "options": {
@@ -979,13 +979,13 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=external_order_guard\" | logfmt | blocked=\"true\" [10m]))",
-          "legendFormat": "최근 10분 차단 건수",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=external_order_guard\" | logfmt | blocked=\"true\" [$__interval]))",
+          "legendFormat": "차단 건수 (자동)",
           "queryType": "instant",
           "refId": "A"
         }
       ],
-      "title": "외부 주문 가드 차단 (10분)",
+      "title": "외부 주문 가드 차단",
       "type": "stat"
     },
     {
@@ -1232,7 +1232,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 12
+        "y": 7
       },
       "id": 7,
       "options": {
@@ -1402,9 +1402,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 24,
         "x": 0,
-        "y": 21
+        "y": 31
       },
       "id": 9,
       "options": {
@@ -1517,7 +1517,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": ".*\\(1시간\\)"
+              "options": ".*\\(자동\\)"
             },
             "properties": [
               {
@@ -1534,9 +1534,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 21
+        "w": 24,
+        "x": 0,
+        "y": 16
       },
       "id": 10,
       "options": {
@@ -1571,8 +1571,8 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"BUY_REGIME_TRANSITION\" [1h]))",
-          "legendFormat": "매수 (1시간)",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"BUY_REGIME_TRANSITION\" [$__interval]))",
+          "legendFormat": "매수 (자동)",
           "queryType": "range",
           "refId": "B"
         },
@@ -1582,8 +1582,8 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SELL_REGIME_TRANSITION\" [1h]))",
-          "legendFormat": "매도(레짐전환) (1시간)",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SELL_REGIME_TRANSITION\" [$__interval]))",
+          "legendFormat": "매도(레짐전환) (자동)",
           "queryType": "range",
           "refId": "C"
         },
@@ -1593,8 +1593,8 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SELL_TRAIL_STOP\" [1h]))",
-          "legendFormat": "매도(트레일링) (1시간)",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SELL_TRAIL_STOP\" [$__interval]))",
+          "legendFormat": "매도(트레일링) (자동)",
           "queryType": "range",
           "refId": "D"
         },
@@ -1604,8 +1604,8 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SELL_REGIME_AND_TRAIL_STOP\" [1h]))",
-          "legendFormat": "매도(레짐+트레일) (1시간)",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SELL_REGIME_AND_TRAIL_STOP\" [$__interval]))",
+          "legendFormat": "매도(레짐+트레일) (자동)",
           "queryType": "range",
           "refId": "E"
         },
@@ -1615,8 +1615,8 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SETUP_SELL\" [1h]))",
-          "legendFormat": "매도 준비 (1시간)",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SETUP_SELL\" [$__interval]))",
+          "legendFormat": "매도 준비 (자동)",
           "queryType": "range",
           "refId": "F"
         },
@@ -1626,8 +1626,8 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SETUP_BUY\" [1h]))",
-          "legendFormat": "매수 준비 (1시간)",
+          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SETUP_BUY\" [$__interval]))",
+          "legendFormat": "매수 준비 (자동)",
           "queryType": "range",
           "refId": "G"
         }
@@ -1648,7 +1648,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 29
+        "y": 39
       },
       "id": 12,
       "options": {
@@ -1672,33 +1672,39 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | line_format \"시각={{.ts}} 시장={{.market}} 종가={{.close}} 실시간가={{.live_price}} 레짐={{.regime}} 사유={{.signal_reason}} 매수={{.buy_signal}} 매도={{.sell_signal}} 총수량={{.total_qty}} 봇수량={{.managed_qty}} 외부수량={{.external_qty}} 매도가능={{.sellable_qty}} 미실현수익률={{.unrealized_return_pct}} 실현손익_원화={{.realized_pnl_krw}}\"",
+          "expr": "{service_name=\"evergreen\"} |= \"event=\" | logfmt | event=~\"trade_marker|position_snapshot|position_sync|external_position_drift|external_order_guard|candle_signal|trade_execution|http_request_completed|api_error|ticker_price\"",
           "queryType": "range",
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "{service_name=\"evergreen\"} |= \"event=position_sync\" | logfmt | line_format \"시장={{.market}} 자산={{.asset}} 수량={{.qty}} 평균가={{.avg_price}} 상태={{.state}}\"",
-          "queryType": "range",
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "{service_name=\"evergreen\"} |= \"event=external_position_drift\" | logfmt | line_format \"시장={{.market}} 총={{.total_qty}} 봇={{.managed_qty}} 외부={{.external_qty}} 드리프트={{.drift_qty}}\"",
-          "queryType": "range",
-          "refId": "C"
         }
       ],
-      "title": "최근 신호/동기화 로그 (요약)",
+      "title": "최근 이벤트 로그 (전체)",
       "type": "logs"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "panels": [],
+      "title": "비영향",
+      "type": "row"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "id": 101,
+      "panels": [],
+      "title": "외부영향",
+      "type": "row"
     }
   ],
   "preload": false,
