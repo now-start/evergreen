@@ -46,10 +46,13 @@ public class TradingSignalMetricsService {
         int lossCount = 0;
         double winSumPct = 0.0;
         double lossSumAbsPct = 0.0;
+        double tradeReturnSumPct = 0.0;
 
         double equityCurve = 1.0;
         double peakEquityCurve = 1.0;
         double maxDrawdownPct = 0.0;
+        double roundTripPnlKrw = 0.0;
+        double roundTripCostKrw = 0.0;
 
         for (TradingOrder order : filledOrders) {
             if (order == null || order.getSide() == null) {
@@ -79,39 +82,46 @@ public class TradingSignalMetricsService {
                 continue;
             }
 
-            double proceedsAfterFee = (price * sellQty) - fee;
+            // When exchange data drifts (e.g. oversell correction), apply fee proportionally to matched quantity.
+            double effectiveFee = sellQty < qty ? fee * (sellQty / qty) : fee;
+            double proceedsAfterFee = (price * sellQty) - effectiveFee;
             double costBasis = avgCost * sellQty;
             double pnl = proceedsAfterFee - costBasis;
-            double retPct = costBasis > 0.0 ? (pnl / costBasis) * 100.0 : Double.NaN;
-
             realizedPnlKrw += pnl;
             realizedCostKrw += costBasis;
-
-            if (Double.isFinite(retPct)) {
-                tradeCount++;
-                if (retPct > 0.0) {
-                    winCount++;
-                    winSumPct += retPct;
-                } else {
-                    lossCount++;
-                    lossSumAbsPct += Math.abs(retPct);
-                }
-
-                equityCurve *= (1.0 + (retPct / 100.0));
-                if (equityCurve > peakEquityCurve) {
-                    peakEquityCurve = equityCurve;
-                }
-                if (peakEquityCurve > 0.0) {
-                    double drawdown = ((equityCurve / peakEquityCurve) - 1.0) * 100.0;
-                    if (drawdown < maxDrawdownPct) {
-                        maxDrawdownPct = drawdown;
-                    }
-                }
-            }
+            roundTripPnlKrw += pnl;
+            roundTripCostKrw += costBasis;
 
             positionQty = Math.max(0.0, positionQty - sellQty);
             if (positionQty == 0.0) {
+                double tradeReturnPct = roundTripCostKrw > 0.0
+                        ? (roundTripPnlKrw / roundTripCostKrw) * 100.0
+                        : Double.NaN;
+                if (Double.isFinite(tradeReturnPct)) {
+                    tradeCount++;
+                    tradeReturnSumPct += tradeReturnPct;
+                    if (tradeReturnPct > 0.0) {
+                        winCount++;
+                        winSumPct += tradeReturnPct;
+                    } else if (tradeReturnPct < 0.0) {
+                        lossCount++;
+                        lossSumAbsPct += Math.abs(tradeReturnPct);
+                    }
+
+                    equityCurve *= (1.0 + (tradeReturnPct / 100.0));
+                    if (equityCurve > peakEquityCurve) {
+                        peakEquityCurve = equityCurve;
+                    }
+                    if (peakEquityCurve > 0.0) {
+                        double drawdown = ((equityCurve / peakEquityCurve) - 1.0) * 100.0;
+                        if (drawdown < maxDrawdownPct) {
+                            maxDrawdownPct = drawdown;
+                        }
+                    }
+                }
                 avgCost = 0.0;
+                roundTripPnlKrw = 0.0;
+                roundTripCostKrw = 0.0;
             }
         }
 
@@ -124,14 +134,15 @@ public class TradingSignalMetricsService {
         double rrRatio = (Double.isFinite(avgWinPct) && Double.isFinite(avgLossPct) && avgLossPct > 0.0)
                 ? avgWinPct / avgLossPct
                 : Double.NaN;
-        double expectancyPct = (Double.isFinite(winRatePct) && Double.isFinite(avgWinPct) && Double.isFinite(avgLossPct))
-                ? ((winRatePct / 100.0) * avgWinPct) - ((1.0 - (winRatePct / 100.0)) * avgLossPct)
+        double expectancyPct = tradeCount > 0
+                ? tradeReturnSumPct / tradeCount
                 : Double.NaN;
+        double maxDrawdownForMetric = tradeCount > 0 ? maxDrawdownPct : Double.NaN;
 
         return new TradingExecutionMetrics(
                 realizedPnlKrw,
                 realizedReturnPct,
-                maxDrawdownPct,
+                maxDrawdownForMetric,
                 tradeCount,
                 winRatePct,
                 avgWinPct,

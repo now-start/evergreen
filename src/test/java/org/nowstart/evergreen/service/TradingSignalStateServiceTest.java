@@ -20,20 +20,23 @@ class TradingSignalStateServiceTest {
     }
 
     @Test
-    void shouldEmitCandleSignalLog_suppressesUnchangedDigestWithinInterval() {
-        boolean first = stateService.shouldEmitCandleSignalLog("KRW-BTC", "digest-1");
-        boolean second = stateService.shouldEmitCandleSignalLog("KRW-BTC", "digest-1");
+    void isDuplicateSignal_returnsFalseForDifferentTimestamp() {
+        Instant ts = Instant.parse("2026-02-20T00:00:00Z");
+        Instant next = Instant.parse("2026-02-20T00:01:00Z");
 
-        assertThat(first).isTrue();
-        assertThat(second).isFalse();
+        stateService.recordSubmittedSignal("KRW-BTC", OrderSide.BUY, ts);
+
+        assertThat(stateService.isDuplicateSignal("KRW-BTC", OrderSide.BUY, next)).isFalse();
     }
 
     @Test
-    void shouldEmitCandleSignalLog_emitsWhenDigestChanges() {
-        stateService.shouldEmitCandleSignalLog("KRW-BTC", "digest-1");
+    void isDuplicateSignal_tracksBuyAndSellSeparately() {
+        Instant ts = Instant.parse("2026-02-20T00:00:00Z");
 
-        boolean emitted = stateService.shouldEmitCandleSignalLog("KRW-BTC", "digest-2");
+        stateService.recordSubmittedSignal("KRW-BTC", OrderSide.BUY, ts);
+        stateService.recordSubmittedSignal("KRW-BTC", OrderSide.SELL, ts);
 
-        assertThat(emitted).isTrue();
+        assertThat(stateService.isDuplicateSignal("KRW-BTC", OrderSide.BUY, ts)).isTrue();
+        assertThat(stateService.isDuplicateSignal("KRW-BTC", OrderSide.SELL, ts)).isTrue();
     }
 }

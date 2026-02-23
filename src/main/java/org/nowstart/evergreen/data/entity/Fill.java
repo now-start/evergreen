@@ -1,5 +1,6 @@
 package org.nowstart.evergreen.data.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -33,10 +34,13 @@ public class Fill extends AuditableEntity {
     @MapsId("orderId")
     private TradingOrder order;
 
+    @Column(precision = 38, scale = 12)
     private BigDecimal fillQty;
 
+    @Column(precision = 38, scale = 12)
     private BigDecimal fillPrice;
 
+    @Column(precision = 38, scale = 12)
     private BigDecimal fee;
 
     @Embeddable

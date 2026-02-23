@@ -1,5 +1,6 @@
 package org.nowstart.evergreen.data.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -41,16 +42,22 @@ public class TradingOrder extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     private ExecutionMode mode;
 
+    @Column(precision = 38, scale = 12)
     private BigDecimal quantity;
 
+    @Column(precision = 38, scale = 12)
     private BigDecimal price;
 
+    @Column(precision = 38, scale = 12)
     private BigDecimal requestedNotional;
 
+    @Column(precision = 38, scale = 12)
     private BigDecimal executedVolume;
 
+    @Column(precision = 38, scale = 12)
     private BigDecimal avgExecutedPrice;
 
+    @Column(precision = 38, scale = 12)
     private BigDecimal feeAmount;
 
     @Enumerated(EnumType.STRING)

@@ -4,6 +4,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.Column;
 import java.math.BigDecimal;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -24,8 +25,10 @@ public class TradingPosition extends AuditableEntity {
     @Id
     private String symbol;
 
+    @Column(precision = 38, scale = 12)
     private BigDecimal qty;
 
+    @Column(precision = 38, scale = 12)
     private BigDecimal avgPrice;
 
     @Enumerated(EnumType.STRING)

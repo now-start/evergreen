@@ -46,7 +46,7 @@ TRADING_SCHEDULER_REGIME_BAND=0.01
 TRADING_SCHEDULER_SIGNAL_ORDER_NOTIONAL=100000
 ```
 
-## LogQL (V5 Plot)
+## LogQL (Plot)
 - Price line (`live_price` preferred, fallback to daily `close`)
 ```logql
 avg by (market) (avg_over_time({service_name="evergreen"} |= "event=ticker_price" | logfmt | label_format market="{{.market}}" | live_price!="NaN" | unwrap live_price | __error__="" [$__interval]))
@@ -94,9 +94,8 @@ max_over_time({service_name="evergreen"} |= "event=trade_execution" | logfmt | s
 - `requestId` is injected into MDC and response header `X-Request-Id`.
 - Health checks (`/actuator/health`) are excluded from request-complete logs.
 - Keep Loki labels minimal; parse business fields from log body (`logfmt`) in panel queries.
-- `event=candle_signal` is throttled to once per minute per market when state is unchanged, reducing Loki
-  cardinality/volume.
+- `event=candle_signal` is emitted every scheduler cycle per market.
 - Logs panel uses `line_format` summary output to keep payload compact.
 - `close` is based on daily candle close, so short ranges can appear flat; use `live_price` for intraday movement in time-series panels.
-- In panel `V5 가격 + 밴드 + 매수/매도 포인트`, use dual axis (`live_price`: left, regime bands/trail stop: right) to avoid flat-looking price lines caused by scale compression.
+- In panel `가격 + 밴드 + 매수/매도 포인트`, use dual axis (`live_price`: left, regime bands/trail stop: right) to avoid flat-looking price lines caused by scale compression.
 - For heavy traffic windows, keep metric queries aggregated by market (`... by (market)`) and add `| __error__=""` right after `unwrap` to avoid pipeline parse failures.

@@ -143,7 +143,52 @@
             "mode": "palette-classic"
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Win rate %"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "R/R"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Expectancy %"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 6,
@@ -345,7 +390,68 @@
             "mode": "palette-classic"
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Scheduler signals (5m)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "API errors (5m)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Scheduler errors (5m)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "D"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Position sync (5m)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "E"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Position sync errors (5m)"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 6,
@@ -722,7 +828,7 @@
           "refId": "G"
         }
       ],
-      "title": "V5 가격 + 밴드 + 매수/매도 포인트",
+      "title": "가격 + 밴드 + 매수/매도 포인트",
       "type": "timeseries"
     },
     {
@@ -778,7 +884,7 @@
           "refId": "A"
         }
       ],
-      "title": "V5 미실현 수익률 (%)",
+      "title": "미실현 수익률 (%)",
       "type": "timeseries"
     },
     {
@@ -865,31 +971,9 @@
           "legendFormat": "SELL_TRAIL (1h)",
           "queryType": "range",
           "refId": "D"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=position_sync\" [1h]))",
-          "legendFormat": "POSITION_SYNC (1h)",
-          "queryType": "range",
-          "refId": "E"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"Failed to sync exchange positions\" [1h]))",
-          "legendFormat": "POSITION_SYNC_ERROR (1h)",
-          "queryType": "range",
-          "refId": "F"
         }
       ],
-      "title": "V5 변동성 + 신호 사유 집계",
+      "title": "변동성 + 신호 사유 집계",
       "type": "timeseries"
     },
     {
@@ -937,7 +1021,7 @@
           "refId": "B"
         }
       ],
-      "title": "최근 V5 신호/동기화 로그 (요약)",
+      "title": "최근 신호/동기화 로그 (요약)",
       "type": "logs"
     }
   ],
