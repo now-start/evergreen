@@ -5,8 +5,10 @@ import java.time.Instant;
 
 public record TradingDayCandleDto(
         Instant timestamp,
+        BigDecimal open,
         BigDecimal high,
         BigDecimal low,
-        BigDecimal close
+        BigDecimal close,
+        BigDecimal volume
 ) {
 }

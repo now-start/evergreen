@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.nowstart.evergreen.data.dto.TradingDayCandleDto;
 import org.nowstart.evergreen.data.dto.TradingExecutionMetrics;
 import org.nowstart.evergreen.data.dto.TradingSignalQualityStats;
-import org.nowstart.evergreen.data.dto.TradingSignalVolatilityResult;
 import org.nowstart.evergreen.data.type.MarketRegime;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +14,7 @@ public class TradingSignalLogService {
 
     public void logTicker(
             String market,
+            String strategyVersion,
             TradingDayCandleDto signalCandle,
             double livePrice,
             MarketRegime currentRegime,
@@ -23,8 +23,9 @@ public class TradingSignalLogService {
             String signalReason
     ) {
         log.info(
-                "event=ticker_price market={} ts={} live_price={} close={} regime={} buy_signal={} sell_signal={} signal_reason={}",
+                "event=ticker_price market={} strategy_version={} ts={} live_price={} close={} regime={} buy_signal={} sell_signal={} signal_reason={}",
                 market,
+                strategyVersion,
                 signalCandle.timestamp(),
                 sanitizeMetricForLog(livePrice),
                 signalCandle.close(),
@@ -38,12 +39,11 @@ public class TradingSignalLogService {
     public void logCandleSignal(TradingSignalLogContext context) {
         TradingExecutionMetrics executionMetrics = context.executionMetrics();
         TradingSignalQualityStats signalQuality = context.signalQuality();
-        TradingSignalVolatilityResult volatility = context.volatility();
-        int signalIndex = context.signalIndex();
 
         log.info(
-                "event=candle_signal market={} ts={} close={} live_price={} regime={} prev_regime={} regime_anchor={} regime_upper={} regime_lower={} atr={} atr_trail_multiplier={} atr_trail_stop={} has_position={} position_qty={} position_avg_price={} total_qty={} unrealized_return_pct={} realized_pnl_krw={} realized_return_pct={} max_drawdown_pct={} trade_count={} trade_win_rate_pct={} trade_avg_win_pct={} trade_avg_loss_pct={} trade_rr_ratio={} trade_expectancy_pct={} signal_quality_1d_avg_pct={} signal_quality_3d_avg_pct={} signal_quality_7d_avg_pct={} volatility_is_high={} atr_price_ratio={} vol_percentile={} buy_signal={} sell_signal={} signal_reason={}",
+                "event=candle_signal market={} strategy_version={} ts={} close={} live_price={} regime={} prev_regime={} regime_anchor={} regime_upper={} regime_lower={} atr={} atr_trail_multiplier={} atr_trail_stop={} has_position={} position_qty={} position_avg_price={} total_qty={} unrealized_return_pct={} realized_pnl_krw={} realized_return_pct={} max_drawdown_pct={} trade_count={} trade_win_rate_pct={} trade_avg_win_pct={} trade_avg_loss_pct={} trade_rr_ratio={} trade_expectancy_pct={} signal_quality_1d_avg_pct={} signal_quality_3d_avg_pct={} signal_quality_7d_avg_pct={} volatility_is_high={} atr_price_ratio={} vol_percentile={} buy_signal={} sell_signal={} signal_reason={}",
                 context.market(),
+                context.strategyVersion(),
                 context.signalCandle().timestamp(),
                 context.signalCandle().close(),
                 sanitizeMetricForLog(context.livePrice()),
@@ -72,9 +72,9 @@ public class TradingSignalLogService {
                 sanitizeMetricForLog(signalQuality.avg1dPct()),
                 sanitizeMetricForLog(signalQuality.avg3dPct()),
                 sanitizeMetricForLog(signalQuality.avg7dPct()),
-                volatility.isHigh()[signalIndex],
-                sanitizeMetricForLog(volatility.atrPriceRatio()[signalIndex]),
-                sanitizeMetricForLog(volatility.percentile()[signalIndex]),
+                context.volatilityIsHigh(),
+                sanitizeMetricForLog(context.atrPriceRatio()),
+                sanitizeMetricForLog(context.volPercentile()),
                 context.buySignal(),
                 context.sellSignal(),
                 context.signalReason()
@@ -90,6 +90,7 @@ public class TradingSignalLogService {
 
     public record TradingSignalLogContext(
             String market,
+            String strategyVersion,
             TradingDayCandleDto signalCandle,
             double livePrice,
             MarketRegime currentRegime,
@@ -107,8 +108,9 @@ public class TradingSignalLogService {
             double unrealizedReturnPct,
             TradingExecutionMetrics executionMetrics,
             TradingSignalQualityStats signalQuality,
-            TradingSignalVolatilityResult volatility,
-            int signalIndex,
+            boolean volatilityIsHigh,
+            double atrPriceRatio,
+            double volPercentile,
             boolean buySignal,
             boolean sellSignal,
             String signalReason

@@ -1,6 +1,5 @@
 package org.nowstart.evergreen.data.property;
 
-import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -34,21 +33,9 @@ public record TradingProperties(
         @Positive @DefaultValue("400") int candleCount,
         // 실시간 미완성 캔들 제외 여부(백테스트 정합성)
         @DefaultValue("true") boolean closedCandleOnly,
-        // 레짐 판단용 EMA 길이
-        @Positive @DefaultValue("120") int regimeEmaLen,
-        // ATR 기간
-        @Positive @DefaultValue("18") int atrPeriod,
-        // 저변동성 구간 ATR 배수
-        @DecimalMin("0") @DefaultValue("2.0") BigDecimal atrMultLowVol,
-        // 고변동성 구간 ATR 배수
-        @DecimalMin("0") @DefaultValue("3.0") BigDecimal atrMultHighVol,
-        // 변동성 백분위 계산 lookback 길이
-        @Positive @DefaultValue("40") int volRegimeLookback,
-        // 고변동성 판정 백분위 임계값(0~1)
-        @DecimalMin(value = "0", inclusive = false) @DecimalMax("1.0") @DefaultValue("0.6") BigDecimal volRegimeThreshold,
-        // 레짐 밴드 비율
-        @DecimalMin("0") @DecimalMax("0.999999") @DefaultValue("0.01") BigDecimal regimeBand,
         // PAPER 모드 시그널 진입 시도 주문 금액(KRW 기준)
-        @DecimalMin(value = "0", inclusive = false) @DefaultValue("100000") BigDecimal signalOrderNotional
+        @DecimalMin(value = "0", inclusive = false) @DefaultValue("100000") BigDecimal signalOrderNotional,
+        // 활성 전략 버전 (예: v5)
+        @NotBlank @DefaultValue("v5") String activeStrategyVersion
 ) {
 }

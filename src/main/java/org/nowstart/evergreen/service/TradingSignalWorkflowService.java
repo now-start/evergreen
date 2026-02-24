@@ -6,13 +6,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nowstart.evergreen.data.dto.TradingDayCandleDto;
 import org.nowstart.evergreen.data.dto.TradingExecutionMetrics;
-import org.nowstart.evergreen.data.dto.TradingSignalQualityStats;
-import org.nowstart.evergreen.data.dto.TradingSignalTrailStopResult;
-import org.nowstart.evergreen.data.dto.TradingSignalVolatilityResult;
 import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.property.TradingProperties;
-import org.nowstart.evergreen.data.type.MarketRegime;
 import org.nowstart.evergreen.repository.PositionRepository;
+import org.nowstart.evergreen.strategy.StrategyRegistry;
+import org.nowstart.evergreen.strategy.TradingStrategyParamResolver;
+import org.nowstart.evergreen.strategy.core.OhlcvCandle;
+import org.nowstart.evergreen.strategy.core.PositionSnapshot;
+import org.nowstart.evergreen.strategy.core.StrategyEvaluation;
+import org.nowstart.evergreen.strategy.core.StrategyParams;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
 
@@ -24,13 +26,14 @@ public class TradingSignalWorkflowService {
 
     private final TradingProperties tradingProperties;
     private final TradingSignalMarketDataService tradingSignalMarketDataService;
-    private final TradingSignalComputationService tradingSignalComputationService;
     private final TradingSignalMetricsService tradingSignalMetricsService;
     private final TradingSignalOrderService tradingSignalOrderService;
     private final TradingPositionSyncService tradingPositionSyncService;
     private final TradingOrderGuardService tradingOrderGuardService;
     private final PositionRepository positionRepository;
     private final TradingSignalLogService tradingSignalLogService;
+    private final TradingStrategyParamResolver strategyParamResolver;
+    private final StrategyRegistry strategyRegistry;
 
     public void runOnce() {
         List<String> markets = tradingProperties.markets().stream()
@@ -77,63 +80,19 @@ public class TradingSignalWorkflowService {
         BigDecimal sellableQty = totalQty.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : totalQty;
         boolean hasPosition = sellableQty.compareTo(BigDecimal.ZERO) > 0;
 
-        double[] close = candles.stream().mapToDouble(c -> c.close().doubleValue()).toArray();
-        double[] high = candles.stream().mapToDouble(c -> c.high().doubleValue()).toArray();
-        double[] low = candles.stream().mapToDouble(c -> c.low().doubleValue()).toArray();
-
-        double[] regimeAnchor = tradingSignalComputationService.exponentialMovingAverage(close, tradingProperties.regimeEmaLen());
-        double[] atr = tradingSignalComputationService.wilderAtr(high, low, close, tradingProperties.atrPeriod());
-        MarketRegime[] regimes = tradingSignalComputationService.resolveRegimes(
-                close,
-                regimeAnchor,
-                tradingProperties.regimeBand().doubleValue()
-        );
-        TradingSignalVolatilityResult volatility = tradingSignalComputationService.resolveVolatilityStates(
-                atr,
-                close,
-                tradingProperties.volRegimeLookback(),
-                tradingProperties.volRegimeThreshold().doubleValue()
-        );
-
-        int prevIndex = signalIndex - 1;
-        MarketRegime prevRegime = regimes[prevIndex];
-        MarketRegime currentRegime = regimes[signalIndex];
-
-        boolean baseBuy = prevRegime == MarketRegime.BEAR
-                && currentRegime == MarketRegime.BULL;
-        boolean baseSell = hasPosition
-                && prevRegime == MarketRegime.BULL
-                && currentRegime == MarketRegime.BEAR;
-
-        double atrMultiplier = volatility.isHigh()[signalIndex]
-                ? tradingProperties.atrMultHighVol().doubleValue()
-                : tradingProperties.atrMultLowVol().doubleValue();
-
-        TradingSignalTrailStopResult trailStop = tradingSignalComputationService.evaluateTrailStop(
-                candles,
+        String strategyVersion = strategyParamResolver.resolveActiveStrategyVersion();
+        StrategyParams strategyParams = strategyParamResolver.resolve(strategyVersion);
+        StrategyEvaluation strategyEvaluation = strategyRegistry.evaluate(
+                strategyVersion,
+                candles.stream().map(this::toOhlcv).toList(),
                 signalIndex,
-                atr,
-                atrMultiplier,
-                totalPosition,
-                hasPosition
-        );
-        boolean buySignal = !hasPosition && baseBuy;
-        boolean sellSignal = hasPosition && (baseSell || trailStop.triggered());
-        String signalReason = tradingSignalComputationService.resolveSignalReason(
-                buySignal,
-                sellSignal,
-                baseBuy,
-                baseSell,
-                trailStop.triggered()
+                toPositionSnapshot(totalPosition, sellableQty, totalAvgPrice),
+                strategyParams
         );
 
-        double regimeAnchorValue = regimeAnchor[signalIndex];
-        double regimeUpperValue = Double.isFinite(regimeAnchorValue)
-                ? regimeAnchorValue * (1.0 + tradingProperties.regimeBand().doubleValue())
-                : Double.NaN;
-        double regimeLowerValue = Double.isFinite(regimeAnchorValue)
-                ? regimeAnchorValue * (1.0 - tradingProperties.regimeBand().doubleValue())
-                : Double.NaN;
+        boolean buySignal = strategyEvaluation.decision().buySignal();
+        boolean sellSignal = strategyEvaluation.decision().sellSignal();
+        String signalReason = strategyEvaluation.decision().signalReason();
 
         TradingExecutionMetrics executionMetrics = tradingSignalMetricsService.resolveExecutionMetrics(market);
         double livePrice = tradingSignalMarketDataService.resolveLivePrice(market, signalCandle.close().doubleValue());
@@ -143,42 +102,39 @@ public class TradingSignalWorkflowService {
                 totalAvgPrice.doubleValue()
         );
 
-        TradingSignalQualityStats signalQuality = tradingSignalComputationService.resolveSignalQualityStats(
-                close,
-                regimes,
-                signalIndex
-        );
-
         tradingSignalLogService.logTicker(
                 market,
+                strategyVersion,
                 signalCandle,
                 livePrice,
-                currentRegime,
+                strategyEvaluation.currentRegime(),
                 buySignal,
                 sellSignal,
                 signalReason
         );
         tradingSignalLogService.logCandleSignal(new TradingSignalLogService.TradingSignalLogContext(
                 market,
+                strategyVersion,
                 signalCandle,
                 livePrice,
-                currentRegime,
-                prevRegime,
-                regimeAnchorValue,
-                regimeUpperValue,
-                regimeLowerValue,
-                atr[signalIndex],
-                atrMultiplier,
-                trailStop.stopPrice(),
+                strategyEvaluation.currentRegime(),
+                strategyEvaluation.previousRegime(),
+                strategyEvaluation.regimeAnchor(),
+                strategyEvaluation.regimeUpper(),
+                strategyEvaluation.regimeLower(),
+                strategyEvaluation.atr(),
+                strategyEvaluation.atrMultiplier(),
+                strategyEvaluation.atrTrailStop(),
                 hasPosition,
                 sellableQty,
                 totalAvgPrice,
                 totalQty,
                 unrealizedReturnPct,
                 executionMetrics,
-                signalQuality,
-                volatility,
-                signalIndex,
+                strategyEvaluation.signalQuality(),
+                strategyEvaluation.volatilityHigh(),
+                strategyEvaluation.atrPriceRatio(),
+                strategyEvaluation.volPercentile(),
                 buySignal,
                 sellSignal,
                 signalReason
@@ -192,6 +148,28 @@ public class TradingSignalWorkflowService {
         if (sellSignal) {
             tradingSignalOrderService.submitSellSignal(market, signalCandle, sellableQty);
         }
+    }
+
+    private OhlcvCandle toOhlcv(TradingDayCandleDto candle) {
+        return new OhlcvCandle(
+                candle.timestamp(),
+                safe(candle.open()).doubleValue(),
+                safe(candle.high()).doubleValue(),
+                safe(candle.low()).doubleValue(),
+                safe(candle.close()).doubleValue(),
+                safe(candle.volume()).doubleValue()
+        );
+    }
+
+    private PositionSnapshot toPositionSnapshot(TradingPosition position, BigDecimal qty, BigDecimal avgPrice) {
+        if (position == null) {
+            return PositionSnapshot.EMPTY;
+        }
+        return new PositionSnapshot(
+                safe(qty).doubleValue(),
+                safe(avgPrice).doubleValue(),
+                position.getUpdatedAt()
+        );
     }
 
     private BigDecimal safe(BigDecimal value) {

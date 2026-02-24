@@ -112,11 +112,9 @@ public class TradingSignalMetricsService {
                     if (equityCurve > peakEquityCurve) {
                         peakEquityCurve = equityCurve;
                     }
-                    if (peakEquityCurve > 0.0) {
-                        double drawdown = ((equityCurve / peakEquityCurve) - 1.0) * 100.0;
-                        if (drawdown < maxDrawdownPct) {
-                            maxDrawdownPct = drawdown;
-                        }
+                    double drawdown = ((equityCurve / peakEquityCurve) - 1.0) * 100.0;
+                    if (drawdown < maxDrawdownPct) {
+                        maxDrawdownPct = drawdown;
                     }
                 }
                 avgCost = 0.0;
@@ -150,13 +148,6 @@ public class TradingSignalMetricsService {
                 rrRatio,
                 expectancyPct
         );
-    }
-
-    public double sanitizeMetricForLog(double value) {
-        if (!Double.isFinite(value)) {
-            return 0.0;
-        }
-        return value == -0.0 ? 0.0 : value;
     }
 
     private double toPositiveDouble(BigDecimal value) {

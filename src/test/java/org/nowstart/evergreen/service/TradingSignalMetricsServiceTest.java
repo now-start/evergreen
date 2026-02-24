@@ -41,14 +41,8 @@ class TradingSignalMetricsServiceTest {
                 List.of(MARKET),
                 400,
                 true,
-                120,
-                18,
-                new BigDecimal("2.0"),
-                new BigDecimal("3.0"),
-                40,
-                new BigDecimal("0.6"),
-                new BigDecimal("0.01"),
-                new BigDecimal("100000")
+                new BigDecimal("100000"),
+                "v5"
         );
         service = new TradingSignalMetricsService(tradingOrderRepository, properties);
     }

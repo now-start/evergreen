@@ -399,14 +399,8 @@ class TradingExecutionServiceTest {
                 List.of("KRW-BTC"),
                 400,
                 true,
-                200,
-                14,
-                new BigDecimal("2.0"),
-                new BigDecimal("4.0"),
-                30,
-                new BigDecimal("0.7"),
-                new BigDecimal("0.02"),
-                new BigDecimal("100000")
+                new BigDecimal("100000"),
+                "v5"
         );
 
         return new TradingExecutionService(

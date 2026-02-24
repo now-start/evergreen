@@ -1,20 +1,138 @@
-package org.nowstart.evergreen.service;
+package org.nowstart.evergreen.strategy.v5;
 
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
-import org.nowstart.evergreen.data.dto.TradingDayCandleDto;
 import org.nowstart.evergreen.data.dto.TradingSignalQualityStats;
-import org.nowstart.evergreen.data.dto.TradingSignalTrailStopResult;
-import org.nowstart.evergreen.data.dto.TradingSignalVolatilityResult;
-import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.type.MarketRegime;
-import org.springframework.stereotype.Service;
+import org.nowstart.evergreen.strategy.core.OhlcvCandle;
+import org.nowstart.evergreen.strategy.core.PositionSnapshot;
+import org.nowstart.evergreen.strategy.core.StrategyEvaluation;
+import org.nowstart.evergreen.strategy.core.StrategyInput;
+import org.nowstart.evergreen.strategy.core.StrategySignalDecision;
+import org.nowstart.evergreen.strategy.core.TradingStrategyEngine;
+import org.springframework.stereotype.Component;
 
-@Service
-public class TradingSignalComputationService {
+@Component
+public class V5StrategyEngine implements TradingStrategyEngine<V5StrategyOverrides> {
 
-    public double[] exponentialMovingAverage(double[] values, int length) {
+    public static final String VERSION = "v5";
+
+    @Override
+    public String version() {
+        return VERSION;
+    }
+
+    @Override
+    public Class<V5StrategyOverrides> parameterType() {
+        return V5StrategyOverrides.class;
+    }
+
+    @Override
+    public int requiredWarmupCandles(V5StrategyOverrides params) {
+        return Math.max(
+                Math.max(params.regimeEmaLen(), params.atrPeriod()),
+                params.volRegimeLookback()
+        );
+    }
+
+    @Override
+    public StrategyEvaluation evaluate(StrategyInput<V5StrategyOverrides> input) {
+        if (input == null || input.candles() == null || input.params() == null) {
+            throw new IllegalArgumentException("input, candles, and params are required");
+        }
+
+        List<OhlcvCandle> candles = input.candles();
+        int n = candles.size();
+        int signalIndex = input.signalIndex();
+        if (signalIndex < 1 || signalIndex >= n) {
+            throw new IllegalArgumentException("signalIndex must be in [1, candles.size()-1]");
+        }
+
+        V5StrategyOverrides params = input.params();
+        PositionSnapshot position = input.position() == null ? PositionSnapshot.EMPTY : input.position();
+        boolean hasPosition = position.hasPosition();
+        double regimeBand = params.regimeBand().doubleValue();
+        double volRegimeThreshold = params.volRegimeThreshold().doubleValue();
+        double atrMultLowVol = params.atrMultLowVol().doubleValue();
+        double atrMultHighVol = params.atrMultHighVol().doubleValue();
+
+        double[] close = candles.stream().mapToDouble(OhlcvCandle::close).toArray();
+        double[] high = candles.stream().mapToDouble(OhlcvCandle::high).toArray();
+        double[] low = candles.stream().mapToDouble(OhlcvCandle::low).toArray();
+
+        double[] regimeAnchor = exponentialMovingAverage(close, params.regimeEmaLen());
+        double[] atr = wilderAtr(high, low, close, params.atrPeriod());
+        MarketRegime[] regimes = resolveRegimes(close, regimeAnchor, regimeBand);
+        VolatilityState volatility = resolveVolatilityStates(
+                atr,
+                close,
+                params.volRegimeLookback(),
+                volRegimeThreshold
+        );
+
+        MarketRegime prevRegime = regimes[signalIndex - 1];
+        MarketRegime currentRegime = regimes[signalIndex];
+
+        boolean baseBuy = prevRegime == MarketRegime.BEAR
+                && currentRegime == MarketRegime.BULL;
+        boolean baseSell = hasPosition
+                && prevRegime == MarketRegime.BULL
+                && currentRegime == MarketRegime.BEAR;
+
+        double atrMultiplier = volatility.isHigh()[signalIndex]
+                ? atrMultHighVol
+                : atrMultLowVol;
+
+        TrailStopEvaluation trailStop = evaluateTrailStop(
+                candles,
+                signalIndex,
+                atr,
+                atrMultiplier,
+                position,
+                hasPosition
+        );
+
+        boolean buySignal = !hasPosition && baseBuy;
+        boolean sellSignal = hasPosition && (baseSell || trailStop.triggered());
+        String signalReason = resolveSignalReason(
+                buySignal,
+                sellSignal,
+                baseBuy,
+                baseSell,
+                trailStop.triggered()
+        );
+
+        double anchorValue = regimeAnchor[signalIndex];
+        double upperValue = Double.isFinite(anchorValue)
+                ? anchorValue * (1.0 + regimeBand)
+                : Double.NaN;
+        double lowerValue = Double.isFinite(anchorValue)
+                ? anchorValue * (1.0 - regimeBand)
+                : Double.NaN;
+
+        TradingSignalQualityStats signalQuality = resolveSignalQualityStats(close, regimes, signalIndex);
+
+        return new StrategyEvaluation(
+                new StrategySignalDecision(buySignal, sellSignal, signalReason),
+                prevRegime,
+                currentRegime,
+                anchorValue,
+                upperValue,
+                lowerValue,
+                atr[signalIndex],
+                atrMultiplier,
+                trailStop.stopPrice(),
+                trailStop.triggered(),
+                volatility.isHigh()[signalIndex],
+                volatility.atrPriceRatio()[signalIndex],
+                volatility.percentile()[signalIndex],
+                signalQuality
+        );
+    }
+
+    private double[] exponentialMovingAverage(double[] values, int length) {
         int n = values.length;
         double[] ema = fillNaN(n);
         if (length <= 0 || n < length) {
@@ -34,7 +152,7 @@ public class TradingSignalComputationService {
         return ema;
     }
 
-    public double[] wilderAtr(double[] high, double[] low, double[] close, int period) {
+    private double[] wilderAtr(double[] high, double[] low, double[] close, int period) {
         int n = close.length;
         double[] atr = fillNaN(n);
         if (period <= 0 || n < period) {
@@ -63,7 +181,7 @@ public class TradingSignalComputationService {
         return atr;
     }
 
-    public MarketRegime[] resolveRegimes(double[] close, double[] anchor, double regimeBand) {
+    private MarketRegime[] resolveRegimes(double[] close, double[] anchor, double regimeBand) {
         int n = close.length;
         MarketRegime[] regimes = new MarketRegime[n];
 
@@ -95,7 +213,7 @@ public class TradingSignalComputationService {
         return regimes;
     }
 
-    public TradingSignalVolatilityResult resolveVolatilityStates(double[] atr, double[] close, int lookback, double threshold) {
+    private VolatilityState resolveVolatilityStates(double[] atr, double[] close, int lookback, double threshold) {
         int n = close.length;
         double[] ratio = fillNaN(n);
         double[] percentile = fillNaN(n);
@@ -131,32 +249,32 @@ public class TradingSignalComputationService {
             high[i] = percentile[i] >= threshold;
         }
 
-        return new TradingSignalVolatilityResult(ratio, percentile, high);
+        return new VolatilityState(ratio, percentile, high);
     }
 
-    public TradingSignalTrailStopResult evaluateTrailStop(
-            List<TradingDayCandleDto> candles,
+    private TrailStopEvaluation evaluateTrailStop(
+            List<OhlcvCandle> candles,
             int signalIndex,
             double[] atr,
             double atrMultiplier,
-            TradingPosition position,
+            PositionSnapshot position,
             boolean hasPosition
     ) {
         if (!hasPosition || atrMultiplier <= 0.0 || !Double.isFinite(atr[signalIndex])) {
-            return new TradingSignalTrailStopResult(Double.NaN, false);
+            return new TrailStopEvaluation(Double.NaN, false);
         }
 
         double highestCloseSinceEntry = resolveHighestCloseSinceEntry(candles, signalIndex, position);
         if (!Double.isFinite(highestCloseSinceEntry)) {
-            return new TradingSignalTrailStopResult(Double.NaN, false);
+            return new TrailStopEvaluation(Double.NaN, false);
         }
 
         double stop = highestCloseSinceEntry - (atrMultiplier * atr[signalIndex]);
-        double currentClose = candles.get(signalIndex).close().doubleValue();
-        return new TradingSignalTrailStopResult(stop, currentClose <= stop);
+        double currentClose = candles.get(signalIndex).close();
+        return new TrailStopEvaluation(stop, currentClose <= stop);
     }
 
-    public String resolveSignalReason(
+    private String resolveSignalReason(
             boolean buySignal,
             boolean sellSignal,
             boolean baseBuy,
@@ -184,7 +302,7 @@ public class TradingSignalComputationService {
         return "NONE";
     }
 
-    public TradingSignalQualityStats resolveSignalQualityStats(double[] close, MarketRegime[] regimes, int signalIndex) {
+    private TradingSignalQualityStats resolveSignalQualityStats(double[] close, MarketRegime[] regimes, int signalIndex) {
         double sum1d = 0.0;
         double sum3d = 0.0;
         double sum7d = 0.0;
@@ -221,11 +339,11 @@ public class TradingSignalComputationService {
         );
     }
 
-    private double resolveHighestCloseSinceEntry(List<TradingDayCandleDto> candles, int signalIndex, TradingPosition position) {
+    private double resolveHighestCloseSinceEntry(List<OhlcvCandle> candles, int signalIndex, PositionSnapshot position) {
         int startIndex = 0;
 
-        if (position != null && position.getUpdatedAt() != null) {
-            LocalDate positionDate = position.getUpdatedAt().atOffset(ZoneOffset.UTC).toLocalDate();
+        if (position.updatedAt() != null) {
+            LocalDate positionDate = position.updatedAt().atOffset(ZoneOffset.UTC).toLocalDate();
             boolean found = false;
             for (int i = 0; i <= signalIndex; i++) {
                 LocalDate candleDate = candles.get(i).timestamp().atOffset(ZoneOffset.UTC).toLocalDate();
@@ -242,9 +360,9 @@ public class TradingSignalComputationService {
 
         double highest = Double.NaN;
         for (int i = startIndex; i <= signalIndex; i++) {
-            double close = candles.get(i).close().doubleValue();
-            if (!Double.isFinite(highest) || close > highest) {
-                highest = close;
+            double candleClose = candles.get(i).close();
+            if (!Double.isFinite(highest) || candleClose > highest) {
+                highest = candleClose;
             }
         }
 
@@ -253,10 +371,20 @@ public class TradingSignalComputationService {
 
     private double[] fillNaN(int size) {
         double[] values = new double[size];
-        for (int i = 0; i < size; i++) {
-            values[i] = Double.NaN;
-        }
+        Arrays.fill(values, Double.NaN);
         return values;
     }
 
+    private record VolatilityState(
+            double[] atrPriceRatio,
+            double[] percentile,
+            boolean[] isHigh
+    ) {
+    }
+
+    private record TrailStopEvaluation(
+            double stopPrice,
+            boolean triggered
+    ) {
+    }
 }
