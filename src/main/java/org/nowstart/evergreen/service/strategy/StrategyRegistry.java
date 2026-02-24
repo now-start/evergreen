@@ -1,4 +1,4 @@
-package org.nowstart.evergreen.strategy;
+package org.nowstart.evergreen.service.strategy;
 
 import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
@@ -6,12 +6,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
-import org.nowstart.evergreen.strategy.core.OhlcvCandle;
-import org.nowstart.evergreen.strategy.core.PositionSnapshot;
-import org.nowstart.evergreen.strategy.core.StrategyEvaluation;
-import org.nowstart.evergreen.strategy.core.StrategyInput;
-import org.nowstart.evergreen.strategy.core.StrategyParams;
-import org.nowstart.evergreen.strategy.core.TradingStrategyEngine;
+import org.nowstart.evergreen.service.strategy.core.OhlcvCandle;
+import org.nowstart.evergreen.service.strategy.core.PositionSnapshot;
+import org.nowstart.evergreen.service.strategy.core.StrategyEvaluation;
+import org.nowstart.evergreen.service.strategy.core.StrategyInput;
+import org.nowstart.evergreen.service.strategy.core.StrategyParams;
+import org.nowstart.evergreen.service.strategy.core.TradingStrategyEngine;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -22,7 +22,7 @@ public class StrategyRegistry {
     private Map<String, TradingStrategyEngine<? extends StrategyParams>> enginesByVersion = Map.of();
 
     @PostConstruct
-    void init() {
+    public void init() {
         Map<String, TradingStrategyEngine<? extends StrategyParams>> byVersion = new HashMap<>();
         for (TradingStrategyEngine<? extends StrategyParams> engine : engines) {
             String version = normalize(engine.version());
@@ -34,7 +34,7 @@ public class StrategyRegistry {
         enginesByVersion = Map.copyOf(byVersion);
     }
 
-    public TradingStrategyEngine<? extends StrategyParams> getRequired(String strategyVersion) {
+    private TradingStrategyEngine<? extends StrategyParams> resolveEngine(String strategyVersion) {
         TradingStrategyEngine<? extends StrategyParams> engine = enginesByVersion.get(normalize(strategyVersion));
         if (engine == null) {
             throw new IllegalStateException("No strategy engine registered for version=" + strategyVersion);
@@ -49,12 +49,12 @@ public class StrategyRegistry {
             PositionSnapshot position,
             StrategyParams params
     ) {
-        TradingStrategyEngine<? extends StrategyParams> engine = getRequired(strategyVersion);
+        TradingStrategyEngine<? extends StrategyParams> engine = resolveEngine(strategyVersion);
         return evaluateInternal(engine, candles, signalIndex, position, params);
     }
 
     public int requiredWarmupCandles(String strategyVersion, StrategyParams params) {
-        TradingStrategyEngine<? extends StrategyParams> engine = getRequired(strategyVersion);
+        TradingStrategyEngine<? extends StrategyParams> engine = resolveEngine(strategyVersion);
         return requiredWarmupInternal(engine, params);
     }
 

@@ -1,4 +1,4 @@
-package org.nowstart.evergreen.strategy.core;
+package org.nowstart.evergreen.service.strategy.core;
 
 public interface TradingStrategyEngine<P extends StrategyParams> {
 

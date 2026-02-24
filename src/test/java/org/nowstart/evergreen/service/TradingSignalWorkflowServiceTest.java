@@ -26,13 +26,13 @@ import org.nowstart.evergreen.data.type.ExecutionMode;
 import org.nowstart.evergreen.data.type.MarketRegime;
 import org.nowstart.evergreen.data.type.PositionState;
 import org.nowstart.evergreen.repository.PositionRepository;
-import org.nowstart.evergreen.strategy.StrategyRegistry;
-import org.nowstart.evergreen.strategy.TradingStrategyParamResolver;
-import org.nowstart.evergreen.strategy.core.PositionSnapshot;
-import org.nowstart.evergreen.strategy.core.StrategyEvaluation;
-import org.nowstart.evergreen.strategy.core.StrategyParams;
-import org.nowstart.evergreen.strategy.core.StrategySignalDecision;
-import org.nowstart.evergreen.strategy.v5.V5StrategyOverrides;
+import org.nowstart.evergreen.service.strategy.StrategyRegistry;
+import org.nowstart.evergreen.service.strategy.TradingStrategyParamResolver;
+import org.nowstart.evergreen.service.strategy.core.PositionSnapshot;
+import org.nowstart.evergreen.service.strategy.core.StrategyEvaluation;
+import org.nowstart.evergreen.service.strategy.core.StrategyParams;
+import org.nowstart.evergreen.service.strategy.core.StrategySignalDecision;
+import org.nowstart.evergreen.service.strategy.v5.V5StrategyOverrides;
 
 @ExtendWith(MockitoExtension.class)
 class TradingSignalWorkflowServiceTest {
@@ -120,9 +120,17 @@ class TradingSignalWorkflowServiceTest {
                 .state(PositionState.LONG)
                 .build()));
 
-        when(strategyParamResolver.resolveActiveStrategyVersion()).thenReturn("v5");
-        StrategyParams v5Params = V5StrategyOverrides.of(120, 18, 2.0, 3.0, 40, 0.6, 0.01);
-        when(strategyParamResolver.resolve("v5")).thenReturn(v5Params);
+        StrategyParams v5Params = new V5StrategyOverrides(
+                120,
+                18,
+                BigDecimal.valueOf(2.0),
+                BigDecimal.valueOf(3.0),
+                40,
+                BigDecimal.valueOf(0.6),
+                BigDecimal.valueOf(0.01)
+        );
+        when(strategyParamResolver.resolveActive())
+                .thenReturn(new TradingStrategyParamResolver.ActiveStrategy("v5", v5Params));
         when(strategyRegistry.evaluate(eq("v5"), anyList(), eq(1), any(PositionSnapshot.class), eq(v5Params)))
                 .thenReturn(new StrategyEvaluation(
                         new StrategySignalDecision(false, true, "SELL_REGIME_TRANSITION"),

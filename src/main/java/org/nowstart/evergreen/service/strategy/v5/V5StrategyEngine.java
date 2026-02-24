@@ -1,4 +1,4 @@
-package org.nowstart.evergreen.strategy.v5;
+package org.nowstart.evergreen.service.strategy.v5;
 
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -6,12 +6,12 @@ import java.util.Arrays;
 import java.util.List;
 import org.nowstart.evergreen.data.dto.TradingSignalQualityStats;
 import org.nowstart.evergreen.data.type.MarketRegime;
-import org.nowstart.evergreen.strategy.core.OhlcvCandle;
-import org.nowstart.evergreen.strategy.core.PositionSnapshot;
-import org.nowstart.evergreen.strategy.core.StrategyEvaluation;
-import org.nowstart.evergreen.strategy.core.StrategyInput;
-import org.nowstart.evergreen.strategy.core.StrategySignalDecision;
-import org.nowstart.evergreen.strategy.core.TradingStrategyEngine;
+import org.nowstart.evergreen.service.strategy.core.OhlcvCandle;
+import org.nowstart.evergreen.service.strategy.core.PositionSnapshot;
+import org.nowstart.evergreen.service.strategy.core.StrategyEvaluation;
+import org.nowstart.evergreen.service.strategy.core.StrategyInput;
+import org.nowstart.evergreen.service.strategy.core.StrategySignalDecision;
+import org.nowstart.evergreen.service.strategy.core.TradingStrategyEngine;
 import org.springframework.stereotype.Component;
 
 @Component

@@ -1,4 +1,4 @@
-package org.nowstart.evergreen.strategy.core;
+package org.nowstart.evergreen.service.strategy.core;
 
 import org.nowstart.evergreen.data.dto.TradingSignalQualityStats;
 import org.nowstart.evergreen.data.type.MarketRegime;

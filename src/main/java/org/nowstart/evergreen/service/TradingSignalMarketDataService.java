@@ -14,9 +14,8 @@ import org.nowstart.evergreen.data.dto.UpbitDayCandleResponse;
 import org.nowstart.evergreen.data.dto.UpbitTickerResponse;
 import org.nowstart.evergreen.data.property.TradingProperties;
 import org.nowstart.evergreen.repository.UpbitFeignClient;
-import org.nowstart.evergreen.strategy.StrategyRegistry;
-import org.nowstart.evergreen.strategy.TradingStrategyParamResolver;
-import org.nowstart.evergreen.strategy.core.StrategyParams;
+import org.nowstart.evergreen.service.strategy.StrategyRegistry;
+import org.nowstart.evergreen.service.strategy.TradingStrategyParamResolver;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
 
@@ -32,9 +31,11 @@ public class TradingSignalMarketDataService {
     private final StrategyRegistry strategyRegistry;
 
     public List<TradingDayCandleDto> fetchDailyCandles(String market) {
-        String activeVersion = strategyParamResolver.resolveActiveStrategyVersion();
-        StrategyParams strategyParams = strategyParamResolver.resolve(activeVersion);
-        int strategyWarmup = strategyRegistry.requiredWarmupCandles(activeVersion, strategyParams);
+        TradingStrategyParamResolver.ActiveStrategy activeStrategy = strategyParamResolver.resolveActive();
+        int strategyWarmup = strategyRegistry.requiredWarmupCandles(
+                activeStrategy.version(),
+                activeStrategy.params()
+        );
         int required = Math.max(
                 tradingProperties.candleCount(),
                 strategyWarmup + 2

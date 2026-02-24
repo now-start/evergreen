@@ -9,12 +9,11 @@ import org.nowstart.evergreen.data.dto.TradingExecutionMetrics;
 import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.property.TradingProperties;
 import org.nowstart.evergreen.repository.PositionRepository;
-import org.nowstart.evergreen.strategy.StrategyRegistry;
-import org.nowstart.evergreen.strategy.TradingStrategyParamResolver;
-import org.nowstart.evergreen.strategy.core.OhlcvCandle;
-import org.nowstart.evergreen.strategy.core.PositionSnapshot;
-import org.nowstart.evergreen.strategy.core.StrategyEvaluation;
-import org.nowstart.evergreen.strategy.core.StrategyParams;
+import org.nowstart.evergreen.service.strategy.StrategyRegistry;
+import org.nowstart.evergreen.service.strategy.TradingStrategyParamResolver;
+import org.nowstart.evergreen.service.strategy.core.OhlcvCandle;
+import org.nowstart.evergreen.service.strategy.core.PositionSnapshot;
+import org.nowstart.evergreen.service.strategy.core.StrategyEvaluation;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
 
@@ -80,14 +79,13 @@ public class TradingSignalWorkflowService {
         BigDecimal sellableQty = totalQty.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : totalQty;
         boolean hasPosition = sellableQty.compareTo(BigDecimal.ZERO) > 0;
 
-        String strategyVersion = strategyParamResolver.resolveActiveStrategyVersion();
-        StrategyParams strategyParams = strategyParamResolver.resolve(strategyVersion);
+        TradingStrategyParamResolver.ActiveStrategy activeStrategy = strategyParamResolver.resolveActive();
         StrategyEvaluation strategyEvaluation = strategyRegistry.evaluate(
-                strategyVersion,
+                activeStrategy.version(),
                 candles.stream().map(this::toOhlcv).toList(),
                 signalIndex,
                 toPositionSnapshot(totalPosition, sellableQty, totalAvgPrice),
-                strategyParams
+                activeStrategy.params()
         );
 
         boolean buySignal = strategyEvaluation.decision().buySignal();
@@ -104,7 +102,7 @@ public class TradingSignalWorkflowService {
 
         tradingSignalLogService.logTicker(
                 market,
-                strategyVersion,
+                activeStrategy.version(),
                 signalCandle,
                 livePrice,
                 strategyEvaluation.currentRegime(),
@@ -114,7 +112,7 @@ public class TradingSignalWorkflowService {
         );
         tradingSignalLogService.logCandleSignal(new TradingSignalLogService.TradingSignalLogContext(
                 market,
-                strategyVersion,
+                activeStrategy.version(),
                 signalCandle,
                 livePrice,
                 strategyEvaluation.currentRegime(),
