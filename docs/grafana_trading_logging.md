@@ -25,7 +25,7 @@
       `trade_expectancy_pct`, `buy_signal`, `sell_signal`, `signal_reason`, `diagnostics`, `diagnostics_schema`
   - non-finite numeric metrics are normalized to `0.0` in logs for LogQL compatibility
 - `event=strategy_diagnostic`
-    - fields: `market`, `strategy_version`, `ts`, `key`, `type`, `unit`, `value`, `buy_signal`, `sell_signal`,
+    - fields: `market`, `strategy_version`, `ts`, `key`, `label`, `type`, `unit`, `value`, `buy_signal`, `sell_signal`,
       `signal_reason`
     - strategy-specific numeric/boolean 보조지표가 key-value 시계열로 출력됨
 - `event=trade_execution`
@@ -67,7 +67,7 @@ or avg by (market) (avg_over_time({service_name="evergreen"} |= "event=candle_si
 
 - Strategy diagnostics (all indicators, auto)
 ```logql
-avg by (market, key) (avg_over_time({service_name="evergreen"} |= "event=strategy_diagnostic" | logfmt | label_format market="{{.market}}" | label_format key="{{.key}}" | type=~"NUMBER|BOOLEAN" | unwrap value | __error__="" [$__interval]))
+avg by (market, label) (avg_over_time({service_name="evergreen"} |= "event=strategy_diagnostic" | logfmt | label_format market="{{.market}}" | label_format label="{{.label}}" | type=~"NUMBER|BOOLEAN" | unwrap value | __error__="" [$__interval]))
 ```
 - Buy/Sell markers (point series)
 ```logql

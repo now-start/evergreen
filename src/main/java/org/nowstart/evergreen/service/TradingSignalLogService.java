@@ -82,11 +82,12 @@ public class TradingSignalLogService {
                     : sanitizeMetricForLog(((Number) diagnostic.value()).doubleValue());
 
             log.info(
-                    "event=strategy_diagnostic market={} strategy_version={} ts={} key={} type={} unit={} value={} buy_signal={} sell_signal={} signal_reason={}",
+                    "event=strategy_diagnostic market={} strategy_version={} ts={} key={} label=\"{}\" type={} unit={} value={} buy_signal={} sell_signal={} signal_reason={}",
                     context.market(),
                     context.strategyVersion(),
                     context.signalCandle().timestamp(),
                     diagnostic.key(),
+                    escape(diagnostic.label()),
                     diagnostic.type().name(),
                     diagnostic.unit(),
                     value,

@@ -937,8 +937,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
+                  "mode": "palette-classic"
                 }
               },
               {
@@ -964,8 +963,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
+                  "mode": "palette-classic"
                 }
               },
               {
@@ -991,8 +989,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "light-blue",
-                  "mode": "fixed"
+                  "mode": "palette-classic"
                 }
               },
               {
@@ -1022,8 +1019,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "yellow",
-                  "mode": "fixed"
+                  "mode": "palette-classic"
                 }
               },
               {
@@ -1079,8 +1075,8 @@
           },
           "direction": "backward",
           "editorMode": "code",
-          "expr": "avg by (market, key) (avg_over_time({service_name=\"evergreen\"} |= \"event=strategy_diagnostic\" | logfmt | label_format market=\"{{.market}}\" | label_format key=\"{{.key}}\" | type=~\"NUMBER|BOOLEAN\" | unwrap value | __error__=\"\" [$__interval]))",
-          "legendFormat": "{{market}} 지표 {{key}}",
+          "expr": "avg by (market, label) (avg_over_time({service_name=\"evergreen\"} |= \"event=strategy_diagnostic\" | logfmt | label_format market=\"{{.market}}\" | label_format label=\"{{.label}}\" | type=~\"NUMBER|BOOLEAN\" | unwrap value | __error__=\"\" [$__interval]))",
+          "legendFormat": "{{market}} 지표 {{label}}",
           "queryType": "range",
           "refId": "B"
         },
