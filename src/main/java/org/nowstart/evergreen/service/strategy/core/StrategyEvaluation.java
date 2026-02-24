@@ -1,22 +1,16 @@
 package org.nowstart.evergreen.service.strategy.core;
 
-import org.nowstart.evergreen.data.dto.TradingSignalQualityStats;
-import org.nowstart.evergreen.data.type.MarketRegime;
+import java.util.List;
 
 public record StrategyEvaluation(
         StrategySignalDecision decision,
-        MarketRegime previousRegime,
-        MarketRegime currentRegime,
-        double regimeAnchor,
-        double regimeUpper,
-        double regimeLower,
-        double atr,
-        double atrMultiplier,
-        double atrTrailStop,
-        boolean trailStopTriggered,
-        boolean volatilityHigh,
-        double atrPriceRatio,
-        double volPercentile,
-        TradingSignalQualityStats signalQuality
+        List<StrategyDiagnostic> diagnostics
 ) {
+
+    public StrategyEvaluation {
+        if (decision == null) {
+            throw new IllegalArgumentException("decision is required");
+        }
+        diagnostics = diagnostics == null ? List.of() : List.copyOf(diagnostics);
+    }
 }

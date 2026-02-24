@@ -90,7 +90,6 @@ public class TradingSignalWorkflowService {
 
         boolean buySignal = strategyEvaluation.decision().buySignal();
         boolean sellSignal = strategyEvaluation.decision().sellSignal();
-        String signalReason = strategyEvaluation.decision().signalReason();
 
         TradingExecutionMetrics executionMetrics = tradingSignalMetricsService.resolveExecutionMetrics(market);
         double livePrice = tradingSignalMarketDataService.resolveLivePrice(market, signalCandle.close().doubleValue());
@@ -105,37 +104,20 @@ public class TradingSignalWorkflowService {
                 activeStrategy.version(),
                 signalCandle,
                 livePrice,
-                strategyEvaluation.currentRegime(),
-                buySignal,
-                sellSignal,
-                signalReason
+                strategyEvaluation
         );
         tradingSignalLogService.logCandleSignal(new TradingSignalLogService.TradingSignalLogContext(
                 market,
                 activeStrategy.version(),
                 signalCandle,
                 livePrice,
-                strategyEvaluation.currentRegime(),
-                strategyEvaluation.previousRegime(),
-                strategyEvaluation.regimeAnchor(),
-                strategyEvaluation.regimeUpper(),
-                strategyEvaluation.regimeLower(),
-                strategyEvaluation.atr(),
-                strategyEvaluation.atrMultiplier(),
-                strategyEvaluation.atrTrailStop(),
                 hasPosition,
                 sellableQty,
                 totalAvgPrice,
                 totalQty,
                 unrealizedReturnPct,
                 executionMetrics,
-                strategyEvaluation.signalQuality(),
-                strategyEvaluation.volatilityHigh(),
-                strategyEvaluation.atrPriceRatio(),
-                strategyEvaluation.volPercentile(),
-                buySignal,
-                sellSignal,
-                signalReason
+                strategyEvaluation
         ));
 
         if (buySignal) {

@@ -39,8 +39,8 @@ class V5StrategyEngineTest {
         assertThat(evaluation.decision().buySignal()).isTrue();
         assertThat(evaluation.decision().sellSignal()).isFalse();
         assertThat(evaluation.decision().signalReason()).isEqualTo("BUY_REGIME_TRANSITION");
-        assertThat(evaluation.previousRegime().name()).isEqualTo("BEAR");
-        assertThat(evaluation.currentRegime().name()).isEqualTo("BULL");
+        assertThat(findTextDiagnostic(evaluation, "regime.previous")).isEqualTo("BEAR");
+        assertThat(findTextDiagnostic(evaluation, "regime.current")).isEqualTo("BULL");
     }
 
     @Test
@@ -81,9 +81,9 @@ class V5StrategyEngineTest {
         PositionSnapshot position = new PositionSnapshot(1.0, 100.0, Instant.parse("2026-01-01T00:00:00Z"));
         StrategyEvaluation evaluation = engine.evaluate(new StrategyInput<>(candles, 4, position, trailStopParams));
 
-        assertThat(evaluation.previousRegime().name()).isEqualTo("BULL");
-        assertThat(evaluation.currentRegime().name()).isEqualTo("BULL");
-        assertThat(evaluation.trailStopTriggered()).isTrue();
+        assertThat(findTextDiagnostic(evaluation, "regime.previous")).isEqualTo("BULL");
+        assertThat(findTextDiagnostic(evaluation, "regime.current")).isEqualTo("BULL");
+        assertThat(findBooleanDiagnostic(evaluation)).isTrue();
         assertThat(evaluation.decision().sellSignal()).isTrue();
         assertThat(evaluation.decision().signalReason()).isEqualTo("SELL_TRAIL_STOP");
     }
@@ -95,5 +95,21 @@ class V5StrategyEngineTest {
 
     private OhlcvCandle candle(String ts, double open, double high, double low, double close) {
         return new OhlcvCandle(Instant.parse(ts), open, high, low, close, 1000.0);
+    }
+
+    private String findTextDiagnostic(StrategyEvaluation evaluation, String key) {
+        return evaluation.diagnostics().stream()
+                .filter(item -> key.equals(item.key()))
+                .map(item -> item.value().toString())
+                .findFirst()
+                .orElse("UNKNOWN");
+    }
+
+    private boolean findBooleanDiagnostic(StrategyEvaluation evaluation) {
+        return evaluation.diagnostics().stream()
+                .filter(item -> "trail_stop.triggered".equals(item.key()))
+                .map(item -> item.value() instanceof Boolean bool && bool)
+                .findFirst()
+                .orElse(false);
     }
 }

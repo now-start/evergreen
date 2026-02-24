@@ -19,16 +19,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.nowstart.evergreen.data.dto.TradingDayCandleDto;
 import org.nowstart.evergreen.data.dto.TradingExecutionMetrics;
-import org.nowstart.evergreen.data.dto.TradingSignalQualityStats;
 import org.nowstart.evergreen.data.entity.TradingPosition;
 import org.nowstart.evergreen.data.property.TradingProperties;
 import org.nowstart.evergreen.data.type.ExecutionMode;
-import org.nowstart.evergreen.data.type.MarketRegime;
 import org.nowstart.evergreen.data.type.PositionState;
 import org.nowstart.evergreen.repository.PositionRepository;
 import org.nowstart.evergreen.service.strategy.StrategyRegistry;
 import org.nowstart.evergreen.service.strategy.TradingStrategyParamResolver;
 import org.nowstart.evergreen.service.strategy.core.PositionSnapshot;
+import org.nowstart.evergreen.service.strategy.core.StrategyDiagnostic;
 import org.nowstart.evergreen.service.strategy.core.StrategyEvaluation;
 import org.nowstart.evergreen.service.strategy.core.StrategyParams;
 import org.nowstart.evergreen.service.strategy.core.StrategySignalDecision;
@@ -134,19 +133,10 @@ class TradingSignalWorkflowServiceTest {
         when(strategyRegistry.evaluate(eq("v5"), anyList(), eq(1), any(PositionSnapshot.class), eq(v5Params)))
                 .thenReturn(new StrategyEvaluation(
                         new StrategySignalDecision(false, true, "SELL_REGIME_TRANSITION"),
-                        MarketRegime.BULL,
-                        MarketRegime.BEAR,
-                        95.0,
-                        95.95,
-                        94.05,
-                        1.0,
-                        2.0,
-                        Double.NaN,
-                        false,
-                        false,
-                        0.01,
-                        0.2,
-                        new TradingSignalQualityStats(Double.NaN, Double.NaN, Double.NaN)
+                        List.of(
+                                StrategyDiagnostic.text("regime.current", "Current Regime", "", "BEAR"),
+                                StrategyDiagnostic.text("regime.previous", "Previous Regime", "", "BULL")
+                        )
                 ));
         when(tradingSignalMetricsService.resolveExecutionMetrics("KRW-BTC")).thenReturn(TradingExecutionMetrics.empty());
 

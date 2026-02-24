@@ -384,135 +384,14 @@
               }
             ]
           },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 4,
-        "x": 12,
-        "y": 1
-      },
-      "id": 4,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | signal_quality_1d_avg_pct!=\"NaN\" | unwrap signal_quality_1d_avg_pct | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
-          "legendFormat": "{{market}} 1일",
-          "queryType": "range",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | signal_quality_3d_avg_pct!=\"NaN\" | unwrap signal_quality_3d_avg_pct | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
-          "legendFormat": "{{market}} 3일",
-          "queryType": "range",
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | signal_quality_7d_avg_pct!=\"NaN\" | unwrap signal_quality_7d_avg_pct | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap trade_count | __error__=\"\" [$__interval])) * 0)",
-          "legendFormat": "{{market}} 7일",
-          "queryType": "range",
-          "refId": "C"
-        }
-      ],
-      "title": "신호 품질 (1일/3일/7일 평균)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "loki"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 2,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "showValues": false,
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
           "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 6,
-        "w": 4,
-        "x": 16,
+        "w": 6,
+        "x": 12,
         "y": 1
       },
       "id": 5,
@@ -636,8 +515,8 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 4,
-        "x": 20,
+        "w": 6,
+        "x": 18,
         "y": 1
       },
       "id": 6,
@@ -784,7 +663,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 25
+        "y": 17
       },
       "id": 13,
       "options": {
@@ -882,7 +761,7 @@
         "h": 6,
         "w": 6,
         "x": 12,
-        "y": 25
+        "y": 17
       },
       "id": 14,
       "options": {
@@ -951,7 +830,7 @@
         "h": 6,
         "w": 6,
         "x": 18,
-        "y": 25
+        "y": 17
       },
       "id": 15,
       "options": {
@@ -1137,7 +1016,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": ".* 기준선"
+              "options": ".* 지표 .*"
             },
             "properties": [
               {
@@ -1150,75 +1029,6 @@
               {
                 "id": "custom.lineWidth",
                 "value": 1
-              },
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".* 상단밴드"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "semi-dark-orange",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 1
-              },
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".* 하단밴드"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "semi-dark-orange",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 1
-              },
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".* 트레일링스탑"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 2
               },
               {
                 "id": "custom.axisPlacement",
@@ -1240,7 +1050,7 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": false
+          "showLegend": true
         },
         "tooltip": {
           "hideZeros": false,
@@ -1269,46 +1079,10 @@
           },
           "direction": "backward",
           "editorMode": "code",
-          "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_anchor | __error__=\"\" [$__interval]))",
-          "legendFormat": "{{market}} 기준선",
+          "expr": "avg by (market, key) (avg_over_time({service_name=\"evergreen\"} |= \"event=strategy_diagnostic\" | logfmt | label_format market=\"{{.market}}\" | label_format key=\"{{.key}}\" | type=~\"NUMBER|BOOLEAN\" | unwrap value | __error__=\"\" [$__interval]))",
+          "legendFormat": "{{market}} 지표 {{key}}",
           "queryType": "range",
           "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "direction": "backward",
-          "editorMode": "code",
-          "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_upper | __error__=\"\" [$__interval]))",
-          "legendFormat": "{{market}} 상단밴드",
-          "queryType": "range",
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "direction": "backward",
-          "editorMode": "code",
-          "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap regime_lower | __error__=\"\" [$__interval]))",
-          "legendFormat": "{{market}} 하단밴드",
-          "queryType": "range",
-          "refId": "D"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "direction": "backward",
-          "editorMode": "code",
-          "expr": "avg by (market) (avg_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | atr_trail_stop!=\"NaN\" | unwrap atr_trail_stop | __error__=\"\" [$__interval]))",
-          "legendFormat": "{{market}} 트레일링스탑",
-          "queryType": "range",
-          "refId": "E"
         },
         {
           "datasource": {
@@ -1335,7 +1109,7 @@
           "refId": "G"
         }
       ],
-      "title": "가격 + 밴드 + 매수/매도 포인트",
+      "title": "가격 + 모든 보조지표(자동) + 매수/매도 포인트",
       "type": "timeseries"
     },
     {
@@ -1404,7 +1178,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 23
       },
       "id": 9,
       "options": {
@@ -1443,204 +1217,6 @@
         "uid": "loki"
       },
       "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 2,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "showValues": false,
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "percentunit"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "A"
-            },
-            "properties": [
-              {
-                "id": "custom.axisPlacement",
-                "value": "left"
-              },
-              {
-                "id": "unit",
-                "value": "percentunit"
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*\\(자동\\)"
-            },
-            "properties": [
-              {
-                "id": "custom.axisPlacement",
-                "value": "right"
-              },
-              {
-                "id": "unit",
-                "value": "short"
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 16
-      },
-      "id": 10,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | unwrap vol_percentile | __error__=\"\" [$__interval])) or (max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=ticker_price\" | logfmt | label_format market=\"{{.market}}\" | unwrap close | __error__=\"\" [$__interval])) * 0)",
-          "legendFormat": "{{market}} 변동성 백분위",
-          "queryType": "range",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"BUY_REGIME_TRANSITION\" [$__interval]))",
-          "legendFormat": "매수 (자동)",
-          "queryType": "range",
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SELL_REGIME_TRANSITION\" [$__interval]))",
-          "legendFormat": "매도(레짐전환) (자동)",
-          "queryType": "range",
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SELL_TRAIL_STOP\" [$__interval]))",
-          "legendFormat": "매도(트레일링) (자동)",
-          "queryType": "range",
-          "refId": "D"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SELL_REGIME_AND_TRAIL_STOP\" [$__interval]))",
-          "legendFormat": "매도(레짐+트레일) (자동)",
-          "queryType": "range",
-          "refId": "E"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SETUP_SELL\" [$__interval]))",
-          "legendFormat": "매도 준비 (자동)",
-          "queryType": "range",
-          "refId": "F"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | signal_reason=\"SETUP_BUY\" [$__interval]))",
-          "legendFormat": "매수 준비 (자동)",
-          "queryType": "range",
-          "refId": "G"
-        }
-      ],
-      "title": "변동성 + 신호 사유 집계",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "loki"
-      },
-      "fieldConfig": {
         "defaults": {},
         "overrides": []
       },
@@ -1648,7 +1224,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 39
+        "y": 31
       },
       "id": 12,
       "options": {
@@ -1672,7 +1248,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{service_name=\"evergreen\"} |= \"event=\" | logfmt | event=~\"trade_marker|position_snapshot|position_sync|external_position_drift|external_order_guard|candle_signal|trade_execution|http_request_completed|api_error|ticker_price\"",
+          "expr": "{service_name=\"evergreen\"} |= \"event=\" | logfmt | event=~\"trade_marker|position_snapshot|position_sync|external_position_drift|external_order_guard|candle_signal|strategy_diagnostic|trade_execution|http_request_completed|api_error|ticker_price\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -1699,7 +1275,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 16
       },
       "id": 101,
       "panels": [],
@@ -1726,5 +1302,5 @@
   "timezone": "",
   "title": "에버그린 트레이딩",
   "uid": "evergreen-trading-plot",
-  "version": 49
+  "version": 50
 }
