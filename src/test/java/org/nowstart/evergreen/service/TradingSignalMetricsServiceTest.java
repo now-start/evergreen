@@ -1,10 +1,12 @@
 package org.nowstart.evergreen.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -137,4 +139,144 @@ class TradingSignalMetricsServiceTest {
     private void assertClose(double actual, double expected) {
         assertThat(Math.abs(actual - expected)).isLessThan(1.0e-9);
     }
+
+    @Test
+    void resolveUnrealizedReturnPct_returnsNaNForInvalidInputs() {
+        assertThat(service.resolveUnrealizedReturnPct(false, 120.0, 100.0)).isNaN();
+        assertThat(service.resolveUnrealizedReturnPct(true, Double.NaN, 100.0)).isNaN();
+        assertThat(service.resolveUnrealizedReturnPct(true, 120.0, 0.0)).isNaN();
+    }
+
+    @Test
+    void resolveUnrealizedReturnPct_returnsPercentForValidInputs() {
+        assertThat(service.resolveUnrealizedReturnPct(true, 120.0, 100.0)).isCloseTo(20.0, within(1.0e-9));
+    }
+
+    @Test
+    void resolveExecutionMetrics_returnsEmptyWhenNoFilledOrders() {
+        when(tradingOrderRepository.findBySymbolAndModeAndStatusOrderByCreatedAtAsc(
+                MARKET,
+                ExecutionMode.PAPER,
+                OrderStatus.FILLED
+        )).thenReturn(List.of());
+
+        TradingExecutionMetrics metrics = service.resolveExecutionMetrics(MARKET);
+
+        assertThat(metrics.tradeCount()).isZero();
+        assertThat(metrics.realizedPnlKrw()).isNaN();
+        assertThat(metrics.realizedReturnPct()).isNaN();
+        assertThat(metrics.maxDrawdownPct()).isNaN();
+        assertThat(metrics.winRatePct()).isNaN();
+        assertThat(metrics.avgWinPct()).isNaN();
+        assertThat(metrics.avgLossPct()).isNaN();
+        assertThat(metrics.rrRatio()).isNaN();
+        assertThat(metrics.expectancyPct()).isNaN();
+    }
+
+    @Test
+    void resolveExecutionMetrics_skipsMalformedOrders() {
+        ArrayList<TradingOrder> orders = new ArrayList<>();
+        orders.add(null);
+        orders.add(TradingOrder.builder()
+                .clientOrderId("null-side")
+                .symbol(MARKET)
+                .mode(ExecutionMode.PAPER)
+                .status(OrderStatus.FILLED)
+                .side(null)
+                .executedVolume(BigDecimal.ONE)
+                .avgExecutedPrice(BigDecimal.valueOf(100.0))
+                .feeAmount(null)
+                .build());
+        orders.add(TradingOrder.builder()
+                .clientOrderId("zero-qty")
+                .symbol(MARKET)
+                .mode(ExecutionMode.PAPER)
+                .status(OrderStatus.FILLED)
+                .side(OrderSide.SELL)
+                .executedVolume(BigDecimal.ZERO)
+                .avgExecutedPrice(BigDecimal.valueOf(100.0))
+                .feeAmount(BigDecimal.ZERO)
+                .build());
+        orders.add(TradingOrder.builder()
+                .clientOrderId("null-price")
+                .symbol(MARKET)
+                .mode(ExecutionMode.PAPER)
+                .status(OrderStatus.FILLED)
+                .side(OrderSide.BUY)
+                .executedVolume(BigDecimal.ONE)
+                .avgExecutedPrice(null)
+                .feeAmount(null)
+                .build());
+        orders.add(TradingOrder.builder()
+                .clientOrderId("valid-buy")
+                .symbol(MARKET)
+                .mode(ExecutionMode.PAPER)
+                .status(OrderStatus.FILLED)
+                .side(OrderSide.BUY)
+                .executedVolume(new BigDecimal("0.1"))
+                .avgExecutedPrice(new BigDecimal("150"))
+                .feeAmount(null)
+                .build());
+
+        when(tradingOrderRepository.findBySymbolAndModeAndStatusOrderByCreatedAtAsc(
+                MARKET,
+                ExecutionMode.PAPER,
+                OrderStatus.FILLED
+        )).thenReturn(orders);
+
+        TradingExecutionMetrics metrics = service.resolveExecutionMetrics(MARKET);
+
+        assertThat(metrics.tradeCount()).isZero();
+        assertThat(metrics.realizedPnlKrw()).isEqualTo(0.0);
+    }
+
+    @Test
+    void resolveExecutionMetrics_skipsSellWhenNoOpenPositionExists() {
+        when(tradingOrderRepository.findBySymbolAndModeAndStatusOrderByCreatedAtAsc(
+                MARKET,
+                ExecutionMode.PAPER,
+                OrderStatus.FILLED
+        )).thenReturn(List.of(
+                filledOrder("s-only", OrderSide.SELL, "0.2", "120")
+        ));
+
+        TradingExecutionMetrics metrics = service.resolveExecutionMetrics(MARKET);
+
+        assertThat(metrics.tradeCount()).isZero();
+        assertThat(metrics.realizedPnlKrw()).isEqualTo(0.0);
+        assertThat(metrics.realizedReturnPct()).isNaN();
+    }
+
+    @Test
+    void resolveExecutionMetrics_skipsOrderWhenQuantityOrPriceIsNonPositive() {
+        when(tradingOrderRepository.findBySymbolAndModeAndStatusOrderByCreatedAtAsc(
+                MARKET,
+                ExecutionMode.PAPER,
+                OrderStatus.FILLED
+        )).thenReturn(List.of(
+                TradingOrder.builder()
+                        .clientOrderId("bad-buy")
+                        .symbol(MARKET)
+                        .mode(ExecutionMode.PAPER)
+                        .status(OrderStatus.FILLED)
+                        .side(OrderSide.BUY)
+                        .executedVolume(BigDecimal.ZERO)
+                        .avgExecutedPrice(new BigDecimal("100"))
+                        .feeAmount(BigDecimal.ZERO)
+                        .build()
+        ));
+
+        TradingExecutionMetrics metrics = service.resolveExecutionMetrics(MARKET);
+
+        assertThat(metrics.tradeCount()).isZero();
+        assertThat(metrics.realizedPnlKrw()).isEqualTo(0.0);
+        assertThat(metrics.realizedReturnPct()).isNaN();
+        assertThat(metrics.maxDrawdownPct()).isNaN();
+        assertThat(metrics.winRatePct()).isNaN();
+        assertThat(metrics.avgWinPct()).isNaN();
+        assertThat(metrics.avgLossPct()).isNaN();
+        assertThat(metrics.rrRatio()).isNaN();
+        assertThat(metrics.expectancyPct()).isNaN();
+    }
+
 }

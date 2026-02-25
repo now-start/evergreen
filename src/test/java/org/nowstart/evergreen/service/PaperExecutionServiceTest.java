@@ -125,6 +125,35 @@ class PaperExecutionServiceTest {
     }
 
     @Test
+    void execute_sellOrderCanRemainLongWhenQuantityRemains() {
+        TradingOrder order = TradingOrder.builder()
+                .clientOrderId("paper-order-2b")
+                .symbol("KRW-BTC")
+                .side(OrderSide.SELL)
+                .quantity(new BigDecimal("0.2"))
+                .price(new BigDecimal("100"))
+                .status(OrderStatus.CREATED)
+                .build();
+
+        TradingPosition current = TradingPosition.builder()
+                .symbol("KRW-BTC")
+                .qty(new BigDecimal("0.5"))
+                .avgPrice(new BigDecimal("90"))
+                .state(PositionState.LONG)
+                .build();
+
+        when(positionRepository.findBySymbol("KRW-BTC")).thenReturn(Optional.of(current));
+
+        paperExecutionService.execute(order);
+
+        ArgumentCaptor<TradingPosition> positionCaptor = ArgumentCaptor.forClass(TradingPosition.class);
+        verify(positionRepository).save(positionCaptor.capture());
+        TradingPosition savedPosition = positionCaptor.getValue();
+        assertThat(savedPosition.getQty()).isEqualByComparingTo("0.3");
+        assertThat(savedPosition.getState()).isEqualTo(PositionState.LONG);
+    }
+
+    @Test
     void execute_derivesQuantityFromRequestedNotionalWhenQuantityIsNull() {
         TradingOrder order = TradingOrder.builder()
                 .clientOrderId("paper-order-3")

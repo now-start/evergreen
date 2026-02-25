@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -115,6 +116,90 @@ class TradingPositionSyncServiceTest {
         verify(upbitFeignClient, never()).getAccounts();
         verifyNoInteractions(positionRepository);
         verifyNoInteractions(positionDriftService);
+    }
+
+    @Test
+    void syncPositions_liveModeSkipsWhenMarketsNullOrEmpty() {
+        TradingPositionSyncService service = createService(ExecutionMode.LIVE);
+
+        service.syncPositions(null);
+        service.syncPositions(List.of());
+
+        verify(upbitFeignClient, never()).getAccounts();
+        verifyNoInteractions(positionRepository);
+        verifyNoInteractions(positionDriftService);
+    }
+
+    @Test
+    void syncPositions_liveModeHandlesNullAccountsAndInvalidMarkets() {
+        TradingPositionSyncService service = createService(ExecutionMode.LIVE);
+        when(upbitFeignClient.getAccounts()).thenReturn(null);
+        when(positionRepository.findBySymbol("KRW-BTC")).thenReturn(Optional.empty());
+        when(tradingOrderRepository.findBySymbolAndModeOrderByCreatedAtAsc("KRW-BTC", ExecutionMode.LIVE))
+                .thenReturn(Arrays.asList(
+                        null,
+                        TradingOrder.builder().side(null).executedVolume(BigDecimal.ONE).build(),
+                        TradingOrder.builder().side(OrderSide.BUY).executedVolume(BigDecimal.ZERO).build()
+                ));
+
+        service.syncPositions(Arrays.asList(null, "KRW", "KRW-BTC"));
+
+        ArgumentCaptor<TradingPosition> captor = ArgumentCaptor.forClass(TradingPosition.class);
+        verify(positionRepository).save(captor.capture());
+        TradingPosition synced = captor.getValue();
+        assertThat(synced.getSymbol()).isEqualTo("KRW-BTC");
+        assertThat(synced.getQty()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(synced.getAvgPrice()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(synced.getState()).isEqualTo(PositionState.FLAT);
+        verify(positionDriftService).captureSnapshot("KRW-BTC", BigDecimal.ZERO, BigDecimal.ZERO);
+    }
+
+    @Test
+    void syncPositions_liveModeUsesFirstDuplicateCurrencyAndParsesInvalidNumbersAsZero() {
+        TradingPositionSyncService service = createService(ExecutionMode.LIVE);
+        when(upbitFeignClient.getAccounts()).thenReturn(List.of(
+                new UpbitAccountResponse("btc", "bad-number", "1", "bad-avg", "KRW"),
+                new UpbitAccountResponse("BTC", "0.3", "0.2", "51000000", "KRW")
+        ));
+        when(positionRepository.findBySymbol("KRW-BTC")).thenReturn(Optional.of(
+                TradingPosition.builder()
+                        .symbol("KRW-BTC")
+                        .qty(new BigDecimal("1.0"))
+                        .avgPrice(new BigDecimal("50000000"))
+                        .state(PositionState.LONG)
+                        .build()
+        ));
+        when(tradingOrderRepository.findBySymbolAndModeOrderByCreatedAtAsc("KRW-BTC", ExecutionMode.LIVE))
+                .thenReturn(List.of(
+                        TradingOrder.builder().side(OrderSide.BUY).executedVolume(null).build(),
+                        TradingOrder.builder().side(OrderSide.SELL).executedVolume(new BigDecimal("0.2")).build()
+                ));
+
+        service.syncPositions(List.of("KRW-BTC"));
+
+        ArgumentCaptor<TradingPosition> captor = ArgumentCaptor.forClass(TradingPosition.class);
+        verify(positionRepository).save(captor.capture());
+        TradingPosition synced = captor.getValue();
+        assertThat(synced.getQty()).isEqualByComparingTo("1");
+        assertThat(synced.getAvgPrice()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(synced.getState()).isEqualTo(PositionState.LONG);
+        verify(positionDriftService).captureSnapshot("KRW-BTC", new BigDecimal("1"), BigDecimal.ZERO);
+    }
+
+    @Test
+    void syncPositions_liveModeTreatsBlankNumericFieldsAsZero() {
+        TradingPositionSyncService service = createService(ExecutionMode.LIVE);
+        when(upbitFeignClient.getAccounts()).thenReturn(List.of(
+                new UpbitAccountResponse("BTC", "", "", "", "KRW")
+        ));
+        when(positionRepository.findBySymbol("KRW-BTC")).thenReturn(Optional.empty());
+
+        service.syncPositions(List.of("KRW-BTC"));
+
+        ArgumentCaptor<TradingPosition> captor = ArgumentCaptor.forClass(TradingPosition.class);
+        verify(positionRepository).save(captor.capture());
+        assertThat(captor.getValue().getQty()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(captor.getValue().getAvgPrice()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @Test

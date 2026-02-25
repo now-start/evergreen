@@ -1,7 +1,9 @@
 package org.nowstart.evergreen.data.exception;
 
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
+@Getter
 public class TradingApiException extends RuntimeException {
 
     private final HttpStatus status;
@@ -13,11 +15,4 @@ public class TradingApiException extends RuntimeException {
         this.code = code;
     }
 
-    public HttpStatus getStatus() {
-        return status;
-    }
-
-    public String getCode() {
-        return code;
-    }
 }

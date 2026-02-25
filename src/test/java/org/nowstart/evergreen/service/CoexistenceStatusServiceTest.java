@@ -70,4 +70,21 @@ class CoexistenceStatusServiceTest {
         assertThat(status.guardBlockedReason()).isNull();
         verify(tradingOrderGuardService).evaluate("KRW-BTC");
     }
+
+    @Test
+    void resolveStatus_handlesNullMarketInput() {
+        CoexistenceStatusService service = new CoexistenceStatusService(
+                positionRepository,
+                tradingOrderGuardService
+        );
+        when(positionRepository.findBySymbol("")).thenReturn(Optional.empty());
+        when(tradingOrderGuardService.evaluate(""))
+                .thenReturn(new TradingOrderGuardService.GuardDecision(false, TradingOrderGuardService.GUARD_REASON_NONE, false, 0));
+
+        CoexistenceStatusDto status = service.resolveStatus(null);
+
+        assertThat(status.market()).isEqualTo("");
+        assertThat(status.totalQty()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(status.guardBlocked()).isFalse();
+    }
 }

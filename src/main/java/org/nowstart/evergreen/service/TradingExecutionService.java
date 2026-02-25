@@ -239,7 +239,7 @@ public class TradingExecutionService {
         if (tickers == null || tickers.isEmpty()) {
             return BigDecimal.ZERO;
         }
-        BigDecimal tradePrice = tickers.get(0).trade_price();
+        BigDecimal tradePrice = tickers.getFirst().trade_price();
         if (tradePrice == null || tradePrice.compareTo(BigDecimal.ZERO) <= 0) {
             return BigDecimal.ZERO;
         }

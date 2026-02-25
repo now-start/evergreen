@@ -91,6 +91,43 @@ class TradingStrategyParamResolverTest {
                 .hasMessageContaining("No strategy params");
     }
 
+    @Test
+    void resolveActiveStrategyVersion_usesSingleRegisteredVersionWhenPropertyBlank() {
+        TradingProperties properties = properties("  ");
+        V5StrategyOverrides overrides = v5Overrides(120, 18, "2.0", "3.0", 40, "0.6", "0.01");
+        TradingStrategyParamResolver resolver = new TradingStrategyParamResolver(properties, List.of(overrides));
+        resolver.init();
+
+        String resolved = resolver.resolveActiveStrategyVersion();
+
+        assertThat(resolved).isEqualTo("v5");
+    }
+
+    @Test
+    void resolveActiveStrategyVersion_throwsWhenPropertyBlankAndMultipleVersionsConfigured() {
+        TradingProperties properties = properties("");
+        V5StrategyOverrides v5 = v5Overrides(120, 18, "2.0", "3.0", 40, "0.6", "0.01");
+        VersionedStubStrategyParams v6 = new VersionedStubStrategyParams("v6");
+        TradingStrategyParamResolver resolver = new TradingStrategyParamResolver(properties, List.of(v5, v6));
+        resolver.init();
+
+        assertThatThrownBy(resolver::resolveActiveStrategyVersion)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("activeStrategyVersion is required");
+    }
+
+    @Test
+    void resolve_throwsWhenStrategyVersionBlank() {
+        TradingProperties properties = properties("v5");
+        V5StrategyOverrides overrides = v5Overrides(120, 18, "2.0", "3.0", 40, "0.6", "0.01");
+        TradingStrategyParamResolver resolver = new TradingStrategyParamResolver(properties, List.of(overrides));
+        resolver.init();
+
+        assertThatThrownBy(() -> resolver.resolve(" "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("strategyVersion is required");
+    }
+
     private TradingProperties properties(String activeVersion) {
         return new TradingProperties(
                 "https://api.upbit.com",
@@ -125,5 +162,8 @@ class TradingStrategyParamResolverTest {
                 new BigDecimal(volRegimeThreshold),
                 new BigDecimal(regimeBand)
         );
+    }
+
+    private record VersionedStubStrategyParams(String version) implements org.nowstart.evergreen.service.strategy.core.VersionedStrategyParams {
     }
 }

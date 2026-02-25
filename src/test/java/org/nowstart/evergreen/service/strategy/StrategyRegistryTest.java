@@ -1,5 +1,6 @@
 package org.nowstart.evergreen.service.strategy;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
@@ -70,5 +71,52 @@ class StrategyRegistryTest {
         StrategyEvaluation evaluation = registry.evaluate("v5", candles, 2, PositionSnapshot.EMPTY, params);
 
         org.assertj.core.api.Assertions.assertThat(evaluation.decision().buySignal()).isTrue();
+    }
+
+    @Test
+    void init_throwsWhenDuplicateEngineVersionRegistered() {
+        StrategyRegistry registry = new StrategyRegistry(List.of(new V5StrategyEngine(), new V5StrategyEngine()));
+
+        assertThatThrownBy(registry::init)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Duplicate strategy engine");
+    }
+
+    @Test
+    void requiredWarmupCandles_returnsEngineValueForValidParams() {
+        StrategyRegistry registry = new StrategyRegistry(List.of(new V5StrategyEngine()));
+        registry.init();
+        V5StrategyOverrides params = new V5StrategyOverrides(
+                120,
+                18,
+                BigDecimal.valueOf(2.0),
+                BigDecimal.valueOf(3.0),
+                40,
+                BigDecimal.valueOf(0.6),
+                BigDecimal.valueOf(0.01)
+        );
+
+        int warmup = registry.requiredWarmupCandles("v5", params);
+
+        assertThat(warmup).isEqualTo(120);
+    }
+
+    @Test
+    void evaluate_throwsWhenStrategyVersionBlank() {
+        StrategyRegistry registry = new StrategyRegistry(List.of(new V5StrategyEngine()));
+        registry.init();
+        V5StrategyOverrides params = new V5StrategyOverrides(
+                2,
+                1,
+                BigDecimal.valueOf(2.0),
+                BigDecimal.valueOf(3.0),
+                2,
+                BigDecimal.valueOf(0.6),
+                BigDecimal.ZERO
+        );
+
+        assertThatThrownBy(() -> registry.evaluate(" ", List.of(), 0, null, params))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("strategyVersion is required");
     }
 }

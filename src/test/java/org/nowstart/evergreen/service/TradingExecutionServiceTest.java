@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -19,8 +20,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.nowstart.evergreen.data.dto.BalanceDto;
 import org.nowstart.evergreen.data.dto.CreateOrderRequest;
+import org.nowstart.evergreen.data.dto.OrderChanceDto;
 import org.nowstart.evergreen.data.dto.SignalExecuteRequest;
+import org.nowstart.evergreen.data.dto.UpbitAccountResponse;
 import org.nowstart.evergreen.data.dto.UpbitCreateOrderRequest;
 import org.nowstart.evergreen.data.dto.UpbitOrderChanceResponse;
 import org.nowstart.evergreen.data.dto.UpbitOrderResponse;
@@ -85,6 +89,47 @@ class TradingExecutionServiceTest {
         assertThatThrownBy(() -> service.createOrder(request))
                 .isInstanceOf(TradingApiException.class)
                 .hasMessageContaining("SELL side cannot use MARKET_BUY");
+    }
+
+    @Test
+    void getBalances_mapsExchangeAccountsAndSupportsCaseInsensitiveFilter() {
+        TradingExecutionService service = createService();
+        when(upbitFeignClient.getAccounts()).thenReturn(List.of(
+                new UpbitAccountResponse("KRW", "1000.5", "", null, "KRW"),
+                new UpbitAccountResponse("BTC", "0.2", "0.1", "50000000", "KRW")
+        ));
+
+        List<BalanceDto> allBalances = service.getBalances(null);
+        List<BalanceDto> krwBalances = service.getBalances("krw");
+
+        assertThat(allBalances).hasSize(2);
+        assertThat(allBalances.getFirst().balance()).isEqualByComparingTo("1000.5");
+        assertThat(allBalances.get(0).locked()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(allBalances.get(0).avgBuyPrice()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(allBalances.get(1).avgBuyPrice()).isEqualByComparingTo("50000000");
+        assertThat(krwBalances).hasSize(1);
+        assertThat(krwBalances.get(0).currency()).isEqualTo("KRW");
+    }
+
+    @Test
+    void getOrderChance_handlesMissingAccountAndMarketFieldsAsZero() {
+        TradingExecutionService service = createService();
+        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(new UpbitOrderChanceResponse(
+                null,
+                "",
+                null,
+                null,
+                null
+        ));
+
+        OrderChanceDto chance = service.getOrderChance("KRW-BTC");
+
+        assertThat(chance.market()).isEqualTo("KRW-BTC");
+        assertThat(chance.bidFee()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(chance.askFee()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(chance.bidBalance()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(chance.askBalance()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(chance.maxTotal()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @Test
@@ -189,6 +234,52 @@ class TradingExecutionServiceTest {
                 TradeOrderType.MARKET_BUY,
                 null,
                 new BigDecimal("50000"),
+                ExecutionMode.LIVE,
+                "test"
+        );
+
+        assertThatThrownBy(() -> service.createOrder(request))
+                .isInstanceOf(TradingApiException.class)
+                .hasMessageContaining("Insufficient KRW balance");
+    }
+
+    @Test
+    void createOrder_liveBuyRejectsWhenSpendableBalanceIsZero() {
+        TradingExecutionService service = createService();
+        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(chance("0", "1", "90000000"));
+
+        CreateOrderRequest request = new CreateOrderRequest(
+                "KRW-BTC",
+                OrderSide.BUY,
+                TradeOrderType.MARKET_BUY,
+                null,
+                null,
+                ExecutionMode.LIVE,
+                "test"
+        );
+
+        assertThatThrownBy(() -> service.createOrder(request))
+                .isInstanceOf(TradingApiException.class)
+                .hasMessageContaining("Insufficient KRW balance");
+    }
+
+    @Test
+    void createOrder_liveBuyRejectsWhenBidAccountMissing() {
+        TradingExecutionService service = createService();
+        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(new UpbitOrderChanceResponse(
+                "0.0005",
+                "0.0005",
+                null,
+                new UpbitOrderChanceResponse.Account("BTC", "1", "0", "90000000"),
+                null
+        ));
+
+        CreateOrderRequest request = new CreateOrderRequest(
+                "KRW-BTC",
+                OrderSide.BUY,
+                TradeOrderType.MARKET_BUY,
+                null,
+                null,
                 ExecutionMode.LIVE,
                 "test"
         );
@@ -306,6 +397,17 @@ class TradingExecutionServiceTest {
     }
 
     @Test
+    void cancelOrder_paperFilledOrderCannotBeCanceled() {
+        TradingExecutionService service = createService();
+        TradingOrder order = orderEntity("paper-filled", ExecutionMode.PAPER, OrderStatus.FILLED, null);
+        when(tradingOrderRepository.findByClientOrderId("paper-filled")).thenReturn(java.util.Optional.of(order));
+
+        assertThatThrownBy(() -> service.cancelOrder("paper-filled"))
+                .isInstanceOf(TradingApiException.class)
+                .hasMessageContaining("cannot be canceled");
+    }
+
+    @Test
     void cancelOrder_liveWithoutExchangeIdThrows() {
         TradingExecutionService service = createService();
         TradingOrder order = orderEntity("live-1", ExecutionMode.LIVE, OrderStatus.SUBMITTED, null);
@@ -374,6 +476,152 @@ class TradingExecutionServiceTest {
         assertThat(captor.getValue().getReason()).isEqualTo("signal:2026-02-20T00:00:00Z");
     }
 
+    @Test
+    void executeSignal_usesDefaultReasonWhenSignalTimestampMissing() {
+        TradingExecutionService service = createService();
+
+        SignalExecuteRequest request = new SignalExecuteRequest(
+                "KRW-BTC",
+                OrderSide.BUY,
+                TradeOrderType.MARKET_BUY,
+                new BigDecimal("0.01"),
+                new BigDecimal("50000"),
+                ExecutionMode.PAPER,
+                " "
+        );
+
+        service.executeSignal(request);
+
+        ArgumentCaptor<TradingOrder> captor = ArgumentCaptor.forClass(TradingOrder.class);
+        verify(paperExecutionService).execute(captor.capture());
+        assertThat(captor.getValue().getReason()).isEqualTo("signal");
+    }
+
+    @Test
+    void createOrder_liveLimitOrderUsesLimitPayload() {
+        TradingExecutionService service = createService();
+        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(chance("0", "1", "90000000"));
+        when(upbitFeignClient.createOrder(any(UpbitCreateOrderRequest.class))).thenReturn(orderResponse("upbit-limit-1"));
+
+        CreateOrderRequest request = new CreateOrderRequest(
+                "KRW-BTC",
+                OrderSide.BUY,
+                TradeOrderType.LIMIT,
+                BigDecimal.ZERO,
+                new BigDecimal("50000000"),
+                ExecutionMode.LIVE,
+                "limit-test"
+        );
+
+        service.createOrder(request);
+
+        ArgumentCaptor<UpbitCreateOrderRequest> requestCaptor = ArgumentCaptor.forClass(UpbitCreateOrderRequest.class);
+        verify(upbitFeignClient).createOrder(requestCaptor.capture());
+        UpbitCreateOrderRequest upbitRequest = requestCaptor.getValue();
+        assertThat(upbitRequest.ord_type()).isEqualTo("limit");
+        assertThat(upbitRequest.volume()).isEqualTo("0");
+        assertThat(upbitRequest.price()).isEqualTo("50000000");
+    }
+
+    @Test
+    void createOrder_paperMarketBuyRejectsZeroQuantityWhenValidationBypassed() {
+        OrderRequestValidationService validationService = mock(OrderRequestValidationService.class);
+        TradingExecutionService service = createService(defaultProperties(new BigDecimal("0.0005")), validationService);
+
+        CreateOrderRequest request = new CreateOrderRequest(
+                "KRW-BTC",
+                OrderSide.BUY,
+                TradeOrderType.MARKET_BUY,
+                BigDecimal.ZERO,
+                new BigDecimal("50000"),
+                ExecutionMode.PAPER,
+                "test"
+        );
+
+        assertThatThrownBy(() -> service.createOrder(request))
+                .isInstanceOf(TradingApiException.class)
+                .hasMessageContaining("PAPER MARKET_BUY requires quantity");
+    }
+
+    @Test
+    void createOrder_liveMarketBuyWithInvalidFeeRateUsesFullBalance() {
+        TradingExecutionService service = createService(defaultProperties(new BigDecimal("2.0")));
+        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(chance("100000", "1", "90000000"));
+        when(upbitFeignClient.createOrder(any(UpbitCreateOrderRequest.class))).thenReturn(orderResponse("upbit-uuid-invalid-fee"));
+
+        CreateOrderRequest request = new CreateOrderRequest(
+                "KRW-BTC",
+                OrderSide.BUY,
+                TradeOrderType.MARKET_BUY,
+                null,
+                null,
+                ExecutionMode.LIVE,
+                "test"
+        );
+
+        service.createOrder(request);
+
+        ArgumentCaptor<TradingOrder> captor = ArgumentCaptor.forClass(TradingOrder.class);
+        verify(tradingOrderRepository).save(captor.capture());
+        assertThat(captor.getValue().getRequestedNotional()).isEqualByComparingTo("100000");
+    }
+
+    @Test
+    void createOrder_liveMarketSellUsesTickerWhenAskAccountIsMissing() {
+        TradingExecutionService service = createService();
+        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(new UpbitOrderChanceResponse(
+                "0.0005",
+                "0.0005",
+                new UpbitOrderChanceResponse.Account("KRW", "1000000", "0", "0"),
+                null,
+                new UpbitOrderChanceResponse.Market(
+                        "KRW-BTC",
+                        "BTC/KRW",
+                        null,
+                        null,
+                        null,
+                        null,
+                        new UpbitOrderChanceResponse.MaxTotal("KRW", "100000000")
+                )
+        ));
+        when(upbitFeignClient.getTickers("KRW-BTC")).thenReturn(List.of(new UpbitTickerResponse("KRW-BTC", new BigDecimal("50000000"))));
+
+        CreateOrderRequest request = new CreateOrderRequest(
+                "KRW-BTC",
+                OrderSide.SELL,
+                TradeOrderType.MARKET_SELL,
+                new BigDecimal("0.1"),
+                null,
+                ExecutionMode.LIVE,
+                "test"
+        );
+
+        assertThatThrownBy(() -> service.createOrder(request))
+                .isInstanceOf(TradingApiException.class)
+                .hasMessageContaining("Insufficient asset balance");
+    }
+
+    @Test
+    void createOrder_liveMarketSellRejectsWhenTickerPriceIsNonPositive() {
+        TradingExecutionService service = createService();
+        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(chance("1000000", "2", "0"));
+        when(upbitFeignClient.getTickers("KRW-BTC")).thenReturn(List.of(new UpbitTickerResponse("KRW-BTC", BigDecimal.ZERO)));
+
+        CreateOrderRequest request = new CreateOrderRequest(
+                "KRW-BTC",
+                OrderSide.SELL,
+                TradeOrderType.MARKET_SELL,
+                new BigDecimal("0.2"),
+                null,
+                ExecutionMode.LIVE,
+                "test"
+        );
+
+        assertThatThrownBy(() -> service.createOrder(request))
+                .isInstanceOf(TradingApiException.class)
+                .hasMessageContaining("reference price");
+    }
+
     private TradingOrder orderEntity(String clientOrderId, ExecutionMode mode, OrderStatus status, String exchangeOrderId) {
         return TradingOrder.builder()
                 .clientOrderId(clientOrderId)
@@ -389,20 +637,14 @@ class TradingExecutionServiceTest {
     }
 
     private TradingExecutionService createService() {
-        TradingProperties properties = new TradingProperties(
-                "https://api.upbit.com",
-                "",
-                "",
-                new BigDecimal("0.0005"),
-                Duration.ofSeconds(30),
-                ExecutionMode.LIVE,
-                List.of("KRW-BTC"),
-                400,
-                true,
-                new BigDecimal("100000"),
-                "v5"
-        );
+        return createService(defaultProperties(new BigDecimal("0.0005")));
+    }
 
+    private TradingExecutionService createService(TradingProperties properties) {
+        return createService(properties, new OrderRequestValidationService());
+    }
+
+    private TradingExecutionService createService(TradingProperties properties, OrderRequestValidationService validationService) {
         return new TradingExecutionService(
                 upbitFeignClient,
                 tradingOrderRepository,
@@ -410,8 +652,24 @@ class TradingExecutionServiceTest {
                 orderReconciliationService,
                 paperExecutionService,
                 properties,
-                new OrderRequestValidationService(),
+                validationService,
                 new TradingOrderFactory()
+        );
+    }
+
+    private TradingProperties defaultProperties(BigDecimal feeRate) {
+        return new TradingProperties(
+                "https://api.upbit.com",
+                "",
+                "",
+                feeRate,
+                Duration.ofSeconds(30),
+                ExecutionMode.LIVE,
+                List.of("KRW-BTC"),
+                400,
+                true,
+                new BigDecimal("100000"),
+                "v5"
         );
     }
 

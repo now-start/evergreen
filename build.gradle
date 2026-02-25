@@ -3,10 +3,11 @@ plugins {
     id 'org.springframework.boot' version '3.5.10'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'com.gorylenko.gradle-git-properties' version '2.5.4'
+    id 'jacoco'
 }
 
 group = 'org.nowstart'
-version = '1.0.12'
+version = '1.0.13'
 
 springBoot {
     buildInfo()

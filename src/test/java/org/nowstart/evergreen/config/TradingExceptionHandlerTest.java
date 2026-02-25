@@ -1,16 +1,26 @@
 package org.nowstart.evergreen.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import feign.FeignException;
 import feign.Request;
 import feign.Response;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.nowstart.evergreen.data.exception.TradingApiException;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 class TradingExceptionHandlerTest {
 
@@ -61,5 +71,84 @@ class TradingExceptionHandlerTest {
         assertThat(detail.getDetail()).contains("invalid_query_payload");
         assertThat(detail.getProperties()).containsEntry("code", "upbit_error");
         assertThat(detail.getProperties()).containsEntry("upstreamStatus", 400);
+    }
+
+    @Test
+    void handleValidationException_returnsValidationDetails() throws NoSuchMethodException {
+        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new ValidationTarget(), "target");
+        bindingResult.addError(new FieldError("target", "name", "name is required"));
+        MethodParameter methodParameter = new MethodParameter(
+                TradingExceptionHandlerTest.class.getDeclaredMethod("dummyValidationMethod", ValidationTarget.class),
+                0
+        );
+        MethodArgumentNotValidException exception = new MethodArgumentNotValidException(methodParameter, bindingResult);
+
+        ProblemDetail detail = handler.handleValidationException(exception);
+
+        assertThat(detail.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(detail.getDetail()).isEqualTo("Request validation failed");
+        assertThat(detail.getProperties()).containsEntry("code", "validation_error");
+        assertThat(detail.getProperties()).containsEntry("details", List.of("name is required"));
+    }
+
+    @Test
+    void handleConstraintViolationException_returnsValidationDetails() {
+        @SuppressWarnings("unchecked")
+        ConstraintViolation<Object> violation = (ConstraintViolation<Object>) mock(ConstraintViolation.class);
+        when(violation.getMessage()).thenReturn("market is required");
+
+        ProblemDetail detail = handler.handleConstraintViolationException(new ConstraintViolationException(Set.of(violation)));
+
+        assertThat(detail.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(detail.getDetail()).isEqualTo("Request validation failed");
+        assertThat(detail.getProperties()).containsEntry("code", "validation_error");
+        assertThat(detail.getProperties()).containsEntry("details", List.of("market is required"));
+    }
+
+    @Test
+    void handleFeignException_fallsBackToBadGatewayWhenStatusUnknown() {
+        FeignException exception = mock(FeignException.class);
+        when(exception.status()).thenReturn(520);
+        when(exception.contentUTF8()).thenReturn("{\"error\":\"upstream\"}");
+
+        ProblemDetail detail = handler.handleFeignException(exception);
+
+        assertThat(detail.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY.value());
+        assertThat(detail.getDetail()).contains("upstream");
+        assertThat(detail.getProperties()).containsEntry("upstreamStatus", 520);
+    }
+
+    @Test
+    void handleFeignException_usesExceptionMessageWhenBodyBlank() {
+        FeignException exception = mock(FeignException.class);
+        when(exception.status()).thenReturn(400);
+        when(exception.contentUTF8()).thenReturn("   ");
+        when(exception.getMessage()).thenReturn("fallback message");
+
+        ProblemDetail detail = handler.handleFeignException(exception);
+
+        assertThat(detail.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(detail.getDetail()).isEqualTo("fallback message");
+    }
+
+    @Test
+    void handleFeignException_usesDefaultDetailWhenBodyAndMessageBlank() {
+        FeignException exception = mock(FeignException.class);
+        when(exception.status()).thenReturn(400);
+        when(exception.contentUTF8()).thenReturn(" ");
+        when(exception.getMessage()).thenReturn(" ");
+
+        ProblemDetail detail = handler.handleFeignException(exception);
+
+        assertThat(detail.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(detail.getDetail()).isEqualTo("Upbit API request failed");
+    }
+
+    @SuppressWarnings("unused")
+    private void dummyValidationMethod(ValidationTarget target) {
+    }
+
+    private static final class ValidationTarget {
+        private String name;
     }
 }

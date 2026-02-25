@@ -62,6 +62,23 @@ class TradingOrderGuardServiceTest {
     }
 
     @Test
+    void hasBlockingOrder_returnsFalseWhenNoOpenOrdersFromExchange() {
+        TradingOrderGuardService service = new TradingOrderGuardService(
+                tradingOrderRepository,
+                upbitFeignClient,
+                properties(ExecutionMode.LIVE)
+        );
+        when(tradingOrderRepository.existsByModeAndSymbolAndStatusIn(any(), any(), any())).thenReturn(false);
+        when(upbitFeignClient.getOpenOrders("KRW-BTC", "wait")).thenReturn(List.of());
+
+        TradingOrderGuardService.GuardDecision decision = service.evaluate("KRW-BTC");
+
+        assertThat(decision.blocked()).isFalse();
+        assertThat(decision.reason()).isEqualTo(TradingOrderGuardService.GUARD_REASON_NONE);
+        assertThat(decision.externalOpenOrderCount()).isZero();
+    }
+
+    @Test
     void hasBlockingOrder_returnsFalseWhenNotLiveMode() {
         TradingOrderGuardService service = new TradingOrderGuardService(
                 tradingOrderRepository,
@@ -91,6 +108,21 @@ class TradingOrderGuardServiceTest {
 
         assertThat(decision.blocked()).isTrue();
         assertThat(decision.reason()).isEqualTo(TradingOrderGuardService.GUARD_REASON_GUARD_QUERY_FAILED);
+    }
+
+    @Test
+    void hasBlockingOrder_delegatesToEvaluateResult() {
+        TradingOrderGuardService service = new TradingOrderGuardService(
+                tradingOrderRepository,
+                upbitFeignClient,
+                properties(ExecutionMode.LIVE)
+        );
+        when(tradingOrderRepository.existsByModeAndSymbolAndStatusIn(any(), any(), any())).thenReturn(false);
+        when(upbitFeignClient.getOpenOrders("KRW-BTC", "wait")).thenReturn(List.of(openOrder()));
+
+        boolean blocked = service.hasBlockingOrder("KRW-BTC");
+
+        assertThat(blocked).isTrue();
     }
 
     private TradingProperties properties(ExecutionMode mode) {

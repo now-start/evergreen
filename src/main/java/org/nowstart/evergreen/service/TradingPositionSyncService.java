@@ -65,16 +65,7 @@ public class TradingPositionSyncService {
         BigDecimal totalQty = resolveTotalQty(account);
         BigDecimal managedQty = resolveManagedQty(market);
         boolean hasPosition = totalQty.compareTo(BigDecimal.ZERO) > 0;
-        BigDecimal avgPrice;
-        if (hasPosition) {
-            if (account == null) {
-                avgPrice = parseDecimal(null);
-            } else {
-                avgPrice = parseDecimal(account.avg_buy_price());
-            }
-        } else {
-            avgPrice = BigDecimal.ZERO;
-        }
+        BigDecimal avgPrice = hasPosition ? parseDecimal(account.avg_buy_price()) : BigDecimal.ZERO;
 
         TradingPosition position = positionRepository.findBySymbol(market).orElseGet(() -> TradingPosition.builder()
                 .symbol(market)

@@ -62,7 +62,7 @@ public class TradingSignalMetricsService {
             double qty = toPositiveDouble(order.getExecutedVolume());
             double price = toPositiveDouble(order.getAvgExecutedPrice());
             double fee = toNonNegativeDouble(order.getFeeAmount());
-            if (!Double.isFinite(qty) || !Double.isFinite(price) || qty <= 0.0 || price <= 0.0) {
+            if (!Double.isFinite(qty) || !Double.isFinite(price)) {
                 continue;
             }
 
@@ -78,7 +78,7 @@ public class TradingSignalMetricsService {
             }
 
             double sellQty = Math.min(positionQty, qty);
-            if (sellQty <= 0.0 || avgCost <= 0.0) {
+            if (sellQty <= 0.0) {
                 continue;
             }
 
