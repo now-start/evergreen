@@ -25,9 +25,8 @@ class TradingSignalLogServiceTest {
         StrategyEvaluation evaluation = new StrategyEvaluation(
                 new StrategySignalDecision(false, false, "HOLD"),
                 List.of(
-                        StrategyDiagnostic.number("atr.multiplier", "ATR Multiplier", "", "", 2.5),
-                        StrategyDiagnostic.bool("trail_stop.triggered", "Trail Stop Triggered", "", true),
-                        StrategyDiagnostic.text("regime.current", "Current Regime", "", "BULL")
+                        StrategyDiagnostic.number("atr.value", "ATR", 2.5),
+                        StrategyDiagnostic.number("regime.lower", "Regime Lower Band", 95.0)
                 )
         );
 
@@ -53,10 +52,10 @@ class TradingSignalLogServiceTest {
         ));
 
         assertThat(output).containsPattern(
-                "event=strategy_diagnostic[^\\n]*key=atr\\.multiplier[^\\n]*label=\\\"ATR Multiplier\\\""
+                "event=strategy_diagnostic[^\\n]*key=atr\\.value[^\\n]*label=\\\"ATR\\\""
         );
         assertThat(output).containsPattern(
-                "event=strategy_diagnostic[^\\n]*key=trail_stop\\.triggered[^\\n]*label=\\\"Trail Stop Triggered\\\""
+                "event=strategy_diagnostic[^\\n]*key=regime\\.lower[^\\n]*label=\\\"Regime Lower Band\\\""
         );
     }
 }

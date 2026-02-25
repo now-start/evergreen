@@ -134,8 +134,8 @@ class TradingSignalWorkflowServiceTest {
                 .thenReturn(new StrategyEvaluation(
                         new StrategySignalDecision(false, true, "SELL_REGIME_TRANSITION"),
                         List.of(
-                                StrategyDiagnostic.text("regime.current", "Current Regime", "", "BEAR"),
-                                StrategyDiagnostic.text("regime.previous", "Previous Regime", "", "BULL")
+                                StrategyDiagnostic.number("regime.anchor", "Regime Anchor", 90.0),
+                                StrategyDiagnostic.number("regime.lower", "Regime Lower Band", 89.1)
                         )
                 ));
         when(tradingSignalMetricsService.resolveExecutionMetrics("KRW-BTC")).thenReturn(TradingExecutionMetrics.empty());

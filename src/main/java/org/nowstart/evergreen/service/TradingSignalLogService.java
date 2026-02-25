@@ -7,34 +7,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.nowstart.evergreen.data.dto.TradingDayCandleDto;
 import org.nowstart.evergreen.data.dto.TradingExecutionMetrics;
 import org.nowstart.evergreen.service.strategy.core.StrategyDiagnostic;
-import org.nowstart.evergreen.service.strategy.core.StrategyDiagnosticType;
 import org.nowstart.evergreen.service.strategy.core.StrategyEvaluation;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
 public class TradingSignalLogService {
-
-    public void logTicker(
-            String market,
-            String strategyVersion,
-            TradingDayCandleDto signalCandle,
-            double livePrice,
-            StrategyEvaluation strategyEvaluation
-    ) {
-        log.info(
-                "event=ticker_price market={} strategy_version={} ts={} live_price={} close={} buy_signal={} sell_signal={} signal_reason={} diagnostics={}",
-                market,
-                strategyVersion,
-                signalCandle.timestamp(),
-                sanitizeMetricForLog(livePrice),
-                signalCandle.close(),
-                strategyEvaluation.decision().buySignal(),
-                strategyEvaluation.decision().sellSignal(),
-                strategyEvaluation.decision().signalReason(),
-                formatDiagnosticValues(strategyEvaluation)
-        );
-    }
 
     public void logCandleSignal(TradingSignalLogContext context) {
         TradingExecutionMetrics executionMetrics = context.executionMetrics();
@@ -73,23 +51,15 @@ public class TradingSignalLogService {
 
     private void emitStrategyDiagnostics(TradingSignalLogContext context, StrategyEvaluation strategyEvaluation) {
         for (StrategyDiagnostic diagnostic : strategyEvaluation.diagnostics()) {
-            if (diagnostic.type() == StrategyDiagnosticType.STRING) {
-                continue;
-            }
-
-            double value = diagnostic.type() == StrategyDiagnosticType.BOOLEAN
-                    ? (((Boolean) diagnostic.value()) ? 1.0 : 0.0)
-                    : sanitizeMetricForLog(((Number) diagnostic.value()).doubleValue());
+            double value = sanitizeMetricForLog(diagnostic.value());
 
             log.info(
-                    "event=strategy_diagnostic market={} strategy_version={} ts={} key={} label=\"{}\" type={} unit={} value={} buy_signal={} sell_signal={} signal_reason={}",
+                    "event=strategy_diagnostic market={} strategy_version={} ts={} key={} label=\"{}\" value={} buy_signal={} sell_signal={} signal_reason={}",
                     context.market(),
                     context.strategyVersion(),
                     context.signalCandle().timestamp(),
                     diagnostic.key(),
                     escape(diagnostic.label()),
-                    diagnostic.type().name(),
-                    diagnostic.unit(),
                     value,
                     strategyEvaluation.decision().buySignal(),
                     strategyEvaluation.decision().sellSignal(),
@@ -109,20 +79,12 @@ public class TradingSignalLogService {
         return strategyEvaluation.diagnostics().stream()
                 .sorted(Comparator.comparing(StrategyDiagnostic::key))
                 .map(item -> item.key()
-                        + ":{label=\"" + escape(item.label())
-                        + "\",type=\"" + item.type().name()
-                        + "\",unit=\"" + escape(item.unit()) + "\"}")
+                        + ":{label=\"" + escape(item.label()) + "\"}")
                 .collect(Collectors.joining(", ", "{", "}"));
     }
 
-    private String formatDiagnosticValue(Object value) {
-        if (value instanceof Number number) {
-            return Double.toString(sanitizeMetricForLog(number.doubleValue()));
-        }
-        if (value instanceof Boolean bool) {
-            return Boolean.toString(bool);
-        }
-        return "\"" + escape(String.valueOf(value)) + "\"";
+    private String formatDiagnosticValue(double value) {
+        return Double.toString(sanitizeMetricForLog(value));
     }
 
     private String escape(String value) {

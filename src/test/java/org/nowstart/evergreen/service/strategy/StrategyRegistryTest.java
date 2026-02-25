@@ -1,4 +1,4 @@
-package org.nowstart.evergreen.strategy;
+package org.nowstart.evergreen.service.strategy;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.nowstart.evergreen.service.strategy.StrategyRegistry;
 import org.nowstart.evergreen.service.strategy.core.OhlcvCandle;
 import org.nowstart.evergreen.service.strategy.core.PositionSnapshot;
 import org.nowstart.evergreen.service.strategy.core.StrategyEvaluation;

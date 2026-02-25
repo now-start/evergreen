@@ -1,4 +1,4 @@
-package org.nowstart.evergreen.strategy.v5;
+package org.nowstart.evergreen.service.strategy.v5;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -10,8 +10,6 @@ import org.nowstart.evergreen.service.strategy.core.OhlcvCandle;
 import org.nowstart.evergreen.service.strategy.core.PositionSnapshot;
 import org.nowstart.evergreen.service.strategy.core.StrategyEvaluation;
 import org.nowstart.evergreen.service.strategy.core.StrategyInput;
-import org.nowstart.evergreen.service.strategy.v5.V5StrategyEngine;
-import org.nowstart.evergreen.service.strategy.v5.V5StrategyOverrides;
 
 class V5StrategyEngineTest {
 
@@ -39,8 +37,9 @@ class V5StrategyEngineTest {
         assertThat(evaluation.decision().buySignal()).isTrue();
         assertThat(evaluation.decision().sellSignal()).isFalse();
         assertThat(evaluation.decision().signalReason()).isEqualTo("BUY_REGIME_TRANSITION");
-        assertThat(findTextDiagnostic(evaluation, "regime.previous")).isEqualTo("BEAR");
-        assertThat(findTextDiagnostic(evaluation, "regime.current")).isEqualTo("BULL");
+        assertThat(findNumberDiagnostic(evaluation, "regime.anchor")).isFinite();
+        assertThat(findNumberDiagnostic(evaluation, "regime.upper")).isFinite();
+        assertThat(findNumberDiagnostic(evaluation, "regime.lower")).isFinite();
     }
 
     @Test
@@ -81,9 +80,9 @@ class V5StrategyEngineTest {
         PositionSnapshot position = new PositionSnapshot(1.0, 100.0, Instant.parse("2026-01-01T00:00:00Z"));
         StrategyEvaluation evaluation = engine.evaluate(new StrategyInput<>(candles, 4, position, trailStopParams));
 
-        assertThat(findTextDiagnostic(evaluation, "regime.previous")).isEqualTo("BULL");
-        assertThat(findTextDiagnostic(evaluation, "regime.current")).isEqualTo("BULL");
-        assertThat(findBooleanDiagnostic(evaluation)).isTrue();
+        double trailStopPrice = findNumberDiagnostic(evaluation, "atr.trail_stop");
+        assertThat(trailStopPrice).isFinite();
+        assertThat(trailStopPrice).isGreaterThanOrEqualTo(candles.get(4).close());
         assertThat(evaluation.decision().sellSignal()).isTrue();
         assertThat(evaluation.decision().signalReason()).isEqualTo("SELL_TRAIL_STOP");
     }
@@ -97,19 +96,11 @@ class V5StrategyEngineTest {
         return new OhlcvCandle(Instant.parse(ts), open, high, low, close, 1000.0);
     }
 
-    private String findTextDiagnostic(StrategyEvaluation evaluation, String key) {
+    private double findNumberDiagnostic(StrategyEvaluation evaluation, String key) {
         return evaluation.diagnostics().stream()
                 .filter(item -> key.equals(item.key()))
-                .map(item -> item.value().toString())
+                .mapToDouble(item -> item.value())
                 .findFirst()
-                .orElse("UNKNOWN");
-    }
-
-    private boolean findBooleanDiagnostic(StrategyEvaluation evaluation) {
-        return evaluation.diagnostics().stream()
-                .filter(item -> "trail_stop.triggered".equals(item.key()))
-                .map(item -> item.value() instanceof Boolean bool && bool)
-                .findFirst()
-                .orElse(false);
+                .orElse(Double.NaN);
     }
 }

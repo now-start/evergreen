@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
-import org.nowstart.evergreen.data.dto.TradingSignalQualityStats;
 import org.nowstart.evergreen.data.type.MarketRegime;
 import org.nowstart.evergreen.service.strategy.core.OhlcvCandle;
 import org.nowstart.evergreen.service.strategy.core.PositionSnapshot;
@@ -113,109 +112,26 @@ public class V5StrategyEngine implements TradingStrategyEngine<V5StrategyOverrid
                 ? anchorValue * (1.0 - regimeBand)
                 : Double.NaN;
 
-        TradingSignalQualityStats signalQuality = resolveSignalQualityStats(close, regimes, signalIndex);
-
         List<StrategyDiagnostic> diagnostics = List.of(
-                StrategyDiagnostic.text(
-                        "regime.previous",
-                        "Previous Regime",
-                        "Previous regime state at signal index",
-                        prevRegime.name()
-                ),
-                StrategyDiagnostic.text(
-                        "regime.current",
-                        "Current Regime",
-                        "Current regime state at signal index",
-                        currentRegime.name()
-                ),
                 StrategyDiagnostic.number(
                         "regime.anchor",
                         "Regime Anchor",
-                        "price",
-                        "EMA anchor used for regime decision",
                         anchorValue
                 ),
                 StrategyDiagnostic.number(
                         "regime.upper",
                         "Regime Upper Band",
-                        "price",
-                        "Upper regime boundary",
                         upperValue
                 ),
                 StrategyDiagnostic.number(
                         "regime.lower",
                         "Regime Lower Band",
-                        "price",
-                        "Lower regime boundary",
                         lowerValue
-                ),
-                StrategyDiagnostic.number(
-                        "atr.value",
-                        "ATR",
-                        "price",
-                        "Average true range at signal index",
-                        atr[signalIndex]
-                ),
-                StrategyDiagnostic.number(
-                        "atr.multiplier",
-                        "ATR Multiplier",
-                        "",
-                        "Applied ATR multiplier based on volatility regime",
-                        atrMultiplier
                 ),
                 StrategyDiagnostic.number(
                         "atr.trail_stop",
                         "ATR Trail Stop",
-                        "price",
-                        "Calculated ATR trailing stop",
                         trailStop.stopPrice()
-                ),
-                StrategyDiagnostic.bool(
-                        "trail_stop.triggered",
-                        "Trail Stop Triggered",
-                        "Whether ATR trail stop triggered sell",
-                        trailStop.triggered()
-                ),
-                StrategyDiagnostic.bool(
-                        "volatility.is_high",
-                        "High Volatility",
-                        "Volatility regime flag",
-                        volatility.isHigh()[signalIndex]
-                ),
-                StrategyDiagnostic.number(
-                        "volatility.atr_price_ratio",
-                        "ATR/Price Ratio",
-                        "",
-                        "ATR to close price ratio",
-                        volatility.atrPriceRatio()[signalIndex]
-                ),
-                StrategyDiagnostic.number(
-                        "volatility.percentile",
-                        "Volatility Percentile",
-                        "",
-                        "Rolling ATR/price percentile",
-                        volatility.percentile()[signalIndex]
-                ),
-                StrategyDiagnostic.number(
-                        "signal_quality.avg_1d_pct",
-                        "Signal Quality 1D",
-                        "pct",
-                        "Average post-signal return over 1 day",
-                        signalQuality.avg1dPct()
-                ),
-                StrategyDiagnostic.number(
-                        "signal_quality.avg_3d_pct",
-                        "Signal Quality 3D",
-                        "pct",
-                        "Average post-signal return over 3 days",
-                        signalQuality.avg3dPct()
-                ),
-                StrategyDiagnostic.number(
-                        "signal_quality.avg_7d_pct",
-                        "Signal Quality 7D",
-                        "pct",
-                        "Average post-signal return over 7 days",
-                        signalQuality.avg7dPct()
                 )
         );
 
@@ -390,43 +306,6 @@ public class V5StrategyEngine implements TradingStrategyEngine<V5StrategyOverrid
             return "SETUP_SELL";
         }
         return "NONE";
-    }
-
-    private TradingSignalQualityStats resolveSignalQualityStats(double[] close, MarketRegime[] regimes, int signalIndex) {
-        double sum1d = 0.0;
-        double sum3d = 0.0;
-        double sum7d = 0.0;
-        int count1d = 0;
-        int count3d = 0;
-        int count7d = 0;
-
-        for (int i = 1; i <= signalIndex; i++) {
-            MarketRegime prev = regimes[i - 1];
-            MarketRegime current = regimes[i];
-            boolean buy = prev == MarketRegime.BEAR && current == MarketRegime.BULL;
-            if (!buy || !Double.isFinite(close[i]) || close[i] <= 0.0) {
-                continue;
-            }
-
-            if (i + 1 <= signalIndex && Double.isFinite(close[i + 1])) {
-                sum1d += ((close[i + 1] / close[i]) - 1.0) * 100.0;
-                count1d++;
-            }
-            if (i + 3 <= signalIndex && Double.isFinite(close[i + 3])) {
-                sum3d += ((close[i + 3] / close[i]) - 1.0) * 100.0;
-                count3d++;
-            }
-            if (i + 7 <= signalIndex && Double.isFinite(close[i + 7])) {
-                sum7d += ((close[i + 7] / close[i]) - 1.0) * 100.0;
-                count7d++;
-            }
-        }
-
-        return new TradingSignalQualityStats(
-                count1d == 0 ? Double.NaN : sum1d / count1d,
-                count3d == 0 ? Double.NaN : sum3d / count3d,
-                count7d == 0 ? Double.NaN : sum7d / count7d
-        );
     }
 
     private double resolveHighestCloseSinceEntry(List<OhlcvCandle> candles, int signalIndex, PositionSnapshot position) {

@@ -99,13 +99,6 @@ public class TradingSignalWorkflowService {
                 totalAvgPrice.doubleValue()
         );
 
-        tradingSignalLogService.logTicker(
-                market,
-                activeStrategy.version(),
-                signalCandle,
-                livePrice,
-                strategyEvaluation
-        );
         tradingSignalLogService.logCandleSignal(new TradingSignalLogService.TradingSignalLogContext(
                 market,
                 activeStrategy.version(),

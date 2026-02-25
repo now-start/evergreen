@@ -1,10 +1,9 @@
-package org.nowstart.evergreen.strategy.v5;
+package org.nowstart.evergreen.service.strategy.v5;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
-import org.nowstart.evergreen.service.strategy.v5.V5StrategyOverrides;
 
 class V5StrategyOverridesTest {
 

@@ -1,4 +1,4 @@
-package org.nowstart.evergreen.strategy;
+package org.nowstart.evergreen.service.strategy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -9,7 +9,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.nowstart.evergreen.data.property.TradingProperties;
 import org.nowstart.evergreen.data.type.ExecutionMode;
-import org.nowstart.evergreen.service.strategy.TradingStrategyParamResolver;
 import org.nowstart.evergreen.service.strategy.core.StrategyParams;
 import org.nowstart.evergreen.service.strategy.v5.V5StrategyOverrides;
 

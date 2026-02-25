@@ -11,7 +11,6 @@ Upbit 기반 자동매매(Spring Boot) 프로젝트입니다.
 - 수익/리스크 지표 로그 제공
   - `realized_pnl_krw`, `realized_return_pct`, `max_drawdown_pct`
   - `trade_win_rate_pct`, `trade_rr_ratio`, `trade_expectancy_pct`
-  - `signal_quality_1d_avg_pct`, `signal_quality_3d_avg_pct`, `signal_quality_7d_avg_pct`
 
 ## 실행 모드
 - `PAPER`
@@ -25,7 +24,8 @@ Upbit 기반 자동매매(Spring Boot) 프로젝트입니다.
 
 ## 로컬 실행
 ### 1) 환경변수 준비
-`.env.example`를 참고해 환경변수를 설정하세요.
+
+환경변수(`DB_URL`, `UPBIT_ACCESS_KEY` 등)를 실행 환경에 직접 설정하세요.
 
 ### 2) 테스트
 ```bash
@@ -40,26 +40,6 @@ Upbit 기반 자동매매(Spring Boot) 프로젝트입니다.
 Windows:
 ```bat
 gradlew.bat bootRun --no-daemon
-```
-
-### 4) 로컬 OTEL + Grafana(LGTM) 통합 테스트
-Linux/macOS:
-```bash
-./ops/local/otel-lgtm/run-evergreen-with-otel.sh
-```
-
-Windows PowerShell:
-```powershell
-.\ops\local\otel-lgtm\run-evergreen-with-otel.ps1
-```
-
-- Grafana: `http://localhost:3000` (`admin/admin`)
-- 중지:
-```bash
-./ops/local/otel-lgtm/stop-lgtm.sh
-```
-```powershell
-.\ops\local\otel-lgtm\stop-lgtm.ps1
 ```
 
 ## 핵심 환경변수
@@ -81,9 +61,6 @@ Windows PowerShell:
 
 ## 대시보드
 - 대시보드 JSON: `docs/grafana_trading_dashboard.json`
-- 로그 가이드: `docs/grafana_trading_logging.md`
-- 로컬 LGTM 테스트: `docs/local_otel_lgtm_test.md`
-- 샘플 레이아웃: `docs/grafana_dashboard_sample_full_top6cards.svg`
 
 ## 배포 준비
 ### 1) 사전 점검
@@ -99,7 +76,7 @@ Windows PowerShell:
 
 ### 3) 실행 (Jar)
 ```bash
-java -jar build/libs/evergreen-0.0.0.jar
+java -jar build/libs/*.jar
 ```
 
 ### 4) 배포 시 권장 설정
@@ -110,5 +87,3 @@ java -jar build/libs/evergreen-0.0.0.jar
 
 ## 문서
 - 전략/파라미터 의사결정: `docs/backtest_strategy_hyperparameter_decision_paper.md`
-- 기술 설계: `docs/backtest_v5_technical_design.md`
-- PRD: `docs/backtest_v5_prd.md`
