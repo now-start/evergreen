@@ -1,6 +1,8 @@
+import org.springframework.boot.gradle.plugin.SpringBootPlugin
+
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.5.10'
+    id 'org.springframework.boot' version '4.0.7'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'com.gorylenko.gradle-git-properties' version '2.5.4'
     id 'jacoco'
@@ -30,8 +32,10 @@ repositories {
 }
 
 ext {
-    set('springCloudVersion', "2025.0.1")
-    set('springDocVersion', "2.8.15")
+    set('springBootAdminVersion', "4.0.4")
+    set('springDocVersion', "3.0.3")
+    set('opentelemetryVersion', "2.28.1")
+    set('springCloudVersion', "2025.1.1")
 }
 
 dependencies {
@@ -40,22 +44,17 @@ dependencies {
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-api'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
-    implementation 'org.springframework.cloud:spring-cloud-bus'
     implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
     implementation 'org.springframework.cloud:spring-cloud-starter-config'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
-    implementation 'org.springframework.cloud:spring-cloud-stream-binder-rabbit'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.springframework.amqp:spring-rabbit-test'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
-    testImplementation 'org.testcontainers:rabbitmq'
-    testImplementation 'org.testcontainers:mariadb'
+    testImplementation 'org.testcontainers:testcontainers-mariadb'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -65,6 +64,7 @@ dependencies {
 
 dependencyManagement {
     imports {
+        mavenBom SpringBootPlugin.BOM_COORDINATES
         mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
         mavenBom "org.springdoc:springdoc-openapi-bom:${springDocVersion}"
     }
