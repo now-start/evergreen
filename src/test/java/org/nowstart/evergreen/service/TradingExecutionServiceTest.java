@@ -133,6 +133,16 @@ class TradingExecutionServiceTest {
     }
 
     @Test
+    void getOrderChance_parsesStringMarketMaxTotal() {
+        TradingExecutionService service = createService();
+        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(chance("1000000", "0.1", "90000000"));
+
+        OrderChanceDto chance = service.getOrderChance("KRW-BTC");
+
+        assertThat(chance.maxTotal()).isEqualByComparingTo("100000000");
+    }
+
+    @Test
     void createOrder_rejectsPaperMarketBuyWithoutQuantity() {
         TradingExecutionService service = createService();
 
@@ -581,7 +591,7 @@ class TradingExecutionServiceTest {
                         null,
                         null,
                         null,
-                        new UpbitOrderChanceResponse.MaxTotal("KRW", "100000000")
+                        "100000000"
                 )
         ));
         when(upbitFeignClient.getTickers("KRW-BTC")).thenReturn(List.of(new UpbitTickerResponse("KRW-BTC", new BigDecimal("50000000"))));
@@ -686,7 +696,7 @@ class TradingExecutionServiceTest {
                         null,
                         null,
                         null,
-                        new UpbitOrderChanceResponse.MaxTotal("KRW", "100000000")
+                        "100000000"
                 )
         );
     }

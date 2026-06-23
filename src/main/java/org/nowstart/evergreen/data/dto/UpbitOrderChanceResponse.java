@@ -28,11 +28,7 @@ public record UpbitOrderChanceResponse(
             Object order_sides,
             Object bid,
             Object ask,
-            MaxTotal max_total
+            String max_total
     ) {
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record MaxTotal(String currency, String max_total) {
     }
 }

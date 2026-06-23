@@ -86,4 +86,8 @@ java -jar build/libs/*.jar
 - 로그 수집 파이프라인(Loki)과 알람 연동
 
 ## 문서
+- PRD: `docs/product_requirements.md`
+- 아키텍처 구조도: `docs/architecture.md`
+- 기술 명세: `docs/technical_specification.md`
+- Upbit Open API 정합성 검토: `docs/upbit_open_api_alignment_review.md`
 - 전략/파라미터 의사결정: `docs/backtest_strategy_hyperparameter_decision_paper.md`

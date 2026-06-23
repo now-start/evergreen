@@ -62,7 +62,7 @@ public class TradingExecutionService {
                 chance.ask_account() == null ? BigDecimal.ZERO : parseDecimal(chance.ask_account().balance()),
                 chance.market() == null || chance.market().max_total() == null
                         ? BigDecimal.ZERO
-                        : parseDecimal(chance.market().max_total().max_total())
+                        : parseDecimal(chance.market().max_total())
         );
     }
 

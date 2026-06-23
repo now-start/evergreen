@@ -7,7 +7,6 @@ import feign.RequestTemplate;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,11 +59,8 @@ public class UpbitAuthRequestInterceptor implements RequestInterceptor {
     }
 
     private String toCanonicalQuery(Map<String, Object> payload) {
-        List<Map.Entry<String, Object>> entries = new ArrayList<>(payload.entrySet());
-        entries.sort(Comparator.comparing(Map.Entry::getKey));
-
         List<String> pairs = new ArrayList<>();
-        for (Map.Entry<String, Object> entry : entries) {
+        for (Map.Entry<String, Object> entry : payload.entrySet()) {
             Object value = entry.getValue();
             if (value == null) {
                 continue;

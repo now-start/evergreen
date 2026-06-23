@@ -46,7 +46,7 @@ public interface UpbitFeignClient {
     @DeleteMapping("/v1/order")
     UpbitOrderResponse cancelOrder(@RequestParam("uuid") String uuid);
 
-    @GetMapping("/v1/orders")
+    @GetMapping("/v1/orders/open")
     List<UpbitOrderResponse> getOpenOrders(
             @RequestParam("market") String market,
             @RequestParam("state") String state

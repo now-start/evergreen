@@ -2,17 +2,20 @@ package org.nowstart.evergreen.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.nowstart.evergreen.data.property.TradingProperties;
 import org.nowstart.evergreen.data.type.ExecutionMode;
+import org.nowstart.evergreen.repository.UpbitFeignClient;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.cloud.context.scope.refresh.RefreshScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.bind.annotation.GetMapping;
 
 class UpbitFeignConfigContextTest {
 
@@ -26,6 +29,14 @@ class UpbitFeignConfigContextTest {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(org.nowstart.evergreen.service.auth.UpbitJwtSigner.class);
         });
+    }
+
+    @Test
+    void openOrdersUsesCurrentUpbitEndpoint() throws NoSuchMethodException {
+        Method method = UpbitFeignClient.class.getMethod("getOpenOrders", String.class, String.class);
+        GetMapping mapping = method.getAnnotation(GetMapping.class);
+
+        assertThat(mapping.value()).containsExactly("/v1/orders/open");
     }
 
     @Configuration(proxyBeanMethods = false)

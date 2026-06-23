@@ -2,6 +2,7 @@ package org.nowstart.evergreen.data.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
@@ -41,6 +42,56 @@ class DtoRecordsTest {
         assertThat(dto.bidBalance()).isEqualByComparingTo("100000");
         assertThat(dto.askBalance()).isEqualByComparingTo("0.3");
         assertThat(dto.maxTotal()).isEqualByComparingTo("1000000");
+    }
+
+    @Test
+    void upbitOrderChanceResponse_deserializesStringMaxTotal() throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        UpbitOrderChanceResponse response = objectMapper.readValue("""
+                {
+                  "bid_fee": "0.0005",
+                  "ask_fee": "0.0005",
+                  "bid_account": {
+                    "currency": "KRW",
+                    "balance": "1000000",
+                    "locked": "0",
+                    "avg_buy_price": "0"
+                  },
+                  "ask_account": {
+                    "currency": "BTC",
+                    "balance": "0.1",
+                    "locked": "0",
+                    "avg_buy_price": "90000000"
+                  },
+                  "market": {
+                    "id": "KRW-BTC",
+                    "name": "BTC/KRW",
+                    "max_total": "1000000000"
+                  }
+                }
+                """, UpbitOrderChanceResponse.class);
+
+        assertThat(response.market().max_total()).isEqualTo("1000000000");
+    }
+
+    @Test
+    void upbitCreateOrderRequest_omitsNullFields() throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+        UpbitCreateOrderRequest request = new UpbitCreateOrderRequest(
+                "KRW-BTC",
+                "bid",
+                "price",
+                null,
+                "100000",
+                "client-order-id"
+        );
+
+        String json = objectMapper.writeValueAsString(request);
+
+        assertThat(json).contains("\"market\":\"KRW-BTC\"");
+        assertThat(json).contains("\"price\":\"100000\"");
+        assertThat(json).doesNotContain("volume");
     }
 
     @Test

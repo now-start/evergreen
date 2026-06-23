@@ -53,7 +53,7 @@ class UpbitAuthRequestInterceptorTest {
     }
 
     @Test
-    void apply_usesCanonicalizedJsonBodyForQueryHash() {
+    void apply_preservesJsonBodyOrderForQueryHash() {
         UpbitAuthRequestInterceptor interceptor = new UpbitAuthRequestInterceptor(new UpbitJwtSigner("access", "secret"));
         RequestTemplate template = new RequestTemplate();
         template.method("POST");
@@ -64,7 +64,7 @@ class UpbitAuthRequestInterceptorTest {
 
         String payload = decodePayload(headerValue(template, "Authorization").replace("Bearer ", ""));
         assertThat(payload).contains("\"query_hash_alg\":\"SHA512\"");
-        assertThat(payload).contains(sha512Hex("a=1&b=2"));
+        assertThat(payload).contains(sha512Hex("b=2&a=1"));
     }
 
     @Test
@@ -99,7 +99,7 @@ class UpbitAuthRequestInterceptorTest {
         interceptor.apply(template);
 
         String payload = decodePayload(headerValue(template, "Authorization").replace("Bearer ", ""));
-        assertThat(payload).contains(sha512Hex("market=KRW-BTC&mixed=open&states=wait&states=done"));
+        assertThat(payload).contains(sha512Hex("states=wait&states=done&market=KRW-BTC&mixed=open"));
     }
 
     @Test
