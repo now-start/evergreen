@@ -4,6 +4,7 @@ import argparse
 from datetime import datetime, timezone
 
 from evergreen_backtest.runner import BacktestRunRequest, run_backtest
+from evergreen_backtest.walk_forward import WalkForwardConfig
 
 
 def main() -> None:
@@ -14,6 +15,9 @@ def main() -> None:
     parser.add_argument("--to-date")
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--grid-parallelism", type=int, default=1)
+    parser.add_argument("--disable-walk-forward", action="store_true")
+    parser.add_argument("--train-window-days", type=int, default=1095)
+    parser.add_argument("--test-window-days", type=int, default=180)
     parser.add_argument("--output-dir", default="outputs/backtests/latest")
     parser.add_argument("--no-write", action="store_true")
     args = parser.parse_args()
@@ -25,6 +29,11 @@ def main() -> None:
         from_dt=_parse_date(args.from_date),
         to_dt=_parse_date(args.to_date) if args.to_date else None,
         common_config={"top_k": args.top_k, "grid_parallelism": args.grid_parallelism},
+        walk_forward_config=WalkForwardConfig(
+            enabled=not args.disable_walk_forward,
+            train_window_days=args.train_window_days,
+            test_window_days=args.test_window_days,
+        ),
         output_dir=args.output_dir,
     )
     result = run_backtest(request)

@@ -10,6 +10,7 @@ from typing import Any
 from evergreen_backtest.contracts import CONTRACT_SCHEMA_VERSION, strategy_io_contract
 from evergreen_backtest.data import CandleBar, DailyCandleClient, load_bars
 from evergreen_backtest.versions import VersionAdapter, VersionRun, available_versions, get_version
+from evergreen_backtest.walk_forward import WalkForwardConfig, WalkForwardResult, WalkForwardSelector
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,7 @@ class BacktestRunRequest:
     cache_dir: str | Path = "outputs/data/upbit-cache"
     common_config: dict[str, Any] = field(default_factory=dict)
     version_config: dict[str, dict[str, Any]] = field(default_factory=dict)
+    walk_forward_config: WalkForwardConfig = field(default_factory=WalkForwardConfig)
     output_dir: str | Path = "outputs/backtests/latest"
 
     def resolved_versions(self) -> tuple[str, ...]:
@@ -35,11 +37,14 @@ class ExperimentResult:
     request: BacktestRunRequest
     bars: list[CandleBar]
     runs: dict[str, VersionRun]
+    walk_forward: WalkForwardResult | None = None
 
     def summary_rows(self) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         for version in self.request.resolved_versions():
             rows.extend(self.runs[version].summary_rows())
+        if self.walk_forward is not None:
+            rows.append(self.walk_forward.summary_row())
         return rows
 
     def summary_dataframe(self) -> Any:
@@ -57,6 +62,11 @@ class ExperimentResult:
             "from": self.bars[0].timestamp.isoformat() if self.bars else None,
             "to": self.bars[-1].timestamp.isoformat() if self.bars else None,
             "versions": {version: run.contract() for version, run in self.runs.items()},
+            "walkForwardSelection": (
+                self.walk_forward.contract({version: run.adapter for version, run in self.runs.items()})
+                if self.walk_forward is not None
+                else None
+            ),
         }
 
     def write_outputs(self, output_dir: str | Path | None = None) -> Path:
@@ -73,7 +83,8 @@ class ExperimentResult:
         rows = self.summary_rows()
         if not rows:
             return
-        fieldnames = ["version", "phase", *[key for key in rows[0] if key not in {"version", "phase"}]]
+        extra_fields = sorted({key for row in rows for key in row if key not in {"version", "phase"}})
+        fieldnames = ["version", "phase", *extra_fields]
         with path.open("w", encoding="utf-8", newline="") as fp:
             writer = csv.DictWriter(fp, fieldnames=fieldnames)
             writer.writeheader()
@@ -94,12 +105,24 @@ def run_backtest(
         client=client,
     )
 
+    adapters = [get_version(version) for version in req.resolved_versions()]
     runs: dict[str, VersionRun] = {}
-    for version in req.resolved_versions():
-        adapter = get_version(version)
+    configs: dict[str, Any] = {}
+    for adapter in adapters:
         overrides = _config_for_version(req, adapter)
-        runs[version] = adapter.run(bars, overrides)
-    return ExperimentResult(request=req, bars=bars, runs=runs)
+        config = adapter.config(overrides)
+        configs[adapter.name] = config
+        runs[adapter.name] = adapter.run(bars, overrides)
+
+    walk_forward = None
+    if req.walk_forward_config.enabled:
+        walk_forward = WalkForwardSelector().run(
+            bars=bars,
+            adapters=adapters,
+            configs=configs,
+            config=req.walk_forward_config,
+        )
+    return ExperimentResult(request=req, bars=bars, runs=runs, walk_forward=walk_forward)
 
 
 def _config_for_version(request: BacktestRunRequest, adapter: VersionAdapter) -> dict[str, Any]:

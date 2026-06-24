@@ -90,8 +90,15 @@ def target_position_ratio_from_row(row: Any) -> float | None:
 
 def diagnostics_from_row(row: Any) -> list[StrategyDiagnostic]:
     diagnostics: list[StrategyDiagnostic] = []
+    raw_diagnostics = getattr(row, "diagnostics", {})
+    if isinstance(raw_diagnostics, dict):
+        for key, value in raw_diagnostics.items():
+            if isinstance(value, bool):
+                diagnostics.append(StrategyDiagnostic(key=str(key), label=str(key), value=1.0 if value else 0.0))
+            elif isinstance(value, (int, float)) and math.isfinite(float(value)):
+                diagnostics.append(StrategyDiagnostic(key=str(key), label=str(key), value=float(value)))
     for key, value in vars(row).items():
-        if key in {"timestamp", "action", "signal_reason"}:
+        if key in {"timestamp", "action", "signal_reason", "diagnostics"}:
             continue
         if isinstance(value, bool):
             diagnostics.append(StrategyDiagnostic(key=key, label=key, value=1.0 if value else 0.0))

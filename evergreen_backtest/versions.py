@@ -1,42 +1,22 @@
 from __future__ import annotations
 
 import importlib
+import math
 import re
 from dataclasses import asdict, dataclass, fields, is_dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+from evergreen_backtest.backtest import BacktestEvaluator, BacktestResult
 from evergreen_backtest.contracts import CONTRACT_SCHEMA_VERSION, evaluation_from_row, evaluation_to_dict
 from evergreen_backtest.data import CandleBar
+from evergreen_backtest.optimizer import CandidateResult, HyperparameterOptimizer
 
 
-STRATEGY_DIR = Path(__file__).resolve().parent / "strategies"
-STRATEGY_PACKAGE = "evergreen_backtest.strategies"
+MODEL_DIR = Path(__file__).resolve().parent / "models"
+MODEL_PACKAGE = "evergreen_backtest.models"
 VERSION_FILE = re.compile(r"^v(?P<number>\d+)\.py$")
-JAVA_PARAM_FIELDS = {
-    "v1": {"rsiBuy", "maLen", "maSlopeDays"},
-    "v2": {"regimeEmaLen", "atrPeriod", "atrTrailMultiplier", "regimeBand"},
-    "v3": {
-        "regimeEmaLen",
-        "atrPeriod",
-        "atrTrailMultiplier",
-        "regimeBand",
-        "volTarget",
-        "maxLeverage",
-        "minExposure",
-    },
-    "v4": {"regimeEmaLen", "atrPeriod", "atrTrailMultiplier", "regimeBand", "weeklyEmaLen"},
-    "v5": {
-        "regimeEmaLen",
-        "atrPeriod",
-        "atrMultLowVol",
-        "atrMultHighVol",
-        "volRegimeLookback",
-        "volRegimeThreshold",
-        "regimeBand",
-    },
-}
 
 
 @dataclass(frozen=True)
@@ -44,13 +24,15 @@ class VersionAdapter:
     name: str
     module: ModuleType
     config_class: type[Any]
-    candle_class: type[Any]
-    service_class: type[Any]
-    grid_search_class: type[Any]
+    model_class: type[Any]
 
     @property
     def number(self) -> int:
         return int(self.name[1:])
+
+    @property
+    def java_param_fields(self) -> set[str]:
+        return set(getattr(self.module, "JAVA_PARAM_FIELDS"))
 
     @property
     def config_field_names(self) -> set[str]:
@@ -63,42 +45,60 @@ class VersionAdapter:
             raise ValueError(f"{self.name} does not support config overrides: {', '.join(unknown)}")
         return self.config_class(**overrides)
 
-    def convert_bars(self, bars: list[CandleBar]) -> list[Any]:
-        return [
-            self.candle_class(
-                timestamp=bar.timestamp,
-                open=bar.open,
-                high=bar.high,
-                low=bar.low,
-                close=bar.close,
-                volume=bar.volume,
-            )
-            for bar in bars
-        ]
+    def model(self) -> Any:
+        return self.model_class()
+
+    def iter_parameter_grid(self, config: Any) -> Any:
+        return self.module.iter_parameter_grid(config)
+
+    def validation_split_index(self, total_bars: int, config: Any) -> int:
+        if total_bars < 4:
+            raise ValueError("At least 4 bars are required for validation/test split")
+        split = int(math.floor(total_bars * config.validation_ratio))
+        split = max(2, split)
+        split = min(total_bars - 2, split)
+        return split
 
     def run(self, bars: list[CandleBar], overrides: dict[str, Any]) -> "VersionRun":
         config = self.config(overrides)
         if not config.enabled:
             raise ValueError(f"{self.name} is disabled by config")
 
-        strategy_bars = self.convert_bars(bars)
-        split_index = config.validation_split_index(len(strategy_bars))
-        validation_bars = strategy_bars[:split_index]
-        test_bars = strategy_bars[split_index:]
+        split_index = self.validation_split_index(len(bars), config)
+        validation_bars = bars[:split_index]
+        test_bars = bars[split_index:]
 
-        service = self.service_class()
-        grid_search = self.grid_search_class(service)
-        candidates = grid_search.search(validation_bars, config)
+        model = self.model()
+        optimizer = HyperparameterOptimizer()
+        candidates = optimizer.search(
+            model=model,
+            bars=validation_bars,
+            params_grid=self.iter_parameter_grid(config),
+            top_k=config.top_k,
+            parallelism=getattr(config, "grid_parallelism", 1),
+        )
         if not candidates:
             raise RuntimeError(f"{self.name} grid search returned no candidates")
 
         selected_params = candidates[0].params
-        validation_result = service.backtest_daily_strategy(validation_bars, selected_params)
-        test_result = service.backtest_daily_strategy(test_bars, selected_params)
-        full_result = service.backtest_daily_strategy(strategy_bars, selected_params)
+        evaluator = BacktestEvaluator()
+        validation_result = candidates[0].result
+        test_result = evaluator.evaluate(
+            test_bars,
+            model.evaluate(test_bars, selected_params),
+            fee_per_side=selected_params.fee_per_side,
+            slippage=selected_params.slippage,
+        )
+        full_result = evaluator.evaluate(
+            bars,
+            model.evaluate(bars, selected_params),
+            fee_per_side=selected_params.fee_per_side,
+            slippage=selected_params.slippage,
+        )
 
         return VersionRun(
             version=self.name,
+            adapter=self,
             config=config,
             selected_params=selected_params,
             candidates=candidates,
@@ -107,16 +107,26 @@ class VersionAdapter:
             full_result=full_result,
         )
 
+    def evaluate(self, bars: list[CandleBar], params: Any) -> BacktestResult:
+        model = self.model()
+        return BacktestEvaluator().evaluate(
+            bars,
+            model.evaluate(bars, params),
+            fee_per_side=params.fee_per_side,
+            slippage=params.slippage,
+        )
+
 
 @dataclass(frozen=True)
 class VersionRun:
     version: str
+    adapter: VersionAdapter
     config: Any
     selected_params: Any
-    candidates: list[Any]
-    validation_result: Any
-    test_result: Any
-    full_result: Any
+    candidates: list[CandidateResult]
+    validation_result: BacktestResult
+    test_result: BacktestResult
+    full_result: BacktestResult
 
     def summary_rows(self) -> list[dict[str, Any]]:
         return [
@@ -128,15 +138,17 @@ class VersionRun:
     def contract(self) -> dict[str, Any]:
         params = to_plain_dict(self.selected_params)
         params_camel = {snake_to_camel(key): value for key, value in params.items()}
-        java_params = {key: value for key, value in params_camel.items() if key in JAVA_PARAM_FIELDS[self.version]}
+        java_params = {key: value for key, value in params_camel.items() if key in self.adapter.java_param_fields}
         return {
             "version": self.version,
             "ioContractSchemaVersion": CONTRACT_SCHEMA_VERSION,
             "javaInteropReady": True,
+            "modelClass": type(self.adapter.model()).__name__,
             "pythonParameterClass": type(self.selected_params).__name__,
             "javaParamsCamelCase": java_params,
             "selectedParams": params,
             "selectedParamsCamelCase": params_camel,
+            "candidateCountReturned": len(self.candidates),
             "lastEvaluation": evaluation_to_dict(evaluation_from_row(self.full_result.rows[-1])),
             "validation": summary_to_dict(self.validation_result.summary),
             "test": summary_to_dict(self.test_result.summary),
@@ -163,7 +175,7 @@ def get_version(name: str) -> VersionAdapter:
 
 
 def discover_versions() -> list[VersionAdapter]:
-    adapters = [_adapter_from_module(path.stem) for path in STRATEGY_DIR.glob("v*.py") if VERSION_FILE.match(path.name)]
+    adapters = [_adapter_from_module(path.stem) for path in MODEL_DIR.glob("v*.py") if VERSION_FILE.match(path.name)]
     adapters.sort(key=lambda adapter: adapter.number)
     return adapters
 
@@ -186,15 +198,13 @@ def snake_to_camel(value: str) -> str:
 
 
 def _adapter_from_module(module_name: str) -> VersionAdapter:
-    module = importlib.import_module(f"{STRATEGY_PACKAGE}.{module_name}")
+    module = importlib.import_module(f"{MODEL_PACKAGE}.{module_name}")
     version_suffix = module_name[1:]
     return VersionAdapter(
         name=module_name,
         module=module,
         config_class=getattr(module, f"BacktestConfigV{version_suffix}"),
-        candle_class=getattr(module, "CandleBar"),
-        service_class=getattr(module, f"BacktestServiceV{version_suffix}"),
-        grid_search_class=getattr(module, f"GridSearchServiceV{version_suffix}"),
+        model_class=getattr(module, f"StrategyModelV{version_suffix}"),
     )
 
 

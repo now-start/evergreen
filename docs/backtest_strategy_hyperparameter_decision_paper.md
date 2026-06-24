@@ -6,11 +6,12 @@
 
 - 데이터: 공식 Upbit SDK 공개 일봉 데이터
 - 기본 실행 버전: v1~v5 전체
-- 전략 코드: `evergreen_backtest/strategies/v1.py`~`v5.py`
+- 모델 코드: `evergreen_backtest/models/v1.py`~`v5.py`
+- 평가/선택 코드: `evergreen_backtest/backtest.py`, `evergreen_backtest/optimizer.py`, `evergreen_backtest/walk_forward.py`
 - 전략 설명서: `backtest_playground.ipynb`의 "전략 설명서" 섹션
 - 실행 결과표: 노트북 변수 `요약`
 - 계약 파일: `outputs/backtests/latest/strategy_contracts.json`
-- 차트 파일: `outputs/backtests/latest/equity_test.png`
+- 차트 파일: `outputs/backtests/latest/equity_test.png`, `outputs/backtests/latest/equity_walk_forward.png`
 
 ```bash
 uv sync
@@ -29,6 +30,7 @@ uv run jupyter lab backtest_playground.ipynb
 - 판단 이유: `decision.signalReason`
 - Java 설정값: `javaParamsCamelCase`
 - 백테스트 전체 선택값: `selectedParamsCamelCase`
+- 워크포워드 선택값: `walkForwardSelection.selectedVersion`, `walkForwardSelection.javaParamsCamelCase`
 
 `javaInteropReady=true`이면 해당 버전이 공통 Python/Java 연동정의를 만족한다는 뜻이다. 모든 버전은 `StrategyInput -> StrategyEvaluation` 계약으로 Java와 맞물린다.
 
@@ -44,32 +46,33 @@ uv run jupyter lab backtest_playground.ipynb
 
 ## 비교 기준
 
-노트북의 `요약` 표에서 다음 지표를 우선 본다.
+노트북의 `요약` 표에서 다음 지표를 우선 본다. 단, 실제 Java 적용 후보는 `walk_forward` 행과 `strategy_contracts.json`의 `walkForwardSelection`을 우선한다.
 
 - 수익성: `cagr`, `final_equity`
 - 위험: `mdd`
 - 운용성: `trades`
 - 시장 대비 성과: `final_equity_bh`와의 차이
-- 검증 구간 차이: `validation`, `test`, `full` 단계별 성능 차이
+- 검증 구간 차이: `validation`, `test`, `full`, `walk_forward` 단계별 성능 차이
 
-단일 수익률만으로 전략을 고르지 않는다. `test`에서 수익이 높아도 `mdd`가 크거나 `trades`가 지나치게 많으면 우선순위를 낮춘다.
+단일 수익률만으로 전략을 고르지 않는다. `test`에서 수익이 높아도 `mdd`가 크거나 `trades`가 지나치게 많으면 우선순위를 낮춘다. `walk_forward`는 각 시점에서 과거 데이터만으로 v1~v5와 하이퍼파라미터를 다시 고른 뒤 다음 구간에 적용한 결과라서, 정적 `full`보다 Java 적용 후보 판단에 더 가깝다.
 
 ## 의사결정 규칙
 
-1. `test` 구간에서 손실이 과도한 전략은 제외한다.
-2. `mdd`가 비슷하면 `cagr`와 `final_equity`가 높은 전략을 우선한다.
-3. 성과가 비슷하면 `trades`가 적은 전략을 우선한다.
+1. 각 워크포워드 window의 학습 구간에서는 Calmar 유사 점수(`cagr / abs(mdd)`)를 우선하고, 동률이면 `cagr`, `final_equity` 순으로 후보를 고른다.
+2. 선택된 후보는 다음 out-of-sample 구간에만 적용한다. 미래 데이터를 보고 같은 구간의 파라미터를 고르지 않는다.
+3. 실제 Java 적용 후보는 마지막 워크포워드 window의 `selectedVersion`과 `javaParamsCamelCase`다.
 4. v3는 `targetPositionRatio`가 0.0과 1.0 사이 또는 1.0을 넘는 값을 낼 수 있으므로, Java 주문 계층이 `signal-order-notional` 기준 목표 비중으로 부분 매도와 증액 매수를 실행한다. LIVE 현물 주문은 실제 가용 KRW 안에서만 증액된다.
 
 ## 결과 기록 절차
 
 1. 노트북에서 `실행할_버전`을 정한다. 기본값은 `("all",)`이다.
 2. 전체 셀을 실행한다.
-3. `요약` 표를 기준으로 `validation`, `test`, `full`을 비교한다.
-4. `strategy_contracts.json`에서 `lastEvaluation.decision`과 선택 파라미터를 확인한다.
-5. `equity_test.png`로 테스트 구간 자산곡선이 급격히 훼손되는지 확인한다.
+3. `요약` 표를 기준으로 `validation`, `test`, `full`, `walk_forward`를 비교한다.
+4. `strategy_contracts.json`에서 `walkForwardSelection.selectedVersion`, `walkForwardSelection.javaParamsCamelCase`, `lastEvaluation.decision`을 확인한다.
+5. 테스트 구간 자산곡선과 워크포워드 champion 자산곡선이 급격히 훼손되는지 확인한다.
 
 ## 주의사항
 
-- 공식 Upbit SDK는 데이터 조회에 사용한다. RSI, EMA, ATR 같은 지표 계산은 SDK가 제공하지 않아 전략 코드에서 계산한다.
+- 공식 Upbit SDK는 데이터 조회에 사용한다. RSI, EMA, ATR 같은 지표 계산은 SDK가 제공하지 않아 모델 코드에서 계산한다.
+- `evergreen_backtest/models/v*.py`에는 모델의 신호/목표비중 계산만 둔다. 수익률, MDD, CAGR, 후보 점수화, 워크포워드 선택은 공통 평가/선택 모듈에서 처리한다.
 - `targetPositionRatio`는 실행 계약의 일부다. Java에서 `action`만 보고 주문하면 v3 같은 비중 조절 전략을 잘못 실행할 수 있다. Java 주문 계층은 `signal-order-notional` 기준 목표 비중으로 전량 진입/청산과 중간 비중 조정을 같은 계약으로 처리한다.
