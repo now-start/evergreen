@@ -1,11 +1,8 @@
-import org.springframework.boot.gradle.plugin.SpringBootPlugin
-
 plugins {
     id 'java'
     id 'org.springframework.boot' version '4.0.7'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'com.gorylenko.gradle-git-properties' version '2.5.4'
-    id 'jacoco'
 }
 
 group = 'org.nowstart'
@@ -32,53 +29,39 @@ repositories {
 }
 
 ext {
-    set('springBootAdminVersion', "4.0.4")
-    set('springDocVersion', "3.0.3")
-    set('opentelemetryVersion', "2.28.1")
-    set('springCloudVersion', "2025.1.1")
+    springDocVersion = "3.0.3"
+    opentelemetryVersion = "2.29.0"
+    springCloudVersion = "2025.1.2"
 }
 
 dependencies {
 
     // default
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-api'
+    implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-    implementation 'org.springframework.boot:spring-boot-starter-websocket'
-    implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
     implementation 'org.springframework.cloud:spring-cloud-starter-config'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
-    testImplementation 'org.testcontainers:testcontainers-mariadb'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'org.springframework.boot:spring-boot-h2console'
     runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
 }
 
 dependencyManagement {
     imports {
-        mavenBom SpringBootPlugin.BOM_COORDINATES
-        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
-        mavenBom "org.springdoc:springdoc-openapi-bom:${springDocVersion}"
+        mavenBom "org.springdoc:springdoc-openapi-bom:$springDocVersion"
+        mavenBom "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom:$opentelemetryVersion"
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:$springCloudVersion"
     }
 }
 
 tasks.named('test') {
     useJUnitPlatform()
-}
-
-bootBuildImage {
-    buildpacks = [
-            "docker.io/paketobuildpacks/java",
-            "docker.io/paketobuildpacks/opentelemetry"
-    ]
-
-    environment.put("BP_OPENTELEMETRY_ENABLED", "true")
 }

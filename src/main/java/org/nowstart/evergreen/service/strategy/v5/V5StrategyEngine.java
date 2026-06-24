@@ -1,5 +1,6 @@
 package org.nowstart.evergreen.service.strategy.v5;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Arrays;
@@ -135,7 +136,25 @@ public class V5StrategyEngine implements TradingStrategyEngine<V5StrategyOverrid
                 )
         );
 
-        return new StrategyEvaluation(new StrategySignalDecision(buySignal, sellSignal, signalReason), diagnostics);
+        BigDecimal targetPositionRatio = BigDecimal.valueOf(resolveTargetPositionRatio(
+                buySignal,
+                sellSignal,
+                hasPosition
+        ));
+        return new StrategyEvaluation(
+                new StrategySignalDecision(buySignal, sellSignal, signalReason, targetPositionRatio),
+                diagnostics
+        );
+    }
+
+    private double resolveTargetPositionRatio(boolean buySignal, boolean sellSignal, boolean hasPosition) {
+        if (buySignal) {
+            return 1.0;
+        }
+        if (sellSignal) {
+            return 0.0;
+        }
+        return hasPosition ? 1.0 : 0.0;
     }
 
     private double[] exponentialMovingAverage(double[] values, int length) {

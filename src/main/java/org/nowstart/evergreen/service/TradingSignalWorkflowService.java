@@ -90,6 +90,7 @@ public class TradingSignalWorkflowService {
 
         boolean buySignal = strategyEvaluation.decision().buySignal();
         boolean sellSignal = strategyEvaluation.decision().sellSignal();
+        BigDecimal targetPositionRatio = strategyEvaluation.decision().targetPositionRatio();
 
         TradingExecutionMetrics executionMetrics = tradingSignalMetricsService.resolveExecutionMetrics(market);
         double livePrice = tradingSignalMarketDataService.resolveLivePrice(market, signalCandle.close().doubleValue());
@@ -113,6 +114,15 @@ public class TradingSignalWorkflowService {
                 strategyEvaluation
         ));
 
+        if (hasUnsupportedTargetPositionRatio(targetPositionRatio)) {
+            log.warn(
+                    "Skipping signal because targetPositionRatio requires sized execution. market={} target_position_ratio={}",
+                    market,
+                    targetPositionRatio
+            );
+            return;
+        }
+
         if (buySignal) {
             tradingSignalOrderService.submitBuySignal(market, signalCandle);
             return;
@@ -121,6 +131,12 @@ public class TradingSignalWorkflowService {
         if (sellSignal) {
             tradingSignalOrderService.submitSellSignal(market, signalCandle, sellableQty);
         }
+    }
+
+    private boolean hasUnsupportedTargetPositionRatio(BigDecimal targetPositionRatio) {
+        return targetPositionRatio != null
+                && targetPositionRatio.compareTo(BigDecimal.ZERO) != 0
+                && targetPositionRatio.compareTo(BigDecimal.ONE) != 0;
     }
 
     private OhlcvCandle toOhlcv(TradingDayCandleDto candle) {

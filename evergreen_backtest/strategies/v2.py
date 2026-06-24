@@ -1,33 +1,16 @@
-"""Backtest V2 migrated from Java commit b565309/current.
-
-Strategy: regime transition (BEAR->BULL, BULL->BEAR) + ATR trailing stop.
-"""
+"""V2: EMA 레짐 전환과 ATR 추적 손절을 결합한 전량 진입/청산 전략."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable
-import csv
-import heapq
-import json
 import math
 import os
-import time
-import urllib.parse
-import urllib.request
 
-UPBIT_DAYS_URL = "https://api.upbit.com/v1/candles/days"
-CSV_HEADER = [
-    "candle_date_time_utc",
-    "opening_price",
-    "high_price",
-    "low_price",
-    "trade_price",
-    "candle_acc_trade_volume",
-]
+from evergreen_backtest.contracts import action_from_signals, target_position_ratio_from_signals
+
 MIN_EQUITY = 1e-12
 FULL_POSITION_UNITS = 3
 
@@ -65,6 +48,8 @@ class BacktestRowV2:
     close: float
     ma: float
     rsi: float
+    action: str
+    target_position_ratio: float
     buy_signal: bool
     sell_signal: bool
     setup_buy: bool
@@ -110,30 +95,17 @@ class GridSearchRowV2:
 @dataclass(frozen=True)
 class BacktestConfigV2:
     enabled: bool = True
-    market: str = "KRW-BTC"
-    from_dt: datetime = datetime(2020, 1, 1, tzinfo=timezone.utc)
-    to_dt: datetime | None = None
-    csv_cache_dir: str = "outputs/data/upbit-cache"
     validation_ratio: float = 0.7
     fee_per_side: float = 0.0005
     slippage: float = 0.0002
     top_k: int = 10
     grid_parallelism: int = max(1, os.cpu_count() or 1)
-    grid_progress_log_seconds: int = 5
-    grid_rsi_range: str = "10:60:10"
-    grid_range_rsi_range: str = "10:40:10"
-    grid_bear_rsi_range: str = "10:30:10"
     grid_ma_len_range: str = "200:200:1"
-    grid_ma_slope_range: str = "1:19:3"
     grid_atr_period_range: str = "14:14:1"
     grid_atr_trail_mult_range: str = "3:3:1"
     grid_regime_band_range: str = "0.02:0.02:0.01"
 
     def __post_init__(self) -> None:
-        if not self.market.strip():
-            raise ValueError("market must not be blank")
-        if not self.csv_cache_dir.strip():
-            raise ValueError("csv-cache-dir must not be blank")
         if not (0.0 < self.validation_ratio < 1.0):
             raise ValueError("validation-ratio must be between 0 and 1")
         if self.fee_per_side < 0 or self.slippage < 0:
@@ -142,12 +114,6 @@ class BacktestConfigV2:
             raise ValueError("top-k must be > 0")
         if self.grid_parallelism <= 0:
             raise ValueError("grid-parallelism must be > 0")
-        if self.grid_progress_log_seconds <= 0:
-            raise ValueError("grid-progress-log-seconds must be > 0")
-
-    @property
-    def resolved_to_dt(self) -> datetime:
-        return self.to_dt or datetime.now(timezone.utc)
 
     def resolve_ma_len_values(self) -> list[int]:
         return _parse_positive_int_range(self.grid_ma_len_range, "grid-ma-len-range")
@@ -290,6 +256,12 @@ class BacktestServiceV2:
                 close=close[i],
                 ma=regime_ema[i],
                 rsi=math.nan,
+                action=action_from_signals(buy_signal[i], sell_signal[i]).value,
+                target_position_ratio=target_position_ratio_from_signals(
+                    buy_signal[i],
+                    sell_signal[i],
+                    pos_open_exposure[i],
+                ),
                 buy_signal=buy_signal[i],
                 sell_signal=sell_signal[i],
                 setup_buy=setup_buy[i],
@@ -503,166 +475,6 @@ class GridSearchServiceV2:
         return rows[: config.top_k]
 
 
-class UpbitDataServiceV2:
-    def __init__(self) -> None:
-        self._last_request_at_ms = 0
-
-    def load_bars(self, config: BacktestConfigV2) -> list[CandleBar]:
-        cache_path = self._resolve_cache_path(
-            config.market,
-            config.from_dt,
-            config.resolved_to_dt,
-            config.csv_cache_dir,
-            "days",
-        )
-        if os.path.exists(cache_path):
-            try:
-                return self._load_csv(cache_path)
-            except Exception:
-                pass
-
-        bars = self.fetch_from_api(UPBIT_DAYS_URL, config.market, config.from_dt, config.resolved_to_dt)
-        self._save_csv(cache_path, bars)
-        return bars
-
-    def fetch_from_api(self, endpoint: str, market: str, from_dt: datetime, to_dt: datetime) -> list[CandleBar]:
-        dedup: dict[str, CandleBar] = {}
-        cursor = to_dt
-        while True:
-            batch = self._request_batch(endpoint, market, cursor, 200)
-            if not batch:
-                break
-
-            oldest = batch[-1].timestamp
-            for bar in batch:
-                if bar.timestamp < from_dt or bar.timestamp > to_dt:
-                    continue
-                dedup[bar.timestamp.isoformat()] = bar
-
-            if oldest <= from_dt:
-                break
-            cursor = oldest.fromtimestamp(oldest.timestamp() - 1, tz=timezone.utc)
-
-        out = list(dedup.values())
-        out.sort(key=lambda row: row.timestamp)
-        return out
-
-    def _request_batch(self, endpoint: str, market: str, to_dt: datetime, count: int) -> list[CandleBar]:
-        params = urllib.parse.urlencode({"market": market, "to": to_dt.isoformat(), "count": count})
-        url = f"{endpoint}?{params}"
-
-        self._wait_rate_limit_window()
-        req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "evergreen-backtest/1.0"})
-        with urllib.request.urlopen(req, timeout=15) as response:
-            payload = response.read().decode("utf-8")
-
-        raw = json.loads(payload)
-        bars = [
-            CandleBar(
-                timestamp=_parse_ts(row["candle_date_time_utc"]),
-                open=float(row["opening_price"]),
-                high=float(row["high_price"]),
-                low=float(row["low_price"]),
-                close=float(row["trade_price"]),
-                volume=float(row["candle_acc_trade_volume"]),
-            )
-            for row in raw
-        ]
-        bars.sort(key=lambda row: row.timestamp, reverse=True)
-        return bars
-
-    def _wait_rate_limit_window(self) -> None:
-        now_ms = int(time.time() * 1000)
-        wait_ms = 150 - (now_ms - self._last_request_at_ms)
-        if wait_ms > 0:
-            time.sleep(wait_ms / 1000)
-        self._last_request_at_ms = int(time.time() * 1000)
-
-    def _resolve_cache_path(self, market: str, from_dt: datetime, to_dt: datetime, cache_dir: str, interval_key: str) -> str:
-        safe_market = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in market)
-        from_key = from_dt.astimezone(timezone.utc).strftime("%Y%m%d")
-        to_key = to_dt.astimezone(timezone.utc).strftime("%Y%m%d")
-        file_name = f"{safe_market}_{from_key}_{to_key}_{interval_key}.csv"
-        return os.path.join(cache_dir, file_name)
-
-    def _load_csv(self, path: str) -> list[CandleBar]:
-        dedup: dict[str, CandleBar] = {}
-        with open(path, "r", encoding="utf-8", newline="") as fp:
-            reader = csv.reader(fp)
-            _ = next(reader, None)
-            for parts in reader:
-                if len(parts) < 6:
-                    continue
-                ts = _parse_ts(parts[0])
-                dedup[ts.isoformat()] = CandleBar(
-                    timestamp=ts,
-                    open=float(parts[1]),
-                    high=float(parts[2]),
-                    low=float(parts[3]),
-                    close=float(parts[4]),
-                    volume=float(parts[5]),
-                )
-        out = list(dedup.values())
-        out.sort(key=lambda row: row.timestamp)
-        return out
-
-    def _save_csv(self, path: str, bars: list[CandleBar]) -> None:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8", newline="") as fp:
-            writer = csv.writer(fp)
-            writer.writerow(CSV_HEADER)
-            for bar in bars:
-                writer.writerow([bar.timestamp.isoformat(), bar.open, bar.high, bar.low, bar.close, bar.volume])
-
-
-@dataclass(frozen=True)
-class BacktestRunOutputV2:
-    validation_result: BacktestResultV2
-    test_result: BacktestResultV2
-    full_result: BacktestResultV2
-    selected_params: StrategyParamsV2
-    candidates: list[GridSearchRowV2]
-
-
-class BacktestRunnerV2:
-    def __init__(
-        self,
-        config: BacktestConfigV2,
-        upbit_data_service: UpbitDataServiceV2 | None = None,
-        backtest_service: BacktestServiceV2 | None = None,
-        grid_search_service: GridSearchServiceV2 | None = None,
-    ) -> None:
-        self.config = config
-        self.upbit_data_service = upbit_data_service or UpbitDataServiceV2()
-        self.backtest_service = backtest_service or BacktestServiceV2()
-        self.grid_search_service = grid_search_service or GridSearchServiceV2(self.backtest_service)
-
-    def run(self) -> BacktestRunOutputV2 | None:
-        if not self.config.enabled:
-            return None
-
-        bars = self.upbit_data_service.load_bars(self.config)
-        split_index = self.config.validation_split_index(len(bars))
-        validation_bars = bars[:split_index]
-        test_bars = bars[split_index:]
-
-        rows = self.grid_search_service.search(validation_bars, self.config)
-        if not rows:
-            raise RuntimeError("Grid search returned no rows")
-
-        selected_params = rows[0].params
-        validation_result = self.backtest_service.backtest_daily_strategy(validation_bars, selected_params)
-        test_result = self.backtest_service.backtest_daily_strategy(test_bars, selected_params)
-        full_result = self.backtest_service.backtest_daily_strategy(bars, selected_params)
-        return BacktestRunOutputV2(
-            validation_result=validation_result,
-            test_result=test_result,
-            full_result=full_result,
-            selected_params=selected_params,
-            candidates=rows,
-        )
-
-
 def _coord(index: int, stride: int, size: int) -> int:
     return (index // stride) % size
 
@@ -700,13 +512,6 @@ def _parse_positive_int_range(spec: str, field_name: str) -> list[int]:
         if value <= 0:
             raise ValueError(f"{field_name} values must be > 0")
     return out
-
-
-def _parse_ts(raw: str) -> datetime:
-    text = raw.strip()
-    if text.endswith("Z") or text.endswith("z"):
-        return datetime.fromisoformat(text.replace("Z", "+00:00").replace("z", "+00:00")).astimezone(timezone.utc)
-    return datetime.fromisoformat(f"{text}+00:00").astimezone(timezone.utc)
 
 
 def _rank_value(value: float) -> float:

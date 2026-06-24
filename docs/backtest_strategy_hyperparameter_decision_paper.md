@@ -1,157 +1,73 @@
-# 백테스트 전략-하이퍼파라미터 의사결정 연구 (v1~v5)
+# 백테스트 전략 의사결정 노트
 
-## 초록
-본 문서는 `src/test/python/backtest_playground.ipynb` 기반의 전략 후보군(v1~v5) 비교 실험을 논문형식으로 정리한 의사결정 초안이다. 연구 목적은 단일 수익률 극대화가 아니라, 외부구간 일반화 성능, 낙폭 통제, 거래회전율, 재현 가능성을 동시에 고려해 운영 전략 후보를 선별하는 데 있다. 후보 전략은 `v1(MA+RSI)`, `v2(regime+ATR stop)`, `v3(volatility target+regime)`, `v4(weekly filter)`, `v5(adaptive ATR exit)`로 구성한다. 본 문서는 현재 시점에서 확정 수치의 단정적 해석을 지양하며, 노트북 실행 출력(`summary_table`, `wf_rows`)을 삽입할 수 있도록 결과 템플릿과 해석 규칙을 제공한다.
+이 문서는 루트의 `backtest_playground.ipynb`를 실행한 뒤 v1~v5 전략을 비교하고 운영 후보를 고르는 기준을 정리한다. 노트북이 README이자 스모크 테스트이며, 현재 문서는 실행 결과를 해석하는 보조 문서다.
 
-## 방법
-### 1) 데이터 및 공통 가정
-- 자산: `KRW-BTC` 일봉
-- 실행 환경: Python 백테스트 엔진(`v1.py`~`v5.py`) + 노트북 오케스트레이션
-- 비용 가정: 각 버전의 `StrategyParams` 기본 공통 항목(`fee_per_side`, `slippage`) 적용
-- 분할 기본축: 노트북의 hold-out split(Validation/Test) + 추가 walk-forward 검증
+## 실행 기준
 
-### 2) 후보 전략 정의 (v1~v5)
-| 버전 | 핵심 아이디어 | 구조적 차별점 |
-|---|---|---|
-| v1 | MA + RSI | 추세(MA)와 과매도/필터(RSI) 결합의 단순 규칙 기반 |
-| v2 | regime + ATR stop | 레짐 전환(EMA band) 진입과 ATR 추적손절 결합 |
-| v3 | volatility target + regime | v2 구조에 변동성 타깃 기반 익스포저 조절 추가 |
-| v4 | weekly filter | v2/v3 계열에 상위(주간) 필터를 추가해 추세 일관성 강화 |
-| v5 | adaptive ATR exit | 변동성 국면에 따라 ATR exit multiplier를 적응적으로 변경 |
+- 데이터: 기본값은 공식 Upbit SDK를 사용하는 `upbit`, 네트워크 없이 확인할 때는 `synthetic`
+- 전략 코드: `evergreen_backtest/strategies/v1.py`~`v5.py`
+- 전략 설명서: `backtest_playground.ipynb`의 "전략 설명서" 섹션
+- 실행 결과표: 노트북 변수 `요약`
+- 계약 파일: `outputs/backtests/latest/strategy_contracts.json`
+- 차트 파일: `outputs/backtests/latest/equity_test.png`
 
-### 3) 선택 단위
-- 각 버전은 Validation 구간 Grid Search 결과의 1순위 파라미터(`cand[0]`)를 선택한다.
-- Test 구간은 선택된 파라미터 고정 상태로 성능을 계산한다.
-
-### 4) v5 최종 Best Parameter (논문 기준)
-아래 값은 `backtest_playground.ipynb`의 v5 Grid Search 출력(`GridSearchRowV5`)에서 선택된 최적 파라미터다.
-
-| 파라미터 | 값 |
-|---|---:|
-| fee_per_side | 0.0005 |
-| slippage | 0.0002 |
-| regime_ema_len | 120 |
-| atr_period | 18 |
-| atr_mult_low_vol | 2.0 |
-| atr_mult_high_vol | 3.0 |
-| vol_regime_lookback | 40 |
-| vol_regime_threshold | 0.6 |
-| regime_band | 0.01 |
-
-## 실험설계
-### 1) Hold-out 비교 프로토콜
-1. 동일 데이터 구간을 버전별 Candle 타입으로 매핑한다.
-2. 노트북 기준 split index로 Validation/Test를 분할한다.
-3. 버전별 Grid Search로 최적 파라미터 1개를 선택한다.
-4. Validation/Test(필요 시 Full) 요약지표를 집계한다.
-
-### 2) Walk-forward validation 프로토콜 (노트북 구현 반영)
-다음은 `backtest_playground.ipynb`의 "Additional Validation (Walk-forward, v1~v5)" 셀 구현값을 그대로 기술한 것이다.
-
-- `WF_SPLITS = 3`
-- `MIN_TRAIN_BARS = 300`
-- `segment = max(50, n // (WF_SPLITS + 1))`
-- split `i`마다:
-  - `train = bars[:segment*(i+1)]` (확장형 train window)
-  - `test = bars[segment*(i+1):segment*(i+2)]` (인접 구간 test)
-  - `train_end < 300` 또는 `len(test) < 30`이면 해당 split 생략
-  - train에서 Grid Search 후 `best=cand[0]` 선택
-  - test 성능(`cagr`, `mdd`, `final_equity`, `final_bh`, `trades`) 저장
-
-### 3) 비교 지표
-- 수익성: `CAGR`, `final_equity`, `final_equity / final_bh`
-- 위험: `MDD`
-- 위험조정 성과: `calmar_like` 또는 `CAGR / |MDD|` 보조 비교
-- 운용성: `trades`(회전율/비용 민감도 대리)
-- 일반화 안정성: Validation 대비 Test 괴리, walk-forward split 간 분산
-
-## 결과해석
-아래 수치는 동일 캐시(`KRW-BTC_10000101_20260220_days.csv`) 기준으로 산출한 실제 결과이다.
-
-### 1) Hold-out TEST 요약 (단일 split)
-| version | cagr | mdd | calmar | final_equity | final_bh | trades |
-|---|---:|---:|---:|---:|---:|---:|
-| v1 | 21.94% | -20.19% | 1.087 | 1.6490 | 2.5142 | 8 |
-| v3 | 22.10% | -22.70% | 0.973 | 1.6544 | 2.5142 | 339 |
-| v2 | 16.44% | -19.08% | 0.861 | 1.4677 | 2.5142 | 12 |
-| v5 | 1.86% | -14.50% | 0.128 | 1.0475 | 2.5142 | 12 |
-| v4 | 0.02% | -14.50% | 0.002 | 1.0006 | 2.5142 | 12 |
-
-단일 hold-out 기준에서는 `v1`이 가장 높은 Calmar를 기록했다. 다만 단일 구간 결과는 시기 의존성이 커서, 아래 walk-forward 결과로 일반화 성능을 재검증했다.
-
-### 2) Walk-forward 결과 (WF_SPLITS=3)
-| version | split | train_range | test_range | cagr | mdd | calmar | final_equity | final_bh | trades |
-|---|---:|---|---|---:|---:|---:|---:|---:|---:|
-| v1 | 1 | 2017-09-25~2019-10-31 | 2019-11-01~2021-12-06 | 1.07% | -23.67% | 0.045 | 1.0226 | 5.7227 | 6 |
-| v1 | 2 | 2017-09-25~2021-12-06 | 2021-12-07~2024-01-12 | 4.51% | -18.48% | 0.244 | 1.0969 | 1.0049 | 4 |
-| v1 | 3 | 2017-09-25~2024-01-12 | 2024-01-13~2026-02-17 | 0.32% | -18.70% | 0.017 | 1.0068 | 1.7276 | 8 |
-| v2 | 1 | 2017-09-25~2019-10-31 | 2019-11-01~2021-12-06 | 4.86% | -11.63% | 0.418 | 1.1047 | 5.7227 | 4 |
-| v2 | 2 | 2017-09-25~2021-12-06 | 2021-12-07~2024-01-12 | 28.51% | -21.61% | 1.319 | 1.6923 | 1.0049 | 9 |
-| v2 | 3 | 2017-09-25~2024-01-12 | 2024-01-13~2026-02-17 | 20.08% | -19.08% | 1.052 | 1.4677 | 1.7276 | 12 |
-| v3 | 1 | 2017-09-25~2019-10-31 | 2019-11-01~2021-12-06 | 6.75% | -19.58% | 0.345 | 1.1469 | 5.7227 | 130 |
-| v3 | 2 | 2017-09-25~2021-12-06 | 2021-12-07~2024-01-12 | 33.62% | -26.06% | 1.290 | 1.8364 | 1.0049 | 329 |
-| v3 | 3 | 2017-09-25~2024-01-12 | 2024-01-13~2026-02-17 | 32.17% | -22.70% | 1.417 | 1.7950 | 1.7276 | 260 |
-| v4 | 1 | 2017-09-25~2019-10-31 | 2019-11-01~2021-12-06 | 84.54% | -31.70% | 2.667 | 3.6146 | 5.7227 | 10 |
-| v4 | 2 | 2017-09-25~2021-12-06 | 2021-12-07~2024-01-12 | 42.37% | -15.84% | 2.675 | 2.0977 | 1.0049 | 12 |
-| v4 | 3 | 2017-09-25~2024-01-12 | 2024-01-13~2026-02-17 | 0.03% | -14.50% | 0.002 | 1.0006 | 1.7276 | 12 |
-| v5 | 1 | 2017-09-25~2019-10-31 | 2019-11-01~2021-12-06 | 7.49% | -7.52% | 0.997 | 1.1636 | 5.7227 | 4 |
-| v5 | 2 | 2017-09-25~2021-12-06 | 2021-12-07~2024-01-12 | 47.27% | -20.63% | 2.291 | 2.2519 | 1.0049 | 11 |
-| v5 | 3 | 2017-09-25~2024-01-12 | 2024-01-13~2026-02-17 | 22.42% | -17.93% | 1.251 | 1.5284 | 1.7276 | 12 |
-
-### 3) Walk-forward 평균 집계
-| version | mean cagr | mean mdd | mean calmar | mean final_equity | mean trades |
-|---|---:|---:|---:|---:|---:|
-| v4 | 42.31% | -20.68% | 1.781 | 2.2376 | 11.3 |
-| v5 | 25.73% | -15.36% | 1.513 | 1.6479 | 9.0 |
-| v3 | 24.18% | -22.78% | 1.017 | 1.5928 | 239.7 |
-| v2 | 17.82% | -17.44% | 0.930 | 1.4216 | 8.3 |
-| v1 | 1.97% | -20.28% | 0.102 | 1.0421 | 6.0 |
-
-정렬(평균 Calmar): `v4 > v5 > v3 > v2 > v1`
-
-### 4) 해석
-- `v4`는 평균 성능 1위지만, split3에서 급격한 성능 저하(거의 0% 성장)를 보여 구간 민감도가 크다.
-- `v5`는 `v4` 대비 평균 수익은 낮지만, `MDD` 및 split 간 변동 측면에서 상대적으로 균형적이다.
-- `v3`는 수익성은 양호하나 거래횟수가 매우 높아(평균 239.7) 비용/슬리피지 민감도가 크다.
-- `v1`은 단일 hold-out에서는 우세했으나 walk-forward 평균에서는 가장 낮아, 일반화 측면에서 약세로 해석된다.
-
-## 결론
-현 시점의 실증 결과를 반영한 운영 후보 우선순위는 다음과 같다.
-
-1. `v5` (안정성/운용성 우선 기준 추천)
-2. `v4` (공격적 수익형, 단 split 붕괴 리스크 관리 필요)
-3. `v2` (보수적 베이스라인)
-4. `v3` (고회전 비용 리스크 보정 전까지 보조 후보)
-5. `v1` (단일 구간 우세이나 WF 일반화 취약)
-
-즉, 단일 hold-out과 walk-forward의 상충 신호를 고려해 최종 채택은 `v5`를 기본 운영안으로, `v4`를 병행 관찰 전략으로 두는 것이 합리적이다.
-
-## 한계
-1. 현재 문서는 결과 템플릿 중심으로 작성되었으며, 수치 입력 전에는 확정적 성능 결론을 제공하지 않는다.
-2. 단일 자산(`KRW-BTC`) 중심 분석이므로 자산군 확장 전 일반화 한계가 존재한다.
-3. 거래비용/슬리피지 모델은 단순화되어 있어 극단 유동성 구간을 완전 반영하지 못한다.
-4. walk-forward split 수(`WF_SPLITS=3`)는 실용적 타협값이며, 강건성 검증에는 추가 split 또는 기간 재샘플링이 필요하다.
-
-## 재현 방법
-### 1) 노트북 실행
 ```bash
-jupyter lab src/test/python/backtest_playground.ipynb
+uv sync
+uv run jupyter lab backtest_playground.ipynb
 ```
 
-### 2) 결과 채우기 순서
-1. 노트북에서 v1~v5 hold-out 실행 셀을 순서대로 수행한다.
-2. `summary_table` 출력(리스트/테이블)을 본 문서의 "Hold-out 요약표"에 복사한다.
-3. "Additional Validation (Walk-forward, v1~v5)" 셀을 실행한다.
-4. `wf_rows` 출력을 본 문서의 "Walk-forward 결과표"에 복사한다.
+## 공통 계약
 
-### 3) 이미지 산출물 경로
-노트북 마지막 저장 셀 기준 경로:
-- `outputs/charts/python_backtest_playground_price_v1_v5.png`
-- `outputs/charts/python_backtest_playground_equity_v1_v5.png`
+모든 버전은 같은 연동정의를 따른다.
 
-필요 시 본 문서 말미에 그림 캡션과 함께 추가한다.
+- 입력: `StrategyInput(candles, signalIndex, position, params)`
+- 출력: `StrategyEvaluation(decision, diagnostics)`
+- 실행 액션: `decision.action`은 `BUY`, `SELL`, `HOLD` 중 하나
+- 목표 비중: `decision.targetPositionRatio`
+- 판단 이유: `decision.signalReason`
 
-### 4) 결과 삽입 시 주의사항
-- 날짜/구간 정보는 노트북 출력의 `range`, `train_range`, `test_range`를 원문 그대로 유지한다.
-- 반올림 규칙(소수 자릿수, `%` 표기)은 노트북 포맷과 동일하게 맞춘다.
-- 아직 검증되지 않은 해석 문구("압도적", "확실한 우위")는 사용하지 않는다.
+`ioContractReady=true`이면 해당 버전이 공통 Python/Java 연동정의를 만족한다는 뜻이다. `javaEngineReady=true`이면 해당 버전의 Java 네이티브 엔진까지 구현되어 있다는 뜻이다.
+
+## 후보 전략
+
+| 버전 | 핵심 아이디어 | 포지션 방식 | 주요 조정값 |
+|---|---|---|---|
+| v1 | MA + RSI | 전량 진입/청산 | `rsi_buy`, `ma_len`, `ma_slope_days` |
+| v2 | EMA 레짐 + ATR 손절 | 전량 진입/청산 | `regime_ema_len`, `atr_period`, `atr_trail_multiplier`, `regime_band` |
+| v3 | 레짐 + 변동성 목표 비중 | 동적 비중 | `vol_target`, `max_leverage`, `min_exposure` |
+| v4 | 레짐 + 주간 EMA 필터 | 전량 진입/청산 | `weekly_ema_len`, v2 계열 파라미터 |
+| v5 | 변동성 국면별 ATR 손절 | 전량 진입/청산 | `atr_mult_low_vol`, `atr_mult_high_vol`, `vol_regime_lookback`, `vol_regime_threshold` |
+
+## 비교 기준
+
+노트북의 `요약` 표에서 다음 지표를 우선 본다.
+
+- 수익성: `cagr`, `final_equity`
+- 위험: `mdd`
+- 운용성: `trades`
+- 시장 대비 성과: `final_equity_bh`와의 차이
+- 검증 구간 차이: `validation`, `test`, `full` 단계별 성능 차이
+
+단일 수익률만으로 전략을 고르지 않는다. `test`에서 수익이 높아도 `mdd`가 크거나 `trades`가 지나치게 많으면 운영 후보 우선순위를 낮춘다.
+
+## 의사결정 규칙
+
+1. `test` 구간에서 손실이 과도한 전략은 제외한다.
+2. `mdd`가 비슷하면 `cagr`와 `final_equity`가 높은 전략을 우선한다.
+3. 성과가 비슷하면 `trades`가 적은 전략을 우선한다.
+4. v3는 `targetPositionRatio`가 0.0과 1.0 사이 또는 1.0을 넘는 값을 낼 수 있으므로, Java 주문 계층이 목표 비중 실행을 지원하기 전에는 관찰 후보로 둔다.
+5. Java 운영 후보는 `javaEngineReady=true`인 버전을 우선한다.
+
+## 결과 기록 절차
+
+1. 노트북에서 `실행할_버전`과 `데이터_소스`를 정한다.
+2. 전체 셀을 실행한다.
+3. `요약` 표를 기준으로 `validation`, `test`, `full`을 비교한다.
+4. `strategy_contracts.json`에서 `lastEvaluation.decision`과 선택 파라미터를 확인한다.
+5. `equity_test.png`로 테스트 구간 자산곡선이 급격히 훼손되는지 확인한다.
+
+## 주의사항
+
+- 공식 Upbit SDK는 데이터 조회에 사용한다. RSI, EMA, ATR 같은 지표 계산은 SDK가 제공하지 않아 전략 코드에서 계산한다.
+- `targetPositionRatio`는 실행 계약의 일부다. Java에서 `action`만 보고 주문하면 v3 같은 비중 조절 전략을 잘못 실행할 수 있다. 현재 Java 주문 계층은 0.0/1.0 목표 비중만 실제 주문하고, 중간 비중은 스킵한다.
+- `synthetic` 결과는 실행 구조 확인용이다. 운영 후보 판단은 실제 Upbit 데이터로 다시 실행한 결과를 기준으로 한다.
