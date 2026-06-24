@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import math
 import os
 
-from evergreen_backtest.contracts import action_from_signals, target_position_ratio_from_signals
+from evergreen_backtest.contracts import SignalAction, resolve_action, resolve_target_position_ratio
 
 MIN_EQUITY = 1e-12
 FULL_POSITION_UNITS = 3
@@ -53,9 +53,8 @@ class BacktestRowV4:
     weekly_bullish: bool
     rsi: float
     action: str
+    signal_reason: str
     target_position_ratio: float
-    buy_signal: bool
-    sell_signal: bool
     setup_buy: bool
     setup_sell: bool
     trail_stop_triggered: bool
@@ -183,8 +182,8 @@ class BacktestServiceV4:
         regimes, anchor, upper, lower = self._resolve_regimes(close, regime_ema, params.regime_band)
         weekly_close, weekly_ema, weekly_bullish = self._build_weekly_filter(daily_bars, params.weekly_ema_len)
 
-        buy_signal = [False] * n
-        sell_signal = [False] * n
+        should_buy = [False] * n
+        should_sell = [False] * n
         setup_buy = [False] * n
         setup_sell = [False] * n
         trail_stop_triggered = [False] * n
@@ -215,9 +214,8 @@ class BacktestServiceV4:
             else:
                 highest_close_since_entry = math.nan
 
-            base_buy = self._base_buy_signal(i, regimes)
-            filtered_buy = base_buy and weekly_bullish[i]
-            base_sell = self._base_sell_signal(i, regimes, current_open_units)
+            buy_setup = self._is_buy_setup(i, regimes) and weekly_bullish[i]
+            sell_setup = self._is_sell_setup(i, regimes, current_open_units)
             trail_stop = self._evaluate_atr_trail_stop(
                 i,
                 close,
@@ -228,17 +226,17 @@ class BacktestServiceV4:
             )
 
             target_units = current_open_units
-            if trail_stop[1] or base_sell:
+            if trail_stop[1] or sell_setup:
                 target_units = 0
-            elif filtered_buy:
+            elif buy_setup:
                 target_units = FULL_POSITION_UNITS
 
-            setup_buy[i] = filtered_buy
-            setup_sell[i] = base_sell
+            setup_buy[i] = buy_setup
+            setup_sell[i] = sell_setup
             trail_stop_triggered[i] = trail_stop[1]
             atr_trail_stop[i] = trail_stop[0]
-            buy_signal[i] = target_units > current_open_units
-            sell_signal[i] = target_units < current_open_units
+            should_buy[i] = target_units > current_open_units
+            should_sell[i] = target_units < current_open_units
             pos_close_units[i] = target_units
 
         cost_unit = params.fee_per_side + params.slippage
@@ -259,6 +257,7 @@ class BacktestServiceV4:
         cagr = math.pow(final_equity, 1.0 / years) - 1.0
         mdd = self._max_drawdown(equity)
         trades = self._count_trade_executions(trade)
+        actions = [resolve_action(should_buy[i], should_sell[i]) for i in range(n)]
 
         rows = [
             BacktestRowV4(
@@ -270,14 +269,17 @@ class BacktestServiceV4:
                 weekly_ema=weekly_ema[i],
                 weekly_bullish=weekly_bullish[i],
                 rsi=math.nan,
-                action=action_from_signals(buy_signal[i], sell_signal[i]).value,
-                target_position_ratio=target_position_ratio_from_signals(
-                    buy_signal[i],
-                    sell_signal[i],
+                action=actions[i].value,
+                signal_reason=self._resolve_signal_reason(
+                    actions[i],
+                    setup_buy[i],
+                    setup_sell[i],
+                    trail_stop_triggered[i],
+                ),
+                target_position_ratio=resolve_target_position_ratio(
+                    actions[i],
                     pos_open_exposure[i],
                 ),
-                buy_signal=buy_signal[i],
-                sell_signal=sell_signal[i],
                 setup_buy=setup_buy[i],
                 setup_sell=setup_sell[i],
                 trail_stop_triggered=trail_stop_triggered[i],
@@ -305,13 +307,13 @@ class BacktestServiceV4:
         return BacktestResultV4(rows=rows, summary=summary)
 
     @staticmethod
-    def _base_buy_signal(index: int, regimes: list[MarketRegime]) -> bool:
+    def _is_buy_setup(index: int, regimes: list[MarketRegime]) -> bool:
         if index <= 0:
             return False
         return regimes[index - 1] == MarketRegime.BEAR and regimes[index] == MarketRegime.BULL
 
     @staticmethod
-    def _base_sell_signal(index: int, regimes: list[MarketRegime], current_open_units: int) -> bool:
+    def _is_sell_setup(index: int, regimes: list[MarketRegime], current_open_units: int) -> bool:
         if current_open_units <= 0 or index <= 0:
             return False
         return regimes[index - 1] == MarketRegime.BULL and regimes[index] == MarketRegime.BEAR
@@ -367,7 +369,9 @@ class BacktestServiceV4:
         n = len(daily_bars)
         week_keys: list[tuple[int, int]] = []
         weekly_closes: list[float] = []
-        day_to_week_idx = [0] * n
+        weekly_close_by_day = [math.nan] * n
+        weekly_ema_by_day = [math.nan] * n
+        weekly_bull_by_day = [False] * n
 
         for i, bar in enumerate(daily_bars):
             iso = bar.timestamp.isocalendar()
@@ -377,21 +381,34 @@ class BacktestServiceV4:
                 weekly_closes.append(bar.close)
             else:
                 weekly_closes[-1] = bar.close
-            day_to_week_idx[i] = len(week_keys) - 1
 
-        weekly_ema_series = self._exponential_moving_average(weekly_closes, weekly_ema_len)
-        weekly_bull_by_week = [math.isfinite(weekly_ema_series[i]) and weekly_closes[i] >= weekly_ema_series[i] for i in range(len(weekly_closes))]
-
-        weekly_close_by_day = [math.nan] * n
-        weekly_ema_by_day = [math.nan] * n
-        weekly_bull_by_day = [False] * n
-        for i in range(n):
-            widx = day_to_week_idx[i]
-            weekly_close_by_day[i] = weekly_closes[widx]
-            weekly_ema_by_day[i] = weekly_ema_series[widx]
-            weekly_bull_by_day[i] = weekly_bull_by_week[widx]
+            weekly_ema_series = self._exponential_moving_average(weekly_closes, weekly_ema_len)
+            weekly_close_by_day[i] = weekly_closes[-1]
+            weekly_ema_by_day[i] = weekly_ema_series[-1]
+            weekly_bull_by_day[i] = math.isfinite(weekly_ema_series[-1]) and weekly_closes[-1] >= weekly_ema_series[-1]
 
         return (weekly_close_by_day, weekly_ema_by_day, weekly_bull_by_day)
+
+    @staticmethod
+    def _resolve_signal_reason(
+        action: SignalAction,
+        setup_buy: bool,
+        setup_sell: bool,
+        trail_stop_triggered: bool,
+    ) -> str:
+        if action == SignalAction.BUY:
+            return "BUY_REGIME_WEEKLY_FILTER"
+        if action == SignalAction.SELL and setup_sell and trail_stop_triggered:
+            return "SELL_REGIME_AND_TRAIL_STOP"
+        if action == SignalAction.SELL and trail_stop_triggered:
+            return "SELL_TRAIL_STOP"
+        if action == SignalAction.SELL:
+            return "SELL_REGIME_TRANSITION"
+        if setup_buy:
+            return "SETUP_BUY"
+        if setup_sell:
+            return "SETUP_SELL"
+        return "NONE"
 
     @staticmethod
     def _validate_params(params: StrategyParamsV4) -> None:

@@ -1,6 +1,7 @@
 package org.nowstart.evergreen.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +14,7 @@ import org.nowstart.evergreen.service.strategy.StrategyRegistry;
 import org.nowstart.evergreen.service.strategy.TradingStrategyParamResolver;
 import org.nowstart.evergreen.service.strategy.core.OhlcvCandle;
 import org.nowstart.evergreen.service.strategy.core.PositionSnapshot;
+import org.nowstart.evergreen.service.strategy.core.SignalAction;
 import org.nowstart.evergreen.service.strategy.core.StrategyEvaluation;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Service;
@@ -84,12 +86,11 @@ public class TradingSignalWorkflowService {
                 activeStrategy.version(),
                 candles.stream().map(this::toOhlcv).toList(),
                 signalIndex,
-                toPositionSnapshot(totalPosition, sellableQty, totalAvgPrice),
+                toPositionSnapshot(totalPosition, sellableQty, totalAvgPrice, signalCandle.close()),
                 activeStrategy.params()
         );
 
-        boolean buySignal = strategyEvaluation.decision().buySignal();
-        boolean sellSignal = strategyEvaluation.decision().sellSignal();
+        SignalAction action = strategyEvaluation.decision().action();
         BigDecimal targetPositionRatio = strategyEvaluation.decision().targetPositionRatio();
 
         TradingExecutionMetrics executionMetrics = tradingSignalMetricsService.resolveExecutionMetrics(market);
@@ -114,29 +115,24 @@ public class TradingSignalWorkflowService {
                 strategyEvaluation
         ));
 
-        if (hasUnsupportedTargetPositionRatio(targetPositionRatio)) {
-            log.warn(
-                    "Skipping signal because targetPositionRatio requires sized execution. market={} target_position_ratio={}",
+        if (targetPositionRatio != null) {
+            tradingSignalOrderService.submitTargetPositionSignal(
                     market,
+                    signalCandle,
+                    sellableQty,
                     targetPositionRatio
             );
             return;
         }
 
-        if (buySignal) {
+        if (action == SignalAction.BUY) {
             tradingSignalOrderService.submitBuySignal(market, signalCandle);
             return;
         }
 
-        if (sellSignal) {
+        if (action == SignalAction.SELL) {
             tradingSignalOrderService.submitSellSignal(market, signalCandle, sellableQty);
         }
-    }
-
-    private boolean hasUnsupportedTargetPositionRatio(BigDecimal targetPositionRatio) {
-        return targetPositionRatio != null
-                && targetPositionRatio.compareTo(BigDecimal.ZERO) != 0
-                && targetPositionRatio.compareTo(BigDecimal.ONE) != 0;
     }
 
     private OhlcvCandle toOhlcv(TradingDayCandleDto candle) {
@@ -150,15 +146,31 @@ public class TradingSignalWorkflowService {
         );
     }
 
-    private PositionSnapshot toPositionSnapshot(TradingPosition position, BigDecimal qty, BigDecimal avgPrice) {
+    private PositionSnapshot toPositionSnapshot(TradingPosition position, BigDecimal qty, BigDecimal avgPrice, BigDecimal signalClose) {
         if (position == null) {
             return PositionSnapshot.EMPTY;
         }
+        BigDecimal positionRatio = resolvePositionRatio(qty, signalClose);
         return new PositionSnapshot(
                 safe(qty).doubleValue(),
                 safe(avgPrice).doubleValue(),
-                position.getUpdatedAt()
+                position.getUpdatedAt(),
+                positionRatio.doubleValue()
         );
+    }
+
+    private BigDecimal resolvePositionRatio(BigDecimal qty, BigDecimal signalClose) {
+        BigDecimal close = safe(signalClose);
+        if (close.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal positionValue = safe(qty).multiply(close);
+        BigDecimal baseValue = safe(tradingProperties.signalOrderNotional());
+        if (baseValue.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return positionValue.divide(baseValue, 12, RoundingMode.HALF_UP);
     }
 
     private BigDecimal safe(BigDecimal value) {

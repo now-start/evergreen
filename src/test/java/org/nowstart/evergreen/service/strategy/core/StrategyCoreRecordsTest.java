@@ -18,7 +18,7 @@ class StrategyCoreRecordsTest {
     @Test
     void strategyEvaluation_defaultsDiagnosticsWhenNull() {
         StrategyEvaluation evaluation = new StrategyEvaluation(
-                new StrategySignalDecision(false, false, "NONE"),
+                new StrategySignalDecision(SignalAction.HOLD, "NONE", null),
                 null
         );
 

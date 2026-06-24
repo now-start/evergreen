@@ -9,8 +9,13 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.nowstart.evergreen.service.strategy.core.OhlcvCandle;
 import org.nowstart.evergreen.service.strategy.core.PositionSnapshot;
+import org.nowstart.evergreen.service.strategy.core.SignalAction;
 import org.nowstart.evergreen.service.strategy.core.StrategyEvaluation;
 import org.nowstart.evergreen.service.strategy.core.StrategyParams;
+import org.nowstart.evergreen.service.strategy.v1.V1StrategyEngine;
+import org.nowstart.evergreen.service.strategy.v1.V1StrategyOverrides;
+import org.nowstart.evergreen.service.strategy.v3.V3StrategyEngine;
+import org.nowstart.evergreen.service.strategy.v3.V3StrategyOverrides;
 import org.nowstart.evergreen.service.strategy.v5.V5StrategyEngine;
 import org.nowstart.evergreen.service.strategy.v5.V5StrategyOverrides;
 
@@ -70,7 +75,74 @@ class StrategyRegistryTest {
 
         StrategyEvaluation evaluation = registry.evaluate("v5", candles, 2, PositionSnapshot.EMPTY, params);
 
-        org.assertj.core.api.Assertions.assertThat(evaluation.decision().buySignal()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(evaluation.decision().action()).isEqualTo(SignalAction.BUY);
+    }
+
+    @Test
+    void evaluate_dispatchesToV3EngineUsingPartialPositionRatio() {
+        StrategyRegistry registry = new StrategyRegistry(List.of(new V3StrategyEngine()));
+        registry.init();
+
+        V3StrategyOverrides params = new V3StrategyOverrides(
+                2,
+                1,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.valueOf(0.1),
+                BigDecimal.valueOf(2.0),
+                BigDecimal.ZERO
+        );
+        List<OhlcvCandle> candles = List.of(
+                new OhlcvCandle(Instant.parse("2026-01-01T00:00:00Z"), 100, 101, 99, 100, 1000),
+                new OhlcvCandle(Instant.parse("2026-01-02T00:00:00Z"), 90, 91, 89, 90, 1000),
+                new OhlcvCandle(Instant.parse("2026-01-03T00:00:00Z"), 110, 111, 109, 110, 1000)
+        );
+
+        StrategyEvaluation buyEvaluation = registry.evaluate(
+                "v3",
+                candles,
+                2,
+                new PositionSnapshot(500.0, 100.0, Instant.parse("2026-01-01T00:00:00Z"), 0.4),
+                params
+        );
+        StrategyEvaluation sellEvaluation = registry.evaluate(
+                "v3",
+                candles,
+                2,
+                new PositionSnapshot(500.0, 100.0, Instant.parse("2026-01-01T00:00:00Z"), 0.7),
+                params
+        );
+
+        assertThat(buyEvaluation.decision().action()).isEqualTo(SignalAction.BUY);
+        assertThat(sellEvaluation.decision().action()).isEqualTo(SignalAction.SELL);
+    }
+
+    @Test
+    void evaluate_actionOnlyStrategyKeepsCurrentRatioOnHold() {
+        StrategyRegistry registry = new StrategyRegistry(List.of(new V1StrategyEngine()));
+        registry.init();
+
+        V1StrategyOverrides params = new V1StrategyOverrides(
+                BigDecimal.valueOf(20),
+                2,
+                1
+        );
+        List<OhlcvCandle> candles = List.of(
+                new OhlcvCandle(Instant.parse("2026-01-01T00:00:00Z"), 100, 101, 99, 100, 1000),
+                new OhlcvCandle(Instant.parse("2026-01-02T00:00:00Z"), 110, 111, 109, 110, 1000),
+                new OhlcvCandle(Instant.parse("2026-01-03T00:00:00Z"), 120, 121, 119, 120, 1000)
+        );
+
+        StrategyEvaluation evaluation = registry.evaluate(
+                "v1",
+                candles,
+                2,
+                new PositionSnapshot(500.0, 100.0, Instant.parse("2026-01-01T00:00:00Z"), 0.5),
+                params
+        );
+
+        assertThat(evaluation.decision().action()).isEqualTo(SignalAction.HOLD);
+        assertThat(evaluation.decision().targetPositionRatio()).isEqualByComparingTo("0.5");
     }
 
     @Test

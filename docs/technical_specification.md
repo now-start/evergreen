@@ -12,7 +12,7 @@ Evergreen은 단일 Spring Boot 애플리케이션으로 동작한다. 외부 �
 flowchart LR
     Scheduler["TradingSignalScheduler"] --> Workflow["TradingSignalWorkflowService"]
     Workflow --> MarketData["TradingSignalMarketDataService"]
-    Workflow --> Strategy["StrategyRegistry / V5StrategyEngine"]
+    Workflow --> Strategy["StrategyRegistry / v1~v5 engines"]
     Workflow --> Guard["TradingOrderGuardService"]
     Workflow --> SignalOrder["TradingSignalOrderService"]
     SignalOrder --> Execution["TradingExecutionService"]
@@ -33,7 +33,7 @@ flowchart LR
 | `service.TradingExecutionService` | 주문 검증, PAPER/LIVE 실행, Upbit 주문 요청/조회/취소를 담당한다. |
 | `service.TradingOrderGuardService` | 로컬 활성 주문과 거래소 미체결 주문 기반 차단 결정을 수행한다. |
 | `service.TradingPositionSyncService` | LIVE 모드 계좌 잔고를 포지션 상태로 동기화한다. |
-| `service.strategy` | 전략 파라미터 해석과 V5 전략 평가를 담당한다. |
+| `service.strategy` | 전략 파라미터 해석과 v1~v5 전략 평가를 담당한다. |
 | `data.entity` | 주문, 체결, 포지션, drift snapshot, 감사 이벤트를 저장한다. |
 
 ## 3. Upbit API 계약
@@ -97,7 +97,7 @@ Upbit Exchange API 요청은 JWT Bearer 인증을 사용한다.
 3. LIVE 모드이면 `TradingPositionSyncService`가 Upbit 잔고를 포지션으로 동기화한다.
 4. 각 마켓별 일 캔들을 조회하고 닫힌 캔들 기준 signal index를 계산한다.
 5. 로컬 활성 주문 또는 Upbit 미체결 주문이 있으면 해당 마켓 실행을 중단한다.
-6. 활성 전략을 평가한다.
+6. `signal-order-notional`과 신호 캔들 종가로 현재 포지션 비중을 계산한 뒤 활성 전략을 평가한다.
 7. 매수/매도 신호와 포지션 상태를 로그로 남긴다.
 8. 신호가 있으면 `TradingSignalOrderService`가 주문 요청을 생성한다.
 9. `TradingExecutionService`가 주문을 검증하고 PAPER 또는 LIVE로 실행한다.
@@ -128,8 +128,8 @@ Upbit Exchange API 요청은 JWT Bearer 인증을 사용한다.
 | `markets` | `KRW-BTC` | 자동매매 대상 마켓 |
 | `candle-count` | `400` | 일봉 조회 수 |
 | `closed-candle-only` | `true` | 최신 미완성 캔들 제외 여부 |
-| `signal-order-notional` | `100000` | PAPER 매수 주문 금액 |
-| `active-strategy-version` | `v5` | 활성 전략 버전 |
+| `signal-order-notional` | `100000` | 목표 비중 주문의 기준 금액. PAPER 주문 금액과 LIVE 자동 증액 상한 계산에 사용 |
+| `active-strategy-version` | `v5` | 활성 전략 버전. `v1`~`v5` 중 선택 |
 
 운영에서는 `execution-mode` 기본값이 `LIVE`인 점을 별도로 통제해야 한다. 배포 기본값은 Config Server 또는 환경변수에서 `PAPER`로 명시하는 것이 안전하다.
 
@@ -156,7 +156,7 @@ Grafana 대시보드 정의는 `docs/grafana_trading_dashboard.json`에 있다.
 
 ## 11. 현재 확인된 리스크
 
-1. LIVE 자동 매수는 요청 금액이 없으면 가용 KRW 전액을 사용한다. 운영 안전을 위해 live notional cap이 필요하다.
+1. `targetPositionRatio`가 없는 fallback LIVE 매수는 요청 금액이 없으면 가용 KRW 전액을 사용한다. 운영 전략은 `targetPositionRatio`와 `signal-order-notional` 경로를 사용해야 한다.
 2. Upbit rate limit group별 client-side limiter가 없다.
 3. 429/5xx 응답에 대한 retry/backoff 정책이 명시되어 있지 않다.
 4. Upbit `Test Order` API를 통한 LIVE 전 dry-run 검증이 없다.

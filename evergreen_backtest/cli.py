@@ -8,13 +8,10 @@ from evergreen_backtest.runner import BacktestRunRequest, run_backtest
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run Evergreen versioned Python backtests.")
-    parser.add_argument("--versions", default="v5", help="Comma-separated versions, or 'all'. Example: v3,v4,v5")
-    parser.add_argument("--source", choices=["synthetic", "cache", "sdk", "upbit"], default="upbit")
+    parser.add_argument("--versions", default="all", help="Comma-separated versions, or 'all'. Example: v3,v4,v5")
     parser.add_argument("--market", default="KRW-BTC")
     parser.add_argument("--from-date", default="2020-01-01")
     parser.add_argument("--to-date")
-    parser.add_argument("--cache-dir", default="outputs/data/upbit-cache")
-    parser.add_argument("--synthetic-count", type=int, default=420)
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--grid-parallelism", type=int, default=1)
     parser.add_argument("--output-dir", default="outputs/backtests/latest")
@@ -24,12 +21,9 @@ def main() -> None:
     versions = tuple(item.strip().lower() for item in args.versions.split(",") if item.strip())
     request = BacktestRunRequest(
         versions=versions,
-        source=args.source,
         market=args.market,
         from_dt=_parse_date(args.from_date),
         to_dt=_parse_date(args.to_date) if args.to_date else None,
-        cache_dir=args.cache_dir,
-        synthetic_count=args.synthetic_count,
         common_config={"top_k": args.top_k, "grid_parallelism": args.grid_parallelism},
         output_dir=args.output_dir,
     )

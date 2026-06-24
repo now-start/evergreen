@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import math
 import os
 
-from evergreen_backtest.contracts import action_from_signals
+from evergreen_backtest.contracts import SignalAction, resolve_action
 
 MIN_EQUITY = 1e-12
 
@@ -51,9 +51,8 @@ class BacktestRowV3:
     ma: float
     rsi: float
     action: str
+    signal_reason: str
     target_position_ratio: float
-    buy_signal: bool
-    sell_signal: bool
     setup_buy: bool
     setup_sell: bool
     trail_stop_triggered: bool
@@ -208,8 +207,8 @@ class BacktestServiceV3:
         regimes, anchor, upper, lower = self._resolve_regimes(close, regime_ema, params.regime_band)
         vol_proxy = self._resolve_vol_proxy(atr, close)
 
-        buy_signal = [False] * n
-        sell_signal = [False] * n
+        should_buy = [False] * n
+        should_sell = [False] * n
         setup_buy = [False] * n
         setup_sell = [False] * n
         trail_stop_triggered = [False] * n
@@ -239,8 +238,8 @@ class BacktestServiceV3:
             else:
                 highest_close_since_entry = math.nan
 
-            base_buy = self._base_buy_signal(i, regimes)
-            base_sell = self._base_sell_signal(i, regimes, current_open_exposure)
+            buy_setup = self._is_buy_setup(i, regimes)
+            sell_setup = self._is_sell_setup(i, regimes, current_open_exposure)
             trail_stop = self._evaluate_atr_trail_stop(
                 i,
                 close,
@@ -251,21 +250,21 @@ class BacktestServiceV3:
             )
 
             bullish_active = regimes[i] == MarketRegime.BULL
-            should_zero = (not bullish_active) or trail_stop[1] or base_sell
+            should_zero = (not bullish_active) or trail_stop[1] or sell_setup
             desired_exposure = self._target_exposure_from_vol_proxy(vol_proxy[i], params)
 
             next_exposure = 0.0
             if not should_zero:
-                if base_buy or current_open_exposure > 0.0:
+                if buy_setup or current_open_exposure > 0.0:
                     next_exposure = desired_exposure
 
-            setup_buy[i] = base_buy
-            setup_sell[i] = base_sell
+            setup_buy[i] = buy_setup
+            setup_sell[i] = sell_setup
             trail_stop_triggered[i] = trail_stop[1]
             atr_trail_stop[i] = trail_stop[0]
             target_exposure[i] = next_exposure
-            buy_signal[i] = next_exposure > current_open_exposure
-            sell_signal[i] = next_exposure < current_open_exposure
+            should_buy[i] = next_exposure > current_open_exposure
+            should_sell[i] = next_exposure < current_open_exposure
             pos_close_exposure[i] = next_exposure
 
         cost_unit = params.fee_per_side + params.slippage
@@ -286,6 +285,7 @@ class BacktestServiceV3:
         cagr = math.pow(final_equity, 1.0 / years) - 1.0
         mdd = self._max_drawdown(equity)
         trades = self._count_trade_executions(trade)
+        actions = [resolve_action(should_buy[i], should_sell[i]) for i in range(n)]
 
         rows = [
             BacktestRowV3(
@@ -294,10 +294,14 @@ class BacktestServiceV3:
                 close=close[i],
                 ma=regime_ema[i],
                 rsi=math.nan,
-                action=action_from_signals(buy_signal[i], sell_signal[i]).value,
+                action=actions[i].value,
+                signal_reason=_resolve_signal_reason(
+                    actions[i],
+                    setup_buy[i],
+                    setup_sell[i],
+                    trail_stop_triggered[i],
+                ),
                 target_position_ratio=target_exposure[i],
-                buy_signal=buy_signal[i],
-                sell_signal=sell_signal[i],
                 setup_buy=setup_buy[i],
                 setup_sell=setup_sell[i],
                 trail_stop_triggered=trail_stop_triggered[i],
@@ -328,13 +332,13 @@ class BacktestServiceV3:
         return BacktestResultV3(rows=rows, summary=summary)
 
     @staticmethod
-    def _base_buy_signal(index: int, regimes: list[MarketRegime]) -> bool:
+    def _is_buy_setup(index: int, regimes: list[MarketRegime]) -> bool:
         if index <= 0:
             return False
         return regimes[index - 1] == MarketRegime.BEAR and regimes[index] == MarketRegime.BULL
 
     @staticmethod
-    def _base_sell_signal(index: int, regimes: list[MarketRegime], current_open_exposure: float) -> bool:
+    def _is_sell_setup(index: int, regimes: list[MarketRegime], current_open_exposure: float) -> bool:
         if current_open_exposure <= 0.0 or index <= 0:
             return False
         return regimes[index - 1] == MarketRegime.BULL and regimes[index] == MarketRegime.BEAR
@@ -591,3 +595,26 @@ def _parse_positive_int_range(spec: str, field_name: str) -> list[int]:
 
 def _rank_value(value: float) -> float:
     return value if math.isfinite(value) else float("-inf")
+
+
+def _resolve_signal_reason(
+    action: SignalAction,
+    setup_buy: bool,
+    setup_sell: bool,
+    trail_stop_triggered: bool,
+) -> str:
+    if action == SignalAction.BUY:
+        return "BUY_TARGET_EXPOSURE"
+    if action == SignalAction.SELL and setup_sell and trail_stop_triggered:
+        return "SELL_REGIME_AND_TRAIL_STOP"
+    if action == SignalAction.SELL and trail_stop_triggered:
+        return "SELL_TRAIL_STOP"
+    if action == SignalAction.SELL and setup_sell:
+        return "SELL_REGIME_TRANSITION"
+    if action == SignalAction.SELL:
+        return "SELL_TARGET_EXPOSURE"
+    if setup_buy:
+        return "SETUP_BUY"
+    if setup_sell:
+        return "SETUP_SELL"
+    return "NONE"

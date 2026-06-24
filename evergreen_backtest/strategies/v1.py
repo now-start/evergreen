@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import math
 
-from evergreen_backtest.contracts import action_from_signals, target_position_ratio_from_signals
+from evergreen_backtest.contracts import SignalAction, resolve_action, resolve_target_position_ratio
 
 MIN_EQUITY = 1e-12
 RSI_PERIOD = 14
@@ -39,9 +39,8 @@ class BacktestRowV1:
     ma: float
     rsi: float
     action: str
+    signal_reason: str
     target_position_ratio: float
-    buy_signal: bool
-    sell_signal: bool
     pos_open: int
     ret_oo: float
     equity: float
@@ -131,8 +130,8 @@ class BacktestServiceV1:
         ma = self._moving_average(close, params.ma_len)
         rsi = self._wilder_rsi(close, RSI_PERIOD)
 
-        buy_signal = [False] * n
-        sell_signal = [False] * n
+        should_buy = [False] * n
+        should_sell = [False] * n
         pos_close = [0] * n
         pos_open = [0] * n
         ret_oo = [0.0] * n
@@ -151,15 +150,15 @@ class BacktestServiceV1:
                 and ma[i] > ma[i - params.ma_slope_days]
             )
             bull = math.isfinite(ma[i]) and close[i] > ma[i] and slope_ok
-            buy_signal[i] = bull and math.isfinite(rsi[i]) and rsi[i] < params.rsi_buy
-            sell_signal[i] = math.isfinite(ma[i]) and close[i] < ma[i]
+            should_buy[i] = bull and math.isfinite(rsi[i]) and rsi[i] < params.rsi_buy
+            should_sell[i] = math.isfinite(ma[i]) and close[i] < ma[i]
 
             prev = 0 if i == 0 else pos_close[i - 1]
             if not math.isfinite(ma[i]) or not math.isfinite(rsi[i]):
                 pos_close[i] = 0
-            elif sell_signal[i]:
+            elif should_sell[i]:
                 pos_close[i] = 0
-            elif buy_signal[i]:
+            elif should_buy[i]:
                 pos_close[i] = 1
             else:
                 pos_close[i] = prev
@@ -183,6 +182,7 @@ class BacktestServiceV1:
         cagr = math.pow(final_equity, 1.0 / years) - 1.0
         mdd = self._max_drawdown(equity)
         trades = int(round(sum(trade)))
+        actions = [resolve_action(should_buy[i], should_sell[i]) for i in range(n)]
 
         rows = [
             BacktestRowV1(
@@ -191,10 +191,9 @@ class BacktestServiceV1:
                 close=close[i],
                 ma=ma[i],
                 rsi=rsi[i],
-                action=action_from_signals(buy_signal[i], sell_signal[i]).value,
-                target_position_ratio=target_position_ratio_from_signals(buy_signal[i], sell_signal[i], float(pos_open[i])),
-                buy_signal=buy_signal[i],
-                sell_signal=sell_signal[i],
+                action=actions[i].value,
+                signal_reason=_resolve_signal_reason(actions[i], should_buy[i], should_sell[i]),
+                target_position_ratio=resolve_target_position_ratio(actions[i], float(pos_open[i])),
                 pos_open=pos_open[i],
                 ret_oo=ret_oo[i],
                 equity=equity[i],
@@ -339,3 +338,15 @@ def _parse_int_range(spec: str) -> list[int]:
 
 def _rank_value(value: float) -> float:
     return value if math.isfinite(value) else float("-inf")
+
+
+def _resolve_signal_reason(action: SignalAction, should_buy: bool, should_sell: bool) -> str:
+    if action == SignalAction.BUY:
+        return "BUY_MA_RSI"
+    if action == SignalAction.SELL:
+        return "SELL_MA_BREAK"
+    if should_buy:
+        return "SETUP_BUY"
+    if should_sell:
+        return "SETUP_SELL"
+    return "NONE"

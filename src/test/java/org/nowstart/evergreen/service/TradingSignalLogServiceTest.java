@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.nowstart.evergreen.data.dto.TradingDayCandleDto;
 import org.nowstart.evergreen.data.dto.TradingExecutionMetrics;
+import org.nowstart.evergreen.service.strategy.core.SignalAction;
 import org.nowstart.evergreen.service.strategy.core.StrategyDiagnostic;
 import org.nowstart.evergreen.service.strategy.core.StrategyEvaluation;
 import org.nowstart.evergreen.service.strategy.core.StrategySignalDecision;
@@ -23,7 +24,7 @@ class TradingSignalLogServiceTest {
     @Test
     void logCandleSignal_includesDiagnosticLabelInStrategyDiagnosticLog(CapturedOutput output) {
         StrategyEvaluation evaluation = new StrategyEvaluation(
-                new StrategySignalDecision(false, false, "HOLD"),
+                new StrategySignalDecision(SignalAction.HOLD, "HOLD", null),
                 List.of(
                         StrategyDiagnostic.number("atr.value", "ATR", 2.5),
                         StrategyDiagnostic.number("regime.lower", "Regime Lower Band", 95.0)

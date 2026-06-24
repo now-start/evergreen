@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.nowstart.evergreen.data.dto.OrderChanceDto;
 import org.nowstart.evergreen.data.dto.OrderDto;
 import org.nowstart.evergreen.data.dto.SignalExecuteRequest;
 import org.nowstart.evergreen.data.dto.TradingDayCandleDto;
@@ -117,6 +118,103 @@ class TradingSignalOrderServiceTest {
     }
 
     @Test
+    void submitTargetPositionSignal_paperBuysOnlyMissingFractionalExposure() {
+        TradingSignalOrderService service = serviceFor(ExecutionMode.PAPER, new BigDecimal("100000"));
+        TradingDayCandleDto signal = candle("100");
+        when(tradingSignalStateService.isDuplicateSignal("KRW-BTC", OrderSide.BUY, signal.timestamp())).thenReturn(false);
+        when(tradingExecutionService.executeSignal(any())).thenReturn(order("client-target-buy", ExecutionMode.PAPER, new BigDecimal("100")));
+
+        service.submitTargetPositionSignal("KRW-BTC", signal, BigDecimal.ZERO, new BigDecimal("0.5"));
+
+        ArgumentCaptor<SignalExecuteRequest> captor = ArgumentCaptor.forClass(SignalExecuteRequest.class);
+        verify(tradingExecutionService).executeSignal(captor.capture());
+        SignalExecuteRequest request = captor.getValue();
+        assertThat(request.side()).isEqualTo(OrderSide.BUY);
+        assertThat(request.quantity()).isEqualByComparingTo("500");
+        assertThat(request.price()).isEqualByComparingTo("50000");
+    }
+
+    @Test
+    void submitTargetPositionSignal_paperDoesNothingWhenFractionalExposureAlreadyMatches() {
+        TradingSignalOrderService service = serviceFor(ExecutionMode.PAPER, new BigDecimal("100000"));
+
+        service.submitTargetPositionSignal("KRW-BTC", candle("100"), new BigDecimal("500"), new BigDecimal("0.5"));
+
+        verifyNoInteractions(tradingExecutionService);
+    }
+
+    @Test
+    void submitTargetPositionSignal_paperSellsOnlyExcessFractionalExposure() {
+        TradingSignalOrderService service = serviceFor(ExecutionMode.PAPER, new BigDecimal("100000"));
+        TradingDayCandleDto signal = candle("100");
+        when(tradingSignalStateService.isDuplicateSignal("KRW-BTC", OrderSide.SELL, signal.timestamp())).thenReturn(false);
+        when(tradingExecutionService.executeSignal(any())).thenReturn(order("client-target-sell", ExecutionMode.PAPER, new BigDecimal("100")));
+
+        service.submitTargetPositionSignal("KRW-BTC", signal, new BigDecimal("800"), new BigDecimal("0.5"));
+
+        ArgumentCaptor<SignalExecuteRequest> captor = ArgumentCaptor.forClass(SignalExecuteRequest.class);
+        verify(tradingExecutionService).executeSignal(captor.capture());
+        SignalExecuteRequest request = captor.getValue();
+        assertThat(request.side()).isEqualTo(OrderSide.SELL);
+        assertThat(request.quantity()).isEqualByComparingTo("300");
+        assertThat(request.price()).isEqualByComparingTo("100");
+    }
+
+    @Test
+    void submitTargetPositionSignal_liveUsesConfiguredAllocationForCurrentExposure() {
+        TradingSignalOrderService service = serviceFor(ExecutionMode.LIVE, new BigDecimal("100000"));
+        TradingDayCandleDto signal = candle("100");
+        when(tradingExecutionService.getOrderChance("KRW-BTC")).thenReturn(orderChance("60000", "500"));
+        when(tradingSignalStateService.isDuplicateSignal("KRW-BTC", OrderSide.BUY, signal.timestamp())).thenReturn(false);
+        when(tradingExecutionService.executeSignal(any())).thenReturn(order("client-live-target-buy", ExecutionMode.LIVE, new BigDecimal("100")));
+
+        service.submitTargetPositionSignal("KRW-BTC", signal, new BigDecimal("500"), new BigDecimal("0.6"));
+
+        ArgumentCaptor<SignalExecuteRequest> captor = ArgumentCaptor.forClass(SignalExecuteRequest.class);
+        verify(tradingExecutionService).executeSignal(captor.capture());
+        SignalExecuteRequest request = captor.getValue();
+        assertThat(request.side()).isEqualTo(OrderSide.BUY);
+        assertThat(request.quantity()).isNull();
+        assertThat(request.price()).isEqualByComparingTo("10000");
+    }
+
+    @Test
+    void submitTargetPositionSignal_liveDoesNothingWhenFractionalExposureAlreadyMatches() {
+        TradingSignalOrderService service = serviceFor(ExecutionMode.LIVE, new BigDecimal("100000"));
+
+        service.submitTargetPositionSignal("KRW-BTC", candle("100"), new BigDecimal("500"), new BigDecimal("0.5"));
+
+        verifyNoInteractions(tradingExecutionService);
+    }
+
+    @Test
+    void submitTargetPositionSignal_liveCapsAboveOneTargetToSpendableCash() {
+        TradingSignalOrderService service = serviceFor(ExecutionMode.LIVE, new BigDecimal("100000"));
+        TradingDayCandleDto signal = candle("100");
+        when(tradingExecutionService.getOrderChance("KRW-BTC")).thenReturn(orderChance("100000", "0"));
+        when(tradingSignalStateService.isDuplicateSignal("KRW-BTC", OrderSide.BUY, signal.timestamp())).thenReturn(false);
+        when(tradingExecutionService.executeSignal(any())).thenReturn(order("client-live-target-cap", ExecutionMode.LIVE, new BigDecimal("100")));
+
+        service.submitTargetPositionSignal("KRW-BTC", signal, BigDecimal.ZERO, new BigDecimal("2.0"));
+
+        ArgumentCaptor<SignalExecuteRequest> captor = ArgumentCaptor.forClass(SignalExecuteRequest.class);
+        verify(tradingExecutionService).executeSignal(captor.capture());
+        SignalExecuteRequest request = captor.getValue();
+        assertThat(request.side()).isEqualTo(OrderSide.BUY);
+        assertThat(request.quantity()).isNull();
+        assertThat(request.price()).isEqualByComparingTo("99950");
+    }
+
+    @Test
+    void submitTargetPositionSignal_doesNothingWhenAboveOneTargetAlreadyMatches() {
+        TradingSignalOrderService service = serviceFor(ExecutionMode.LIVE, new BigDecimal("100000"));
+
+        service.submitTargetPositionSignal("KRW-BTC", candle("100"), new BigDecimal("2000"), new BigDecimal("2.0"));
+
+        verifyNoInteractions(tradingExecutionService);
+    }
+
+    @Test
     void submitSellSignal_returnsImmediatelyWhenDuplicate() {
         TradingSignalOrderService service = serviceFor(ExecutionMode.LIVE, new BigDecimal("100000"));
         TradingDayCandleDto signal = candle("100");
@@ -204,6 +302,17 @@ class TradingSignalOrderServiceTest {
                 new BigDecimal("99"),
                 new BigDecimal(closePrice),
                 new BigDecimal("1000")
+        );
+    }
+
+    private OrderChanceDto orderChance(String bidBalance, String askBalance) {
+        return new OrderChanceDto(
+                "KRW-BTC",
+                new BigDecimal("0.0005"),
+                new BigDecimal("0.0005"),
+                new BigDecimal(bidBalance),
+                new BigDecimal(askBalance),
+                new BigDecimal("1000000000")
         );
     }
 

@@ -18,7 +18,7 @@ package org.nowstart.evergreen.service.strategy.core;
  * );
  *
  * return new StrategyEvaluation(
- *         new StrategySignalDecision(buySignal, sellSignal, reason),
+ *         new StrategySignalDecision(SignalAction.BUY, reason, BigDecimal.ONE),
  *         diagnostics
  * );
  * }</pre>

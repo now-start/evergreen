@@ -19,7 +19,7 @@ public class TradingSignalLogService {
         StrategyEvaluation strategyEvaluation = context.strategyEvaluation();
 
         log.info(
-                "event=candle_signal market={} strategy_version={} ts={} close={} live_price={} has_position={} position_qty={} position_avg_price={} total_qty={} unrealized_return_pct={} realized_pnl_krw={} realized_return_pct={} max_drawdown_pct={} trade_count={} trade_win_rate_pct={} trade_avg_win_pct={} trade_avg_loss_pct={} trade_rr_ratio={} trade_expectancy_pct={} buy_signal={} sell_signal={} signal_reason={} diagnostics={} diagnostics_schema={}",
+                "event=candle_signal market={} strategy_version={} ts={} close={} live_price={} has_position={} position_qty={} position_avg_price={} total_qty={} unrealized_return_pct={} realized_pnl_krw={} realized_return_pct={} max_drawdown_pct={} trade_count={} trade_win_rate_pct={} trade_avg_win_pct={} trade_avg_loss_pct={} trade_rr_ratio={} trade_expectancy_pct={} action={} signal_reason={} diagnostics={} diagnostics_schema={}",
                 context.market(),
                 context.strategyVersion(),
                 context.signalCandle().timestamp(),
@@ -39,8 +39,7 @@ public class TradingSignalLogService {
                 sanitizeMetricForLog(executionMetrics.avgLossPct()),
                 sanitizeMetricForLog(executionMetrics.rrRatio()),
                 sanitizeMetricForLog(executionMetrics.expectancyPct()),
-                strategyEvaluation.decision().buySignal(),
-                strategyEvaluation.decision().sellSignal(),
+                strategyEvaluation.decision().action(),
                 strategyEvaluation.decision().signalReason(),
                 formatDiagnosticValues(strategyEvaluation),
                 formatDiagnosticSchema(strategyEvaluation)
@@ -54,15 +53,14 @@ public class TradingSignalLogService {
             double value = sanitizeMetricForLog(diagnostic.value());
 
             log.info(
-                    "event=strategy_diagnostic market={} strategy_version={} ts={} key={} label=\"{}\" value={} buy_signal={} sell_signal={} signal_reason={}",
+                    "event=strategy_diagnostic market={} strategy_version={} ts={} key={} label=\"{}\" value={} action={} signal_reason={}",
                     context.market(),
                     context.strategyVersion(),
                     context.signalCandle().timestamp(),
                     diagnostic.key(),
                     escape(diagnostic.label()),
                     value,
-                    strategyEvaluation.decision().buySignal(),
-                    strategyEvaluation.decision().sellSignal(),
+                    strategyEvaluation.decision().action(),
                     strategyEvaluation.decision().signalReason()
             );
         }

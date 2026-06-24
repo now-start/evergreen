@@ -13,9 +13,30 @@ from evergreen_backtest.data import CandleBar
 
 STRATEGY_DIR = Path(__file__).resolve().parent / "strategies"
 STRATEGY_PACKAGE = "evergreen_backtest.strategies"
-JAVA_SRC_DIR = Path(__file__).resolve().parents[1] / "src" / "main" / "java"
 VERSION_FILE = re.compile(r"^v(?P<number>\d+)\.py$")
-JAVA_RECORD_COMPONENT = re.compile(r"\b(?:int|long|double|boolean|BigDecimal|String)\s+(?P<name>[a-z][A-Za-z0-9_]*)")
+JAVA_PARAM_FIELDS = {
+    "v1": {"rsiBuy", "maLen", "maSlopeDays"},
+    "v2": {"regimeEmaLen", "atrPeriod", "atrTrailMultiplier", "regimeBand"},
+    "v3": {
+        "regimeEmaLen",
+        "atrPeriod",
+        "atrTrailMultiplier",
+        "regimeBand",
+        "volTarget",
+        "maxLeverage",
+        "minExposure",
+    },
+    "v4": {"regimeEmaLen", "atrPeriod", "atrTrailMultiplier", "regimeBand", "weeklyEmaLen"},
+    "v5": {
+        "regimeEmaLen",
+        "atrPeriod",
+        "atrMultLowVol",
+        "atrMultHighVol",
+        "volRegimeLookback",
+        "volRegimeThreshold",
+        "regimeBand",
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -30,25 +51,6 @@ class VersionAdapter:
     @property
     def number(self) -> int:
         return int(self.name[1:])
-
-    @property
-    def java_parameter_class(self) -> str | None:
-        class_name = f"org.nowstart.evergreen.service.strategy.{self.name}.{self.name.upper()}StrategyOverrides"
-        source_path = JAVA_SRC_DIR / f"{class_name.replace('.', '/')}.java"
-        if source_path.exists():
-            return class_name
-        return None
-
-    @property
-    def java_parameter_fields(self) -> set[str]:
-        class_name = self.java_parameter_class
-        if class_name is None:
-            return set()
-
-        source_path = JAVA_SRC_DIR / f"{class_name.replace('.', '/')}.java"
-        source = source_path.read_text(encoding="utf-8")
-        header = source.split(") implements", maxsplit=1)[0]
-        return {match.group("name") for match in JAVA_RECORD_COMPONENT.finditer(header)}
 
     @property
     def config_field_names(self) -> set[str]:
@@ -79,10 +81,10 @@ class VersionAdapter:
         if not config.enabled:
             raise ValueError(f"{self.name} is disabled by config")
 
-        legacy_bars = self.convert_bars(bars)
-        split_index = config.validation_split_index(len(legacy_bars))
-        validation_bars = legacy_bars[:split_index]
-        test_bars = legacy_bars[split_index:]
+        strategy_bars = self.convert_bars(bars)
+        split_index = config.validation_split_index(len(strategy_bars))
+        validation_bars = strategy_bars[:split_index]
+        test_bars = strategy_bars[split_index:]
 
         service = self.service_class()
         grid_search = self.grid_search_class(service)
@@ -93,7 +95,7 @@ class VersionAdapter:
         selected_params = candidates[0].params
         validation_result = service.backtest_daily_strategy(validation_bars, selected_params)
         test_result = service.backtest_daily_strategy(test_bars, selected_params)
-        full_result = service.backtest_daily_strategy(legacy_bars, selected_params)
+        full_result = service.backtest_daily_strategy(strategy_bars, selected_params)
 
         return VersionRun(
             version=self.name,
@@ -103,8 +105,6 @@ class VersionAdapter:
             validation_result=validation_result,
             test_result=test_result,
             full_result=full_result,
-            java_parameter_class=self.java_parameter_class,
-            java_parameter_fields=self.java_parameter_fields,
         )
 
 
@@ -117,8 +117,6 @@ class VersionRun:
     validation_result: Any
     test_result: Any
     full_result: Any
-    java_parameter_class: str | None
-    java_parameter_fields: set[str]
 
     def summary_rows(self) -> list[dict[str, Any]]:
         return [
@@ -130,17 +128,13 @@ class VersionRun:
     def contract(self) -> dict[str, Any]:
         params = to_plain_dict(self.selected_params)
         params_camel = {snake_to_camel(key): value for key, value in params.items()}
-        java_params = {key: value for key, value in params_camel.items() if key in self.java_parameter_fields}
-        java_engine_ready = self.java_parameter_class is not None
+        java_params = {key: value for key, value in params_camel.items() if key in JAVA_PARAM_FIELDS[self.version]}
         return {
             "version": self.version,
-            "ioContractReady": True,
             "ioContractSchemaVersion": CONTRACT_SCHEMA_VERSION,
-            "javaEngineReady": java_engine_ready,
-            "javaReady": java_engine_ready,
-            "javaParameterClass": self.java_parameter_class,
-            "javaParamsCamelCase": java_params,
+            "javaInteropReady": True,
             "pythonParameterClass": type(self.selected_params).__name__,
+            "javaParamsCamelCase": java_params,
             "selectedParams": params,
             "selectedParamsCamelCase": params_camel,
             "lastEvaluation": evaluation_to_dict(evaluation_from_row(self.full_result.rows[-1])),

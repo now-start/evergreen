@@ -35,7 +35,7 @@ public record TradingProperties(
         @DefaultValue("true") boolean closedCandleOnly,
         // PAPER 모드 시그널 진입 시도 주문 금액(KRW 기준)
         @DecimalMin(value = "0", inclusive = false) @DefaultValue("100000") BigDecimal signalOrderNotional,
-        // 활성 전략 버전 (예: v5)
+        // 활성 전략 버전 (v1~v5)
         @NotBlank @DefaultValue("v5") String activeStrategyVersion
 ) {
 }

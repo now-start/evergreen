@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import csv
-import math
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Protocol
 
@@ -46,7 +45,7 @@ class UpbitSdkDailyCandleClient:
             from upbit import Upbit
         except ImportError as exc:
             raise RuntimeError(
-                "upbit-sdk is required for source='sdk'. Run `uv sync` or use source='synthetic'."
+                "upbit-sdk is required. Run `uv sync` before running the backtest."
             ) from exc
 
         self._client = Upbit(environment=environment, timeout=timeout)
@@ -60,7 +59,7 @@ class UpbitSdkDailyCandleClient:
         return [_bar_from_sdk_row(row) for row in _iter_response_items(response)]
 
 
-class CsvCandleCache:
+class _CsvCandleCache:
     def __init__(self, cache_dir: str | Path) -> None:
         self.cache_dir = Path(cache_dir)
 
@@ -100,30 +99,17 @@ class CsvCandleCache:
 
 def load_bars(
     *,
-    source: str,
     market: str,
     from_dt: datetime,
     to_dt: datetime | None,
     cache_dir: str | Path = "outputs/data/upbit-cache",
-    synthetic_count: int = 420,
     client: DailyCandleClient | None = None,
 ) -> list[CandleBar]:
-    normalized_source = source.strip().lower()
-    if normalized_source == "upbit":
-        normalized_source = "sdk"
-
     resolved_to_dt = to_dt or datetime.now(timezone.utc)
-    if normalized_source == "synthetic":
-        return synthetic_bars(synthetic_count)
-
-    cache = CsvCandleCache(cache_dir)
+    cache = _CsvCandleCache(cache_dir)
     cache_path = cache.path_for(market=market, from_dt=from_dt, to_dt=resolved_to_dt)
     if cache_path.exists():
         return cache.load(cache_path)
-    if normalized_source == "cache":
-        raise FileNotFoundError(f"cache file not found: {cache_path}")
-    if normalized_source != "sdk":
-        raise ValueError("source must be one of: synthetic, cache, sdk, upbit")
 
     bars = fetch_daily_bars(
         client=client or UpbitSdkDailyCandleClient(),
@@ -168,33 +154,6 @@ def fetch_daily_bars(
             time.sleep(sleep_seconds)
 
     return _sort_oldest_first(dedup.values())
-
-
-def synthetic_bars(n: int = 420) -> list[CandleBar]:
-    start = datetime(2023, 1, 1, tzinfo=timezone.utc)
-    rows: list[CandleBar] = []
-    price = 100.0
-    for i in range(n):
-        wave = math.sin(i / 14.0) * 2.0
-        drift = 0.18 if i < n * 0.55 else -0.10
-        shock = 0.0 if i % 41 else -3.5
-        open_price = price
-        close_price = max(1.0, price + wave + drift + shock)
-        high = max(open_price, close_price) + 0.8
-        low = min(open_price, close_price) - 0.8
-        volume = 1200.0 + i
-        rows.append(
-            CandleBar(
-                timestamp=start + timedelta(days=i),
-                open=open_price,
-                high=high,
-                low=low,
-                close=close_price,
-                volume=volume,
-            )
-        )
-        price = close_price
-    return rows
 
 
 def parse_upbit_timestamp(raw: str) -> datetime:

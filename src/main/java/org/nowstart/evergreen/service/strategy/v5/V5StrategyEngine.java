@@ -1,16 +1,15 @@
 package org.nowstart.evergreen.service.strategy.v5;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.util.Arrays;
 import java.util.List;
 import org.nowstart.evergreen.data.type.MarketRegime;
 import org.nowstart.evergreen.service.strategy.core.OhlcvCandle;
 import org.nowstart.evergreen.service.strategy.core.PositionSnapshot;
+import org.nowstart.evergreen.service.strategy.core.SignalAction;
 import org.nowstart.evergreen.service.strategy.core.StrategyDiagnostic;
 import org.nowstart.evergreen.service.strategy.core.StrategyEvaluation;
 import org.nowstart.evergreen.service.strategy.core.StrategyInput;
+import org.nowstart.evergreen.service.strategy.core.StrategyMath;
 import org.nowstart.evergreen.service.strategy.core.StrategySignalDecision;
 import org.nowstart.evergreen.service.strategy.core.TradingStrategyEngine;
 import org.springframework.stereotype.Component;
@@ -40,16 +39,10 @@ public class V5StrategyEngine implements TradingStrategyEngine<V5StrategyOverrid
 
     @Override
     public StrategyEvaluation evaluate(StrategyInput<V5StrategyOverrides> input) {
-        if (input == null || input.candles() == null || input.params() == null) {
-            throw new IllegalArgumentException("input, candles, and params are required");
-        }
+        StrategyMath.validateInput(input);
 
         List<OhlcvCandle> candles = input.candles();
-        int n = candles.size();
         int signalIndex = input.signalIndex();
-        if (signalIndex < 1 || signalIndex >= n) {
-            throw new IllegalArgumentException("signalIndex must be in [1, candles.size()-1]");
-        }
 
         V5StrategyOverrides params = input.params();
         PositionSnapshot position = input.position() == null ? PositionSnapshot.EMPTY : input.position();
@@ -59,14 +52,14 @@ public class V5StrategyEngine implements TradingStrategyEngine<V5StrategyOverrid
         double atrMultLowVol = params.atrMultLowVol().doubleValue();
         double atrMultHighVol = params.atrMultHighVol().doubleValue();
 
-        double[] close = candles.stream().mapToDouble(OhlcvCandle::close).toArray();
-        double[] high = candles.stream().mapToDouble(OhlcvCandle::high).toArray();
-        double[] low = candles.stream().mapToDouble(OhlcvCandle::low).toArray();
+        double[] close = StrategyMath.close(candles);
+        double[] high = StrategyMath.high(candles);
+        double[] low = StrategyMath.low(candles);
 
-        double[] regimeAnchor = exponentialMovingAverage(close, params.regimeEmaLen());
-        double[] atr = wilderAtr(high, low, close, params.atrPeriod());
-        MarketRegime[] regimes = resolveRegimes(close, regimeAnchor, regimeBand);
-        VolatilityState volatility = resolveVolatilityStates(
+        double[] regimeAnchor = StrategyMath.exponentialMovingAverage(close, params.regimeEmaLen());
+        double[] atr = StrategyMath.wilderAtr(high, low, close, params.atrPeriod());
+        MarketRegime[] regimes = StrategyMath.resolveRegimes(close, regimeAnchor, regimeBand);
+        StrategyMath.VolatilityState volatility = StrategyMath.resolveVolatilityStates(
                 atr,
                 close,
                 params.volRegimeLookback(),
@@ -86,13 +79,12 @@ public class V5StrategyEngine implements TradingStrategyEngine<V5StrategyOverrid
                 ? atrMultHighVol
                 : atrMultLowVol;
 
-        TrailStopEvaluation trailStop = evaluateTrailStop(
+        StrategyMath.TrailStopEvaluation trailStop = StrategyMath.evaluateTrailStop(
                 candles,
                 signalIndex,
                 atr,
                 atrMultiplier,
-                position,
-                hasPosition
+                position
         );
 
         boolean buySignal = !hasPosition && baseBuy;
@@ -136,167 +128,15 @@ public class V5StrategyEngine implements TradingStrategyEngine<V5StrategyOverrid
                 )
         );
 
-        BigDecimal targetPositionRatio = BigDecimal.valueOf(resolveTargetPositionRatio(
-                buySignal,
-                sellSignal,
-                hasPosition
+        SignalAction action = StrategyMath.resolveAction(buySignal, sellSignal);
+        BigDecimal targetPositionRatio = BigDecimal.valueOf(StrategyMath.targetRatio(
+                action,
+                StrategyMath.currentPositionRatio(position)
         ));
         return new StrategyEvaluation(
-                new StrategySignalDecision(buySignal, sellSignal, signalReason, targetPositionRatio),
+                new StrategySignalDecision(action, signalReason, targetPositionRatio),
                 diagnostics
         );
-    }
-
-    private double resolveTargetPositionRatio(boolean buySignal, boolean sellSignal, boolean hasPosition) {
-        if (buySignal) {
-            return 1.0;
-        }
-        if (sellSignal) {
-            return 0.0;
-        }
-        return hasPosition ? 1.0 : 0.0;
-    }
-
-    private double[] exponentialMovingAverage(double[] values, int length) {
-        int n = values.length;
-        double[] ema = fillNaN(n);
-        if (length <= 0 || n < length) {
-            return ema;
-        }
-
-        double seed = 0.0;
-        for (int i = 0; i < length; i++) {
-            seed += values[i];
-        }
-        ema[length - 1] = seed / length;
-
-        double alpha = 2.0 / (length + 1.0);
-        for (int i = length; i < n; i++) {
-            ema[i] = (alpha * values[i]) + ((1.0 - alpha) * ema[i - 1]);
-        }
-        return ema;
-    }
-
-    private double[] wilderAtr(double[] high, double[] low, double[] close, int period) {
-        int n = close.length;
-        double[] atr = fillNaN(n);
-        if (period <= 0 || n < period) {
-            return atr;
-        }
-
-        double[] tr = new double[n];
-        tr[0] = high[0] - low[0];
-        for (int i = 1; i < n; i++) {
-            double highLow = high[i] - low[i];
-            double highPrevClose = Math.abs(high[i] - close[i - 1]);
-            double lowPrevClose = Math.abs(low[i] - close[i - 1]);
-            tr[i] = Math.max(highLow, Math.max(highPrevClose, lowPrevClose));
-        }
-
-        double total = 0.0;
-        for (int i = 0; i < period; i++) {
-            total += tr[i];
-        }
-
-        int first = period - 1;
-        atr[first] = total / period;
-        for (int i = period; i < n; i++) {
-            atr[i] = ((atr[i - 1] * (period - 1)) + tr[i]) / period;
-        }
-        return atr;
-    }
-
-    private MarketRegime[] resolveRegimes(double[] close, double[] anchor, double regimeBand) {
-        int n = close.length;
-        MarketRegime[] regimes = new MarketRegime[n];
-
-        for (int i = 0; i < n; i++) {
-            if (!Double.isFinite(anchor[i])) {
-                regimes[i] = MarketRegime.UNKNOWN;
-                continue;
-            }
-
-            double upper = anchor[i] * (1.0 + regimeBand);
-            double lower = anchor[i] * (1.0 - regimeBand);
-            MarketRegime previous = i == 0 ? MarketRegime.UNKNOWN : regimes[i - 1];
-
-            if (close[i] > upper) {
-                regimes[i] = MarketRegime.BULL;
-            } else if (close[i] < lower) {
-                regimes[i] = MarketRegime.BEAR;
-            } else if (previous != MarketRegime.UNKNOWN) {
-                regimes[i] = previous;
-            } else if (close[i] > anchor[i]) {
-                regimes[i] = MarketRegime.BULL;
-            } else if (close[i] < anchor[i]) {
-                regimes[i] = MarketRegime.BEAR;
-            } else {
-                regimes[i] = MarketRegime.UNKNOWN;
-            }
-        }
-
-        return regimes;
-    }
-
-    private VolatilityState resolveVolatilityStates(double[] atr, double[] close, int lookback, double threshold) {
-        int n = close.length;
-        double[] ratio = fillNaN(n);
-        double[] percentile = fillNaN(n);
-        boolean[] high = new boolean[n];
-
-        for (int i = 0; i < n; i++) {
-            if (Double.isFinite(atr[i]) && Double.isFinite(close[i]) && close[i] > 0.0) {
-                ratio[i] = atr[i] / close[i];
-            }
-
-            if (!Double.isFinite(ratio[i])) {
-                continue;
-            }
-
-            int start = Math.max(0, i - lookback + 1);
-            int count = 0;
-            int belowOrEqual = 0;
-            for (int j = start; j <= i; j++) {
-                if (!Double.isFinite(ratio[j])) {
-                    continue;
-                }
-                count++;
-                if (ratio[j] <= ratio[i]) {
-                    belowOrEqual++;
-                }
-            }
-
-            if (count == 0) {
-                continue;
-            }
-
-            percentile[i] = belowOrEqual / (double) count;
-            high[i] = percentile[i] >= threshold;
-        }
-
-        return new VolatilityState(ratio, percentile, high);
-    }
-
-    private TrailStopEvaluation evaluateTrailStop(
-            List<OhlcvCandle> candles,
-            int signalIndex,
-            double[] atr,
-            double atrMultiplier,
-            PositionSnapshot position,
-            boolean hasPosition
-    ) {
-        if (!hasPosition || atrMultiplier <= 0.0 || !Double.isFinite(atr[signalIndex])) {
-            return new TrailStopEvaluation(Double.NaN, false);
-        }
-
-        double highestCloseSinceEntry = resolveHighestCloseSinceEntry(candles, signalIndex, position);
-        if (!Double.isFinite(highestCloseSinceEntry)) {
-            return new TrailStopEvaluation(Double.NaN, false);
-        }
-
-        double stop = highestCloseSinceEntry - (atrMultiplier * atr[signalIndex]);
-        double currentClose = candles.get(signalIndex).close();
-        return new TrailStopEvaluation(stop, currentClose <= stop);
     }
 
     private String resolveSignalReason(
@@ -325,54 +165,5 @@ public class V5StrategyEngine implements TradingStrategyEngine<V5StrategyOverrid
             return "SETUP_SELL";
         }
         return "NONE";
-    }
-
-    private double resolveHighestCloseSinceEntry(List<OhlcvCandle> candles, int signalIndex, PositionSnapshot position) {
-        int startIndex = 0;
-
-        if (position.updatedAt() != null) {
-            LocalDate positionDate = position.updatedAt().atOffset(ZoneOffset.UTC).toLocalDate();
-            boolean found = false;
-            for (int i = 0; i <= signalIndex; i++) {
-                LocalDate candleDate = candles.get(i).timestamp().atOffset(ZoneOffset.UTC).toLocalDate();
-                if (!candleDate.isBefore(positionDate)) {
-                    startIndex = i;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                startIndex = signalIndex;
-            }
-        }
-
-        double highest = Double.NaN;
-        for (int i = startIndex; i <= signalIndex; i++) {
-            double candleClose = candles.get(i).close();
-            if (!Double.isFinite(highest) || candleClose > highest) {
-                highest = candleClose;
-            }
-        }
-
-        return highest;
-    }
-
-    private double[] fillNaN(int size) {
-        double[] values = new double[size];
-        Arrays.fill(values, Double.NaN);
-        return values;
-    }
-
-    private record VolatilityState(
-            double[] atrPriceRatio,
-            double[] percentile,
-            boolean[] isHigh
-    ) {
-    }
-
-    private record TrailStopEvaluation(
-            double stopPrice,
-            boolean triggered
-    ) {
     }
 }

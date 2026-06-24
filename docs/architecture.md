@@ -37,7 +37,7 @@ flowchart TD
     Workflow --> Guard["service<br/>TradingOrderGuardService"]
     Workflow --> SignalOrder["service<br/>TradingSignalOrderService"]
     Workflow --> PositionSync["service<br/>TradingPositionSyncService"]
-    Workflow --> Strategy["service.strategy<br/>StrategyRegistry / V5StrategyEngine"]
+    Workflow --> Strategy["service.strategy<br/>StrategyRegistry / v1~v5 engines"]
     Workflow --> PositionRepo["repository<br/>PositionRepository"]
 
     SignalOrder --> Execution
@@ -90,7 +90,7 @@ sequenceDiagram
     W->>G: hasBlockingOrder(market)
     G->>DB: local active order check
     G->>U: getOpenOrders(market, wait)
-    W->>W: evaluate V5 strategy
+    W->>W: evaluate active strategy
     W->>E: executeSignal(request)
     E->>U: getOrderChance(market)
     E->>DB: save TradingOrder
@@ -165,7 +165,7 @@ flowchart TD
 | `service.TradingExecutionService` | `application/service/order` | `CreateOrderUseCase`, `CancelOrderUseCase`, `QueryOrderUseCase` 구현체 |
 | `service.TradingOrderGuardService` | `application/service/order` + `domain/trading` | 조회 조합은 application, 판정 규칙은 domain |
 | `service.strategy.core` | `domain/strategy` | Spring/JPA 의존 없는 전략 규칙으로 이동 가능 |
-| `service.strategy.v5` | `domain/strategy/v5` | 전략 구현체 |
+| `service.strategy.v*` | `domain/strategy/v*` | 버전별 전략 구현체 |
 | `repository.UpbitFeignClient` | `adapter/out/external/upbit/client` | Upbit 원본 API client |
 | `data.dto.Upbit*` | `adapter/out/external/upbit/request` / `response` | provider 원본 request/response |
 | `data.dto.CreateOrderRequest` | `adapter/in/web/trading/request` | Web 입력 DTO |

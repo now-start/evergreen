@@ -1087,7 +1087,7 @@
           },
           "direction": "backward",
           "editorMode": "code",
-          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | buy_signal=\"true\" | unwrap close | __error__=\"\" [$__interval]))",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | action=\"BUY\" | unwrap close | __error__=\"\" [$__interval]))",
           "legendFormat": "매수 {{market}}",
           "queryType": "range",
           "refId": "F"
@@ -1099,7 +1099,7 @@
           },
           "direction": "backward",
           "editorMode": "code",
-          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | sell_signal=\"true\" | unwrap close | __error__=\"\" [$__interval]))",
+          "expr": "max by (market) (max_over_time({service_name=\"evergreen\"} |= \"event=candle_signal\" | logfmt | label_format market=\"{{.market}}\" | action=\"SELL\" | unwrap close | __error__=\"\" [$__interval]))",
           "legendFormat": "매도 {{market}}",
           "queryType": "range",
           "refId": "G"

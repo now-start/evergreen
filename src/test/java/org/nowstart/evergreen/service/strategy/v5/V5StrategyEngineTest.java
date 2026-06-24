@@ -8,10 +8,13 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.nowstart.evergreen.data.type.MarketRegime;
 import org.nowstart.evergreen.service.strategy.core.OhlcvCandle;
 import org.nowstart.evergreen.service.strategy.core.PositionSnapshot;
+import org.nowstart.evergreen.service.strategy.core.SignalAction;
 import org.nowstart.evergreen.service.strategy.core.StrategyEvaluation;
 import org.nowstart.evergreen.service.strategy.core.StrategyInput;
+import org.nowstart.evergreen.service.strategy.core.StrategyMath;
 
 class V5StrategyEngineTest {
 
@@ -36,8 +39,7 @@ class V5StrategyEngineTest {
 
         StrategyEvaluation evaluation = engine.evaluate(new StrategyInput<>(candles, 2, PositionSnapshot.EMPTY, params));
 
-        assertThat(evaluation.decision().buySignal()).isTrue();
-        assertThat(evaluation.decision().sellSignal()).isFalse();
+        assertThat(evaluation.decision().action()).isEqualTo(SignalAction.BUY);
         assertThat(evaluation.decision().signalReason()).isEqualTo("BUY_REGIME_TRANSITION");
         assertThat(findNumberDiagnostic(evaluation, "regime.anchor")).isFinite();
         assertThat(findNumberDiagnostic(evaluation, "regime.upper")).isFinite();
@@ -52,11 +54,10 @@ class V5StrategyEngineTest {
                 candle("2026-01-03T00:00:00Z", 90, 91, 89, 90)
         );
 
-        PositionSnapshot position = new PositionSnapshot(1.0, 100.0, Instant.parse("2026-01-01T00:00:00Z"));
+        PositionSnapshot position = new PositionSnapshot(1.0, 100.0, Instant.parse("2026-01-01T00:00:00Z"), 1.0);
         StrategyEvaluation evaluation = engine.evaluate(new StrategyInput<>(candles, 2, position, params));
 
-        assertThat(evaluation.decision().buySignal()).isFalse();
-        assertThat(evaluation.decision().sellSignal()).isTrue();
+        assertThat(evaluation.decision().action()).isEqualTo(SignalAction.SELL);
         assertThat(evaluation.decision().signalReason()).isEqualTo("SELL_REGIME_TRANSITION");
     }
 
@@ -79,13 +80,13 @@ class V5StrategyEngineTest {
                 candle("2026-01-05T00:00:00Z", 110, 111, 109, 110)
         );
 
-        PositionSnapshot position = new PositionSnapshot(1.0, 100.0, Instant.parse("2026-01-01T00:00:00Z"));
+        PositionSnapshot position = new PositionSnapshot(1.0, 100.0, Instant.parse("2026-01-01T00:00:00Z"), 1.0);
         StrategyEvaluation evaluation = engine.evaluate(new StrategyInput<>(candles, 4, position, trailStopParams));
 
         double trailStopPrice = findNumberDiagnostic(evaluation, "atr.trail_stop");
         assertThat(trailStopPrice).isFinite();
         assertThat(trailStopPrice).isGreaterThanOrEqualTo(candles.get(4).close());
-        assertThat(evaluation.decision().sellSignal()).isTrue();
+        assertThat(evaluation.decision().action()).isEqualTo(SignalAction.SELL);
         assertThat(evaluation.decision().signalReason()).isEqualTo("SELL_TRAIL_STOP");
     }
 
@@ -119,20 +120,17 @@ class V5StrategyEngineTest {
 
         StrategyEvaluation evaluation = engine.evaluate(new StrategyInput<>(candles, 2, null, params));
 
-        assertThat(evaluation.decision().buySignal()).isTrue();
+        assertThat(evaluation.decision().action()).isEqualTo(SignalAction.BUY);
     }
 
     @Test
-    void privateIndicators_returnNaNWhenWindowSizesAreInvalid() throws Exception {
-        double[] ema = (double[]) invokePrivate(
-                "exponentialMovingAverage",
-                new Class<?>[] {double[].class, int.class},
-                new Object[] {new double[] {1.0, 2.0}, 0}
-        );
-        double[] atr = (double[]) invokePrivate(
-                "wilderAtr",
-                new Class<?>[] {double[].class, double[].class, double[].class, int.class},
-                new Object[] {new double[] {2.0}, new double[] {1.0}, new double[] {1.5}, 0}
+    void strategyMathIndicators_returnNaNWhenWindowSizesAreInvalid() {
+        double[] ema = StrategyMath.exponentialMovingAverage(new double[] {1.0, 2.0}, 0);
+        double[] atr = StrategyMath.wilderAtr(
+                new double[] {2.0},
+                new double[] {1.0},
+                new double[] {1.5},
+                0
         );
 
         for (double value : ema) {
@@ -144,35 +142,35 @@ class V5StrategyEngineTest {
     }
 
     @Test
-    void privateResolveRegimes_coversBearAndUnknownFallbackBranches() throws Exception {
-        Object resultA = invokePrivate(
-                "resolveRegimes",
-                new Class<?>[] {double[].class, double[].class, double.class},
-                new Object[] {new double[] {100.0, 99.0, 100.0}, new double[] {100.0, 100.0, 100.0}, 0.5}
+    void strategyMathResolveRegimes_coversBearAndUnknownFallbackBranches() {
+        MarketRegime[] resultA = StrategyMath.resolveRegimes(
+                new double[] {100.0, 99.0, 100.0},
+                new double[] {100.0, 100.0, 100.0},
+                0.5
         );
-        Object resultB = invokePrivate(
-                "resolveRegimes",
-                new Class<?>[] {double[].class, double[].class, double.class},
-                new Object[] {new double[] {101.0}, new double[] {100.0}, 0.5}
+        MarketRegime[] resultB = StrategyMath.resolveRegimes(
+                new double[] {101.0},
+                new double[] {100.0},
+                0.5
         );
 
-        String asTextA = java.util.Arrays.toString((Object[]) resultA);
-        String asTextB = java.util.Arrays.toString((Object[]) resultB);
-        assertThat(asTextA).contains("UNKNOWN", "BEAR");
-        assertThat(asTextB).contains("BULL");
+        assertThat(resultA).contains(MarketRegime.UNKNOWN, MarketRegime.BEAR);
+        assertThat(resultB).contains(MarketRegime.BULL);
     }
 
     @Test
     void privateVolatilityAndReasonHelpers_coverRemainingBranches() throws Exception {
-        Object volatilityNoWindow = invokePrivate(
-                "resolveVolatilityStates",
-                new Class<?>[] {double[].class, double[].class, int.class, double.class},
-                new Object[] {new double[] {1.0}, new double[] {100.0}, 0, 0.5}
+        StrategyMath.VolatilityState volatilityNoWindow = StrategyMath.resolveVolatilityStates(
+                new double[] {1.0},
+                new double[] {100.0},
+                0,
+                0.5
         );
-        Object volatilityMixed = invokePrivate(
-                "resolveVolatilityStates",
-                new Class<?>[] {double[].class, double[].class, int.class, double.class},
-                new Object[] {new double[] {2.0, 1.0}, new double[] {1.0, 1.0}, 2, 0.9}
+        StrategyMath.VolatilityState volatilityMixed = StrategyMath.resolveVolatilityStates(
+                new double[] {2.0, 1.0},
+                new double[] {1.0, 1.0},
+                2,
+                0.9
         );
         assertThat(volatilityNoWindow).isNotNull();
         assertThat(volatilityMixed).isNotNull();
@@ -205,15 +203,16 @@ class V5StrategyEngineTest {
     }
 
     @Test
-    void privateTrailStopAndHighestClose_coverNaNAndNotFoundBranches() throws Exception {
+    void strategyMathTrailStopAndHighestClose_coverNaNAndNotFoundBranches() {
         List<OhlcvCandle> nanCloseCandles = List.of(
                 new OhlcvCandle(Instant.parse("2026-01-01T00:00:00Z"), 1.0, 1.0, 1.0, Double.NaN, 1.0)
         );
-        Object trail = invokePrivate(
-                "evaluateTrailStop",
-                new Class<?>[] {List.class, int.class, double[].class, double.class, PositionSnapshot.class, boolean.class},
-                new Object[] {nanCloseCandles, 0, new double[] {1.0}, 1.0, new PositionSnapshot(1.0, 1.0, Instant.parse("2026-01-01T00:00:00Z")),
-                        true}
+        StrategyMath.TrailStopEvaluation trail = StrategyMath.evaluateTrailStop(
+                nanCloseCandles,
+                0,
+                new double[] {1.0},
+                1.0,
+                new PositionSnapshot(1.0, 1.0, Instant.parse("2026-01-01T00:00:00Z"), 1.0)
         );
         assertThat(trail.toString()).contains("stopPrice=NaN");
 
@@ -221,12 +220,14 @@ class V5StrategyEngineTest {
                 candle("2026-01-01T00:00:00Z", 100, 101, 99, 100),
                 candle("2026-01-02T00:00:00Z", 101, 102, 100, 101)
         );
-        double highest = (double) invokePrivate(
-                "resolveHighestCloseSinceEntry",
-                new Class<?>[] {List.class, int.class, PositionSnapshot.class},
-                new Object[] {candles, 1, new PositionSnapshot(1.0, 100.0, Instant.parse("2026-01-10T00:00:00Z"))}
+        StrategyMath.TrailStopEvaluation trailAfterPositionDate = StrategyMath.evaluateTrailStop(
+                candles,
+                1,
+                new double[] {1.0, 1.0},
+                1.0,
+                new PositionSnapshot(1.0, 100.0, Instant.parse("2026-01-10T00:00:00Z"), 1.0)
         );
-        assertThat(highest).isEqualTo(101.0);
+        assertThat(trailAfterPositionDate.stopPrice()).isEqualTo(100.0);
     }
 
     private OhlcvCandle candle(String ts, double open, double high, double low, double close) {

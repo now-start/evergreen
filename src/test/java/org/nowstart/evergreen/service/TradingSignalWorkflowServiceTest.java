@@ -28,6 +28,7 @@ import org.nowstart.evergreen.repository.PositionRepository;
 import org.nowstart.evergreen.service.strategy.StrategyRegistry;
 import org.nowstart.evergreen.service.strategy.TradingStrategyParamResolver;
 import org.nowstart.evergreen.service.strategy.core.PositionSnapshot;
+import org.nowstart.evergreen.service.strategy.core.SignalAction;
 import org.nowstart.evergreen.service.strategy.core.StrategyDiagnostic;
 import org.nowstart.evergreen.service.strategy.core.StrategyEvaluation;
 import org.nowstart.evergreen.service.strategy.core.StrategyParams;
@@ -133,7 +134,7 @@ class TradingSignalWorkflowServiceTest {
                 .thenReturn(new TradingStrategyParamResolver.ActiveStrategy("v5", v5Params));
         when(strategyRegistry.evaluate(eq("v5"), anyList(), eq(1), any(PositionSnapshot.class), eq(v5Params)))
                 .thenReturn(new StrategyEvaluation(
-                        new StrategySignalDecision(false, true, "SELL_REGIME_TRANSITION"),
+                        new StrategySignalDecision(SignalAction.SELL, "SELL_REGIME_TRANSITION", BigDecimal.ZERO),
                         List.of(
                                 StrategyDiagnostic.number("regime.anchor", "Regime Anchor", 90.0),
                                 StrategyDiagnostic.number("regime.lower", "Regime Lower Band", 89.1)
@@ -143,7 +144,7 @@ class TradingSignalWorkflowServiceTest {
 
         service.runOnce();
 
-        verify(tradingSignalOrderService).submitSellSignal("KRW-BTC", candles.get(1), new BigDecimal("0.40"));
+        verify(tradingSignalOrderService).submitTargetPositionSignal("KRW-BTC", candles.get(1), new BigDecimal("0.40"), BigDecimal.ZERO);
         verify(tradingSignalOrderService, never()).submitBuySignal(anyString(), any());
     }
 
@@ -247,7 +248,7 @@ class TradingSignalWorkflowServiceTest {
                 .thenReturn(new TradingStrategyParamResolver.ActiveStrategy("v5", v5Params));
         when(strategyRegistry.evaluate(eq("v5"), anyList(), eq(1), any(PositionSnapshot.class), eq(v5Params)))
                 .thenReturn(new StrategyEvaluation(
-                        new StrategySignalDecision(true, false, "BUY_REGIME_TRANSITION"),
+                        new StrategySignalDecision(SignalAction.BUY, "BUY_REGIME_TRANSITION", BigDecimal.ONE),
                         List.of(StrategyDiagnostic.number("regime.anchor", "Regime Anchor", 90.0))
                 ));
         when(tradingSignalMetricsService.resolveExecutionMetrics("KRW-BTC")).thenReturn(TradingExecutionMetrics.empty());
@@ -256,7 +257,7 @@ class TradingSignalWorkflowServiceTest {
 
         service.runOnce();
 
-        verify(tradingSignalOrderService).submitBuySignal("KRW-BTC", candles.get(1));
+        verify(tradingSignalOrderService).submitTargetPositionSignal("KRW-BTC", candles.get(1), BigDecimal.ZERO, BigDecimal.ONE);
         verify(tradingSignalOrderService, never()).submitSellSignal(anyString(), any(), any());
     }
 

@@ -9,6 +9,7 @@ dependencies = [
     "jupyterlab>=4.6.0",
     "jupyterlab-widgets>=3.0.16",
     "matplotlib>=3.11.0",
+    "notebook>=7.6.0",
     "pandas>=3.0.3",
     "tqdm>=4.68.3",
     "upbit-sdk>=0.9.0",

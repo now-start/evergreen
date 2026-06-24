@@ -14,13 +14,11 @@ from evergreen_backtest.versions import VersionAdapter, VersionRun, available_ve
 
 @dataclass(frozen=True)
 class BacktestRunRequest:
-    versions: tuple[str, ...] = ("v5",)
-    source: str = "upbit"
+    versions: tuple[str, ...] = ("all",)
     market: str = "KRW-BTC"
     from_dt: datetime = datetime(2020, 1, 1, tzinfo=timezone.utc)
     to_dt: datetime | None = None
     cache_dir: str | Path = "outputs/data/upbit-cache"
-    synthetic_count: int = 420
     common_config: dict[str, Any] = field(default_factory=dict)
     version_config: dict[str, dict[str, Any]] = field(default_factory=dict)
     output_dir: str | Path = "outputs/backtests/latest"
@@ -54,7 +52,7 @@ class ExperimentResult:
             "contractSchemaVersion": CONTRACT_SCHEMA_VERSION,
             "strategyIoContract": strategy_io_contract(),
             "market": self.request.market,
-            "source": self.request.source,
+            "dataProvider": "upbit",
             "barCount": len(self.bars),
             "from": self.bars[0].timestamp.isoformat() if self.bars else None,
             "to": self.bars[-1].timestamp.isoformat() if self.bars else None,
@@ -89,12 +87,10 @@ def run_backtest(
 ) -> ExperimentResult:
     req = request or BacktestRunRequest()
     bars = load_bars(
-        source=req.source,
         market=req.market,
         from_dt=req.from_dt,
         to_dt=req.to_dt,
         cache_dir=req.cache_dir,
-        synthetic_count=req.synthetic_count,
         client=client,
     )
 

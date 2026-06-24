@@ -23,6 +23,7 @@ class PositionSnapshot:
     qty: float = 0.0
     avg_price: float = 0.0
     updated_at: datetime | None = None
+    position_ratio: float = 0.0
 
     @property
     def has_position(self) -> bool:
@@ -50,14 +51,6 @@ class StrategyDecision:
     signal_reason: str
     target_position_ratio: float | None = None
 
-    @property
-    def buy_signal(self) -> bool:
-        return self.action == SignalAction.BUY
-
-    @property
-    def sell_signal(self) -> bool:
-        return self.action == SignalAction.SELL
-
 
 @dataclass(frozen=True)
 class StrategyEvaluation:
@@ -65,22 +58,20 @@ class StrategyEvaluation:
     diagnostics: list[StrategyDiagnostic]
 
 
-def action_from_signals(buy_signal: bool, sell_signal: bool) -> SignalAction:
-    if buy_signal and sell_signal:
-        raise ValueError("buy_signal and sell_signal cannot both be true")
-    if buy_signal:
+def resolve_action(should_buy: bool, should_sell: bool) -> SignalAction:
+    if should_buy and should_sell:
+        raise ValueError("should_buy and should_sell cannot both be true")
+    if should_buy:
         return SignalAction.BUY
-    if sell_signal:
+    if should_sell:
         return SignalAction.SELL
     return SignalAction.HOLD
 
 
-def target_position_ratio_from_signals(
-    buy_signal: bool,
-    sell_signal: bool,
+def resolve_target_position_ratio(
+    action: SignalAction,
     current_position_ratio: float,
 ) -> float:
-    action = action_from_signals(buy_signal, sell_signal)
     if action == SignalAction.BUY:
         return 1.0
     if action == SignalAction.SELL:
@@ -89,43 +80,18 @@ def target_position_ratio_from_signals(
 
 
 def reason_from_row(row: Any) -> str:
-    if hasattr(row, "signal_reason"):
-        return str(getattr(row, "signal_reason"))
-
-    action = SignalAction(str(getattr(row, "action", action_from_signals(row.buy_signal, row.sell_signal).value)))
-    if action == SignalAction.BUY:
-        if getattr(row, "setup_buy", False):
-            return "SETUP_BUY"
-        return "BUY_SIGNAL"
-    if action == SignalAction.SELL:
-        if getattr(row, "trail_stop_triggered", False):
-            return "TRAIL_STOP"
-        if getattr(row, "setup_sell", False):
-            return "SETUP_SELL"
-        return "SELL_SIGNAL"
-    return "HOLD"
+    return str(getattr(row, "signal_reason"))
 
 
 def target_position_ratio_from_row(row: Any) -> float | None:
-    for attr in ("target_position_ratio", "target_exposure"):
-        if hasattr(row, attr):
-            value = float(getattr(row, attr))
-            return value if math.isfinite(value) else None
-
-    action = SignalAction(str(getattr(row, "action", action_from_signals(row.buy_signal, row.sell_signal).value)))
-    if action == SignalAction.BUY:
-        return 1.0
-    if action == SignalAction.SELL:
-        return 0.0
-
-    value = float(getattr(row, "pos_open", 0.0))
+    value = float(getattr(row, "target_position_ratio"))
     return value if math.isfinite(value) else None
 
 
 def diagnostics_from_row(row: Any) -> list[StrategyDiagnostic]:
     diagnostics: list[StrategyDiagnostic] = []
     for key, value in vars(row).items():
-        if key in {"timestamp", "action", "buy_signal", "sell_signal"}:
+        if key in {"timestamp", "action", "signal_reason"}:
             continue
         if isinstance(value, bool):
             diagnostics.append(StrategyDiagnostic(key=key, label=key, value=1.0 if value else 0.0))
@@ -135,7 +101,7 @@ def diagnostics_from_row(row: Any) -> list[StrategyDiagnostic]:
 
 
 def evaluation_from_row(row: Any) -> StrategyEvaluation:
-    action = SignalAction(str(getattr(row, "action", action_from_signals(row.buy_signal, row.sell_signal).value)))
+    action = SignalAction(str(getattr(row, "action")))
     return StrategyEvaluation(
         decision=StrategyDecision(
             action=action,
@@ -168,7 +134,15 @@ def strategy_io_contract() -> dict[str, Any]:
             "fields": {
                 "candles": "OhlcvCandle[]",
                 "signalIndex": "int",
-                "position": "PositionSnapshot",
+                "position": {
+                    "type": "PositionSnapshot",
+                    "fields": {
+                        "qty": "float",
+                        "avgPrice": "float",
+                        "updatedAt": "datetime | null",
+                        "positionRatio": "float",
+                    },
+                },
                 "params": "version-specific object",
             },
         },
