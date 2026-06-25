@@ -51,11 +51,22 @@ class WalkForwardResult:
             raise ValueError("walk-forward result has no windows")
         return self.windows[-1]
 
-    def summary_row(self) -> dict[str, Any]:
+    def summary_row(
+            self,
+            *,
+            phase: str = "walk_forward",
+            version: str | None = None,
+            selection_mode: str | None = None,
+    ) -> dict[str, Any]:
         row = summary_to_dict(self.summary)
-        row["version"] = self.current_window.selected_version
-        row["phase"] = "walk_forward"
+        current_version = self.current_window.selected_version
+        row["version"] = version or current_version
+        row["phase"] = phase
         row["window_count"] = len(self.windows)
+        if selection_mode is not None:
+            row["selection_mode"] = selection_mode
+        if row["version"] != current_version:
+            row["current_version"] = current_version
         return row
 
     def contract(self, adapter_by_version: dict[str, VersionAdapter]) -> dict[str, Any]:
@@ -92,6 +103,12 @@ class WalkForwardResult:
         }
 
 
+@dataclass(frozen=True)
+class WalkForwardRunSet:
+    selected: WalkForwardResult
+    by_version: dict[str, WalkForwardResult]
+
+
 class WalkForwardSelector:
     def __init__(self, optimizer: HyperparameterOptimizer | None = None) -> None:
         self.optimizer = optimizer or HyperparameterOptimizer()
@@ -104,6 +121,21 @@ class WalkForwardSelector:
             configs: dict[str, Any],
             config: WalkForwardConfig,
     ) -> WalkForwardResult:
+        return self.run_set(
+            bars=bars,
+            adapters=adapters,
+            configs=configs,
+            config=config,
+        ).selected
+
+    def run_set(
+            self,
+            *,
+            bars: list[CandleBar],
+            adapters: list[VersionAdapter],
+            configs: dict[str, Any],
+            config: WalkForwardConfig,
+    ) -> WalkForwardRunSet:
         if len(bars) < config.min_train_bars + 2:
             raise ValueError("not enough bars for walk-forward selection")
 
@@ -112,6 +144,9 @@ class WalkForwardSelector:
         walk_start = cursor
         walk_signals: list[ModelSignal] = []
         walk_cost_units: list[float] = []
+        version_signals: dict[str, list[ModelSignal]] = {}
+        version_cost_units: dict[str, list[float]] = {}
+        version_windows: dict[str, list[WalkForwardWindow]] = {}
         walk_end = cursor
 
         while cursor < len(bars) - 1:
@@ -122,22 +157,43 @@ class WalkForwardSelector:
             if len(train_bars) < config.min_train_bars or len(test_bars) < 2:
                 break
 
-            adapter, candidate = self._select_best_candidate(adapters, configs, train_bars)
-            model = adapter.model()
-            signals = model.evaluate(bars[:test_end], candidate.params)
-            walk_signals.extend(signals[cursor:test_end])
-            walk_cost_units.extend(
-                [candidate.params.fee_per_side + candidate.params.slippage]
-                * len(signals[cursor:test_end])
-            )
+            candidates = self._select_window_candidates(adapters, configs, train_bars)
+            adapter, candidate = max(candidates, key=lambda item: _candidate_rank(item[1]))
+            window_test_summaries: dict[str, BacktestSummary] = {}
             walk_end = test_end
 
-            test_result = BacktestEvaluator().evaluate(
-                test_bars,
-                signals[cursor:test_end],
-                fee_per_side=candidate.params.fee_per_side,
-                slippage=candidate.params.slippage,
-            )
+            for window_adapter, window_candidate in candidates:
+                model = window_adapter.model()
+                signals = model.evaluate(bars[:test_end], window_candidate.params)
+                signal_slice = signals[cursor:test_end]
+                cost_unit = window_candidate.params.fee_per_side + window_candidate.params.slippage
+
+                version_signals.setdefault(window_adapter.name, []).extend(signal_slice)
+                version_cost_units.setdefault(window_adapter.name, []).extend([cost_unit] * len(signal_slice))
+
+                test_result = BacktestEvaluator().evaluate(
+                    test_bars,
+                    signal_slice,
+                    fee_per_side=window_candidate.params.fee_per_side,
+                    slippage=window_candidate.params.slippage,
+                )
+                window_test_summaries[window_adapter.name] = test_result.summary
+                version_windows.setdefault(window_adapter.name, []).append(
+                    WalkForwardWindow(
+                        train_from=train_bars[0].timestamp,
+                        train_to=train_bars[-1].timestamp,
+                        test_from=test_bars[0].timestamp,
+                        test_to=test_bars[-1].timestamp,
+                        selected_version=window_adapter.name,
+                        selected_params=window_candidate.params,
+                        train_summary=window_candidate.result.summary,
+                        test_summary=test_result.summary,
+                    )
+                )
+
+                if window_adapter.name == adapter.name:
+                    walk_signals.extend(signal_slice)
+                    walk_cost_units.extend([cost_unit] * len(signal_slice))
 
             windows.append(
                 WalkForwardWindow(
@@ -148,7 +204,7 @@ class WalkForwardSelector:
                     selected_version=adapter.name,
                     selected_params=candidate.params,
                     train_summary=candidate.result.summary,
-                    test_summary=test_result.summary,
+                    test_summary=window_test_summaries[adapter.name],
                 )
             )
             cursor = test_end
@@ -156,22 +212,25 @@ class WalkForwardSelector:
         if not walk_signals or not windows:
             raise RuntimeError("walk-forward selection produced no windows")
         walk_bars = bars[walk_start:walk_end]
-        result = BacktestEvaluator().evaluate(
-            walk_bars,
-            walk_signals,
-            fee_per_side=walk_cost_units[0],
-            slippage=0.0,
-            cost_units=walk_cost_units,
-        )
-        return WalkForwardResult(rows=result.rows, summary=result.summary, windows=windows)
+        selected = _build_walk_forward_result(walk_bars, walk_signals, walk_cost_units, windows)
+        by_version = {
+            version: _build_walk_forward_result(
+                walk_bars,
+                version_signals[version],
+                version_cost_units[version],
+                version_windows[version],
+            )
+            for version in sorted(version_windows)
+        }
+        return WalkForwardRunSet(selected=selected, by_version=by_version)
 
-    def _select_best_candidate(
+    def _select_window_candidates(
             self,
             adapters: list[VersionAdapter],
             configs: dict[str, Any],
             train_bars: list[CandleBar],
-    ) -> tuple[VersionAdapter, CandidateResult]:
-        best: tuple[VersionAdapter, CandidateResult] | None = None
+    ) -> list[tuple[VersionAdapter, CandidateResult]]:
+        selected: list[tuple[VersionAdapter, CandidateResult]] = []
         for adapter in adapters:
             config = configs[adapter.name]
             if not config.enabled:
@@ -184,11 +243,26 @@ class WalkForwardSelector:
                 parallelism=getattr(config, "grid_parallelism", 1),
             )
             candidate = candidates[0]
-            if best is None or _candidate_rank(candidate) > _candidate_rank(best[1]):
-                best = (adapter, candidate)
-        if best is None:
+            selected.append((adapter, candidate))
+        if not selected:
             raise RuntimeError("no enabled model for walk-forward selection")
-        return best
+        return selected
+
+
+def _build_walk_forward_result(
+        walk_bars: list[CandleBar],
+        walk_signals: list[ModelSignal],
+        walk_cost_units: list[float],
+        windows: list[WalkForwardWindow],
+) -> WalkForwardResult:
+    result = BacktestEvaluator().evaluate(
+        walk_bars,
+        walk_signals,
+        fee_per_side=walk_cost_units[0],
+        slippage=0.0,
+        cost_units=walk_cost_units,
+    )
+    return WalkForwardResult(rows=result.rows, summary=result.summary, windows=windows)
 
 
 def _first_test_start_index(bars: list[CandleBar], config: WalkForwardConfig) -> int:

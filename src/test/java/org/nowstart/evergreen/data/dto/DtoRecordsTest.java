@@ -67,12 +67,17 @@ class DtoRecordsTest {
                   "market": {
                     "id": "KRW-BTC",
                     "name": "BTC/KRW",
+                    "bid": {
+                      "currency": "KRW",
+                      "min_total": "5000"
+                    },
                     "max_total": "1000000000"
                   }
                 }
                 """, UpbitOrderChanceResponse.class);
 
         assertThat(response.market().max_total()).isEqualTo("1000000000");
+        assertThat(response.market().bid().min_total()).isEqualTo("5000");
     }
 
     @Test

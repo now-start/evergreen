@@ -11,7 +11,7 @@
 - 전략 설명서: `backtest_playground.ipynb`의 "전략 설명서" 섹션
 - 실행 결과표: 노트북 변수 `요약`
 - 계약 파일: `outputs/backtests/latest/strategy_contracts.json`
-- 차트 파일: `outputs/backtests/latest/equity_test.png`, `outputs/backtests/latest/equity_walk_forward.png`
+- 차트 파일: `outputs/backtests/latest/equity_walk_forward.png`
 
 ```bash
 uv sync
@@ -30,7 +30,7 @@ uv run jupyter lab backtest_playground.ipynb
 - 판단 이유: `decision.signalReason`
 - Java 설정값: `javaParamsCamelCase`
 - 백테스트 전체 선택값: `selectedParamsCamelCase`
-- 워크포워드 선택값: `walkForwardSelection.selectedVersion`, `walkForwardSelection.javaParamsCamelCase`
+- 워크포워드 선택값: `walkForwardByVersion.<version>.selectedVersion`, `walkForwardByVersion.<version>.javaParamsCamelCase`
 
 `javaInteropReady=true`이면 해당 버전이 공통 Python/Java 연동정의를 만족한다는 뜻이다. 모든 버전은 `StrategyInput -> StrategyEvaluation` 계약으로 Java와 맞물린다.
 
@@ -46,30 +46,31 @@ uv run jupyter lab backtest_playground.ipynb
 
 ## 비교 기준
 
-노트북의 `요약` 표에서 다음 지표를 우선 본다. 단, 실제 Java 적용 후보는 `walk_forward` 행과 `strategy_contracts.json`의 `walkForwardSelection`을 우선한다.
+노트북의 `요약` 표는 워크포워드 결과만 보여준다. 각 행은 `range_profile + version` 조합이며, 해당 버전을 고정하고 하이퍼파라미터만 창마다 다시 고른 결과다. 목적은 운용 중 버전을 계속 갈아타는 것이 아니라, 버전 로직과 하이퍼파라미터, 시계열 범위 후보를 함께 비교해 최종 적용할 단일 버전을 고르는 것이다.
 
 - 수익성: `cagr`, `final_equity`
 - 위험: `mdd`
 - 운용성: `trades`
 - 시장 대비 성과: `final_equity_bh`와의 차이
-- 검증 구간 차이: `validation`, `test`, `full`, `walk_forward` 단계별 성능 차이
+- 범위 민감도: `range_profile`, `train_window_days`, `test_window_days` 조합별 성능 차이
 
-단일 수익률만으로 전략을 고르지 않는다. `test`에서 수익이 높아도 `mdd`가 크거나 `trades`가 지나치게 많으면 우선순위를 낮춘다. `walk_forward`는 각 시점에서 과거 데이터만으로 v1~v5와 하이퍼파라미터를 다시 고른 뒤 다음 구간에 적용한 결과라서, 정적 `full`보다 Java 적용 후보 판단에 더 가깝다.
+단일 수익률만으로 전략을 고르지 않는다. `final_equity`가 높아도 `mdd`가 크거나 `trades`가 지나치게 많으면 우선순위를 낮춘다. 워크포워드는 각 시점에서 과거 데이터만으로 해당 버전의 하이퍼파라미터를 다시 고른 뒤 다음 구간에 적용한 결과라서, 정적 전체 기간 재평가보다 Java 적용 후보 판단에 더 가깝다.
 
 ## 의사결정 규칙
 
-1. 각 워크포워드 window의 학습 구간에서는 Calmar 유사 점수(`cagr / abs(mdd)`)를 우선하고, 동률이면 `cagr`, `final_equity` 순으로 후보를 고른다.
+1. 각 워크포워드 window의 학습 구간에서는 버전별 하이퍼파라미터 후보 중 Calmar 유사 점수(`cagr / abs(mdd)`)를 우선하고, 동률이면 `cagr`, `final_equity` 순으로 후보를 고른다.
 2. 선택된 후보는 다음 out-of-sample 구간에만 적용한다. 미래 데이터를 보고 같은 구간의 파라미터를 고르지 않는다.
-3. 실제 Java 적용 후보는 마지막 워크포워드 window의 `selectedVersion`과 `javaParamsCamelCase`다.
-4. v3는 `targetPositionRatio`가 0.0과 1.0 사이 또는 1.0을 넘는 값을 낼 수 있으므로, Java 주문 계층이 `signal-order-notional` 기준 목표 비중으로 부분 매도와 증액 매수를 실행한다. LIVE 현물 주문은 실제 가용 KRW 안에서만 증액된다.
+3. 노트북은 여러 `range_profile`을 합친 뒤 `calmar_like`, `cagr`, `final_equity` 순으로 정렬해 추천 후보를 고른다.
+4. 실제 Java 적용 후보는 추천 행의 `range_profile`에 해당하는 실행 결과와 `walkForwardByVersion.<version>`의 마지막 window, `javaParamsCamelCase`를 기준으로 정한다.
+5. v3는 `targetPositionRatio`가 0.0과 1.0 사이 또는 1.0을 넘는 값을 낼 수 있으므로, Java 주문 계층이 `signal-order-notional` 기준 목표 비중으로 부분 매도와 증액 매수를 실행한다. LIVE 현물 주문은 실제 가용 KRW 안에서만 증액된다.
 
 ## 결과 기록 절차
 
 1. 노트북에서 `실행할_버전`을 정한다. 기본값은 `("all",)`이다.
 2. 전체 셀을 실행한다.
-3. `요약` 표를 기준으로 `validation`, `test`, `full`, `walk_forward`를 비교한다.
-4. `strategy_contracts.json`에서 `walkForwardSelection.selectedVersion`, `walkForwardSelection.javaParamsCamelCase`, `lastEvaluation.decision`을 확인한다.
-5. 테스트 구간 자산곡선과 워크포워드 champion 자산곡선이 급격히 훼손되는지 확인한다.
+3. `요약` 표에서 `range_profile + version` 조합을 비교한다.
+4. `strategy_contracts.json`에서 추천 후보의 `walkForwardByVersion.<version>`, `javaParamsCamelCase`, `windows`를 확인한다.
+5. 추천 범위의 워크포워드 자산곡선에서 후보 버전 결과가 급격히 훼손되는지 확인한다.
 
 ## 주의사항
 

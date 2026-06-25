@@ -26,9 +26,17 @@ public record UpbitOrderChanceResponse(
             String name,
             Object order_types,
             Object order_sides,
-            Object bid,
-            Object ask,
+            OrderPolicy bid,
+            OrderPolicy ask,
             String max_total
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record OrderPolicy(
+            String currency,
+            String price_unit,
+            String min_total
     ) {
     }
 }

@@ -190,7 +190,11 @@ public class TradingExecutionService {
                         "Insufficient KRW balance for buy order"
                 );
             }
-            return spendable;
+            BigDecimal automaticBuyNotional = spendable
+                    .min(resolveAutoBuyNotionalCap())
+                    .min(resolveMaxTotal(chance));
+            validateAutoBuyNotionalPolicy(chance, automaticBuyNotional);
+            return automaticBuyNotional;
         }
 
         if (order.getOrderType() == TradeOrderType.MARKET_SELL) {
@@ -254,6 +258,45 @@ public class TradingExecutionService {
         return safe(balance)
                 .multiply(multiplier)
                 .setScale(0, RoundingMode.DOWN);
+    }
+
+    private BigDecimal resolveAutoBuyNotionalCap() {
+        BigDecimal cap = safe(tradingProperties.signalOrderNotional())
+                .setScale(0, RoundingMode.DOWN);
+        if (cap.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new TradingApiException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    "invalid_order",
+                    "signal-order-notional must be greater than zero for automatic LIVE market buy"
+            );
+        }
+        return cap;
+    }
+
+    private BigDecimal resolveMaxTotal(UpbitOrderChanceResponse chance) {
+        if (chance.market() == null || chance.market().max_total() == null) {
+            return BigDecimal.valueOf(Long.MAX_VALUE);
+        }
+        BigDecimal maxTotal = parseDecimal(chance.market().max_total());
+        if (maxTotal.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.valueOf(Long.MAX_VALUE);
+        }
+        return maxTotal;
+    }
+
+    private void validateAutoBuyNotionalPolicy(UpbitOrderChanceResponse chance, BigDecimal requestedNotional) {
+        if (chance.market() == null || chance.market().bid() == null || chance.market().bid().min_total() == null) {
+            return;
+        }
+
+        BigDecimal minTotal = parseDecimal(chance.market().bid().min_total());
+        if (minTotal.compareTo(BigDecimal.ZERO) > 0 && requestedNotional.compareTo(minTotal) < 0) {
+            throw new TradingApiException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    "under_min_total_bid",
+                    "Order notional is below the Upbit minimum buy amount"
+            );
+        }
     }
 
     private UpbitCreateOrderRequest toUpbitRequest(TradingOrder order) {

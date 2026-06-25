@@ -97,7 +97,7 @@ public class TradingSignalOrderService {
                     signalCandle.timestamp().toString()
             );
         } else {
-            // LIVE 모드에서는 가격(주문금액)을 비워서 가드 로직에서 가용 KRW 전액을 사용한다.
+            // LIVE fallback buys leave price empty; execution caps the notional by signal-order-notional.
             request = new SignalExecuteRequest(
                     market,
                     OrderSide.BUY,

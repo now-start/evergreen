@@ -156,9 +156,9 @@ Grafana 대시보드 정의는 `docs/grafana_trading_dashboard.json`에 있다.
 
 ## 11. 현재 확인된 리스크
 
-1. `targetPositionRatio`가 없는 fallback LIVE 매수는 요청 금액이 없으면 가용 KRW 전액을 사용한다. 운영 전략은 `targetPositionRatio`와 `signal-order-notional` 경로를 사용해야 한다.
-2. Upbit rate limit group별 client-side limiter가 없다.
-3. 429/5xx 응답에 대한 retry/backoff 정책이 명시되어 있지 않다.
-4. Upbit `Test Order` API를 통한 LIVE 전 dry-run 검증이 없다.
-5. DB migration 체계가 명시되어 있지 않아 운영 DB 변경 이력이 불명확할 수 있다.
+1. Upbit rate limit group별 client-side limiter가 없다.
+2. 429/5xx 응답에 대한 retry/backoff 정책이 명시되어 있지 않다.
+3. Upbit `Test Order` API를 통한 LIVE 전 dry-run 검증이 없다.
+4. DB migration 체계가 명시되어 있지 않아 운영 DB 변경 이력이 불명확할 수 있다.
+5. 수동 주문과 지정가 주문의 주문 가능 정보 기반 min/max 검증은 제한적이다.
 6. `market.order_types`는 공식 문서상 deprecated 예정이므로, 필요한 경우 `bid_types`와 `ask_types` DTO를 추가해야 한다.

@@ -120,7 +120,7 @@ Evergreen은 Upbit Open API를 이용해 일봉 기반 매매 전략을 자동 �
 
 ## 12. 후속 요구사항
 
-- LIVE 자동 매수 금액 상한 설정.
+- LIVE 자동 매수 금액 상한과 최소 주문금액 검증을 `signal-order-notional` 및 Upbit 주문 가능 정보 기준으로 계속 검증.
 - Upbit `Test Order` API를 이용한 운영 전 dry-run 검증.
 - rate limit group별 client-side limiter.
 - Feign error decoder로 Upbit error.name 기반 도메인 예외 매핑.

@@ -13,7 +13,7 @@ Evergreen의 핵심 Upbit 연동 방향은 맞다. 잔고 조회, 주문 가능 
 - JWT `query_hash` 생성 시 요청 필드 순서를 보존하도록 수정했다.
 - 주문 생성 DTO에서 null 필드를 JSON body에서 제외하도록 수정했다.
 
-남은 리스크는 API 연결 자체보다 운영 안전장치 쪽이다. 특히 LIVE 자동 매수 금액 상한, rate limit 대응, 429/5xx retry/backoff, DB migration 정책은 후속 작업으로 남아 있다.
+남은 리스크는 API 연결 자체보다 운영 안전장치 쪽이다. 특히 rate limit 대응, 429/5xx retry/backoff, DB migration 정책은 후속 작업으로 남아 있다.
 
 ## 2. 공식 문서 확인 범위
 
@@ -94,39 +94,35 @@ Evergreen의 핵심 Upbit 연동 방향은 맞다. 잔고 조회, 주문 가능 
 - PAPER 모드가 있어 거래소 주문 없이 전략 흐름을 검증할 수 있다.
 - 주문 생성/조회/취소와 체결 reconciliation 테스트가 있다.
 - 구조화 로그로 신호, 체결, 포지션 drift를 추적할 수 있다.
+- 요청 금액 없는 LIVE 자동 시장가 매수는 `signal-order-notional`, 가용 KRW, `market.max_total` 중 작은 금액으로 제한하고, `market.bid.min_total` 미만이면 거래소 호출 전에 거절한다.
 
 ### 보완 필요
 
-1. LIVE 자동 매수 금액 상한이 없다.
-   - 현재 자동 신호 매수는 가격을 비워 가드 로직에서 가용 KRW 기준으로 주문 금액을 산정한다.
-   - 운영 실수 방지를 위해 `liveOrderNotionalCap` 또는 allocation 비율 설정이 필요하다.
-
-2. Upbit rate limit 대응이 없다.
+1. Upbit rate limit 대응이 없다.
    - 공식 문서 기준 quotation group은 IP 단위 10 rps, exchange default는 계정 단위 30 rps, order group은 계정 단위 8 rps로 제한된다.
    - client-side limiter와 429 처리 정책이 필요하다.
 
-3. Upbit 오류 매핑이 제한적이다.
+2. Upbit 오류 매핑이 제한적이다.
    - 현재 Feign 예외는 전역 handler에서 처리되지만, `insufficient_funds_bid`, `under_min_total_bid`, `invalid_query_payload` 같은 Upbit error.name을 도메인 코드로 정교하게 매핑하지 않는다.
 
-4. 주문 가능 정보의 최소 주문 금액 정책을 적극적으로 검증하지 않는다.
-   - 현재 주로 잔고 검증에 초점이 있다.
-   - `market.bid`, `market.ask`, `market.max_total` 기반 최소/최대 금액 검증은 후속으로 추가할 수 있다.
+3. 수동 주문과 지정가 주문의 주문 가능 정보 기반 min/max 검증은 제한적이다.
+   - 자동 null-price LIVE 시장가 매수는 `market.bid.min_total`과 `market.max_total`을 확인한다.
+   - 수동 주문과 지정가 주문의 `market.bid`, `market.ask`, `market.max_total` 기반 최소/최대 금액 검증은 후속으로 추가할 수 있다.
 
-5. DB migration 체계가 없다.
+4. DB migration 체계가 없다.
    - JPA entity는 있지만 Flyway/Liquibase migration 기준이 보이지 않는다.
    - 운영 DB에는 `ddl-auto=validate`와 별도 migration script가 필요하다.
 
-6. 전략과 운영 주문 한도 사이의 제품 정책이 문서화되어야 한다.
+5. 전략과 운영 주문 한도 사이의 제품 정책이 문서화되어야 한다.
    - 신호 자체와 자금 배분 정책을 분리해야 한다.
 
 ## 8. 권장 후속 작업
 
 | 우선순위 | 작업 | 이유 |
 | --- | --- | --- |
-| P0 | LIVE 자동 매수 금액 상한 추가 | 가장 직접적인 금전 리스크 |
 | P0 | Upbit error decoder 추가 | 운영 장애 원인 분류 개선 |
 | P1 | rate limit/backoff 정책 추가 | API 차단과 반복 실패 방지 |
-| P1 | 주문 가능 정보 기반 min/max validation | 거래소 reject 사전 차단 |
+| P1 | 수동/지정가 주문 가능 정보 기반 min/max validation | 거래소 reject 사전 차단 |
 | P1 | `Test Order` API dry-run 검증 옵션 | LIVE 전 요청 형식 검증 |
 | P2 | DB migration 도입 | 배포 재현성과 운영 안정성 |
 | P2 | `time_in_force`, `smp_type` 지원 여부 결정 | 최신 주문 옵션 활용 여부 명확화 |

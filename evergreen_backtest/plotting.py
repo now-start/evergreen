@@ -50,8 +50,17 @@ def plot_walk_forward_equity(result: ExperimentResult, *, save_to: str | Path | 
     _configure_korean_font(plt)
 
     fig, ax = plt.subplots(figsize=(14, 6))
-    rows = result.walk_forward.rows
-    ax.plot([row.timestamp for row in rows], [row.equity for row in rows], label="워크포워드 선택 모델")
+    for version, version_result in result.walk_forward_by_version.items():
+        rows = version_result.rows
+        ax.plot(
+            [row.timestamp for row in rows],
+            [row.equity for row in rows],
+            label=f"{version} 고정 워크포워드",
+            alpha=0.75,
+        )
+
+    benchmark_result = next(iter(result.walk_forward_by_version.values()), result.walk_forward)
+    rows = benchmark_result.rows
     ax.plot(
         [row.timestamp for row in rows],
         [row.equity_bh for row in rows],
@@ -59,7 +68,7 @@ def plot_walk_forward_equity(result: ExperimentResult, *, save_to: str | Path | 
         linestyle="--",
         color="#5f6368",
     )
-    ax.set_title("워크포워드 선택 모델 자산 곡선")
+    ax.set_title("워크포워드 자산 곡선")
     ax.set_xlabel("날짜")
     ax.set_ylabel("초기자산 대비 배율")
     ax.grid(alpha=0.2)

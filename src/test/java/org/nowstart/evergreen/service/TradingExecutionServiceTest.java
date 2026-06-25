@@ -205,10 +205,10 @@ class TradingExecutionServiceTest {
     }
 
     @Test
-    void createOrder_liveMarketBuyWithoutPriceUsesFullKrwBalance() {
+    void createOrder_liveMarketBuyWithoutPriceUsesConfiguredNotionalCap() {
         TradingExecutionService service = createService();
-        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(chance("100000", "1", "90000000"));
-        when(upbitFeignClient.createOrder(any(UpbitCreateOrderRequest.class))).thenReturn(orderResponse("upbit-uuid-buy-all"));
+        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(chance("500000", "1", "90000000"));
+        when(upbitFeignClient.createOrder(any(UpbitCreateOrderRequest.class))).thenReturn(orderResponse("upbit-uuid-buy-capped"));
 
         CreateOrderRequest request = new CreateOrderRequest(
                 "KRW-BTC",
@@ -224,13 +224,79 @@ class TradingExecutionServiceTest {
 
         ArgumentCaptor<TradingOrder> orderCaptor = ArgumentCaptor.forClass(TradingOrder.class);
         verify(tradingOrderRepository).save(orderCaptor.capture());
-        assertThat(orderCaptor.getValue().getRequestedNotional()).isEqualByComparingTo(new BigDecimal("99950"));
-        assertThat(orderCaptor.getValue().getPrice()).isEqualByComparingTo(new BigDecimal("99950"));
+        assertThat(orderCaptor.getValue().getRequestedNotional()).isEqualByComparingTo(new BigDecimal("100000"));
+        assertThat(orderCaptor.getValue().getPrice()).isEqualByComparingTo(new BigDecimal("100000"));
 
         ArgumentCaptor<UpbitCreateOrderRequest> reqCaptor = ArgumentCaptor.forClass(UpbitCreateOrderRequest.class);
         verify(upbitFeignClient).createOrder(reqCaptor.capture());
-        assertThat(reqCaptor.getValue().price()).isEqualTo("99950");
+        assertThat(reqCaptor.getValue().price()).isEqualTo("100000");
         assertThat(reqCaptor.getValue().ord_type()).isEqualTo("price");
+    }
+
+    @Test
+    void createOrder_liveMarketBuyWithoutPriceUsesSpendableBalanceWhenBelowConfiguredCap() {
+        TradingExecutionService service = createService();
+        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(chance("50000", "1", "90000000"));
+        when(upbitFeignClient.createOrder(any(UpbitCreateOrderRequest.class))).thenReturn(orderResponse("upbit-uuid-buy-low-balance"));
+
+        CreateOrderRequest request = new CreateOrderRequest(
+                "KRW-BTC",
+                OrderSide.BUY,
+                TradeOrderType.MARKET_BUY,
+                null,
+                null,
+                ExecutionMode.LIVE,
+                "test"
+        );
+
+        service.createOrder(request);
+
+        ArgumentCaptor<UpbitCreateOrderRequest> reqCaptor = ArgumentCaptor.forClass(UpbitCreateOrderRequest.class);
+        verify(upbitFeignClient).createOrder(reqCaptor.capture());
+        assertThat(reqCaptor.getValue().price()).isEqualTo("49975");
+    }
+
+    @Test
+    void createOrder_liveMarketBuyWithoutPriceRejectsAmountBelowExchangeMinimum() {
+        TradingExecutionService service = createService();
+        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(chance("1000", "1", "90000000"));
+
+        CreateOrderRequest request = new CreateOrderRequest(
+                "KRW-BTC",
+                OrderSide.BUY,
+                TradeOrderType.MARKET_BUY,
+                null,
+                null,
+                ExecutionMode.LIVE,
+                "test"
+        );
+
+        assertThatThrownBy(() -> service.createOrder(request))
+                .isInstanceOf(TradingApiException.class)
+                .hasMessageContaining("minimum buy amount");
+    }
+
+    @Test
+    void createOrder_liveMarketBuyWithoutPriceCapsByExchangeMaxTotal() {
+        TradingExecutionService service = createService();
+        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(chance("500000", "1", "90000000", "70000"));
+        when(upbitFeignClient.createOrder(any(UpbitCreateOrderRequest.class))).thenReturn(orderResponse("upbit-uuid-buy-max-total"));
+
+        CreateOrderRequest request = new CreateOrderRequest(
+                "KRW-BTC",
+                OrderSide.BUY,
+                TradeOrderType.MARKET_BUY,
+                null,
+                null,
+                ExecutionMode.LIVE,
+                "test"
+        );
+
+        service.createOrder(request);
+
+        ArgumentCaptor<UpbitCreateOrderRequest> reqCaptor = ArgumentCaptor.forClass(UpbitCreateOrderRequest.class);
+        verify(upbitFeignClient).createOrder(reqCaptor.capture());
+        assertThat(reqCaptor.getValue().price()).isEqualTo("70000");
     }
 
     @Test
@@ -554,9 +620,9 @@ class TradingExecutionServiceTest {
     }
 
     @Test
-    void createOrder_liveMarketBuyWithInvalidFeeRateUsesFullBalance() {
+    void createOrder_liveMarketBuyWithInvalidFeeRateStillUsesConfiguredNotionalCap() {
         TradingExecutionService service = createService(defaultProperties(new BigDecimal("2.0")));
-        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(chance("100000", "1", "90000000"));
+        when(upbitFeignClient.getOrderChance("KRW-BTC")).thenReturn(chance("500000", "1", "90000000"));
         when(upbitFeignClient.createOrder(any(UpbitCreateOrderRequest.class))).thenReturn(orderResponse("upbit-uuid-invalid-fee"));
 
         CreateOrderRequest request = new CreateOrderRequest(
@@ -684,6 +750,10 @@ class TradingExecutionServiceTest {
     }
 
     private UpbitOrderChanceResponse chance(String bidBalance, String askBalance, String askAvgBuyPrice) {
+        return chance(bidBalance, askBalance, askAvgBuyPrice, "100000000");
+    }
+
+    private UpbitOrderChanceResponse chance(String bidBalance, String askBalance, String askAvgBuyPrice, String maxTotal) {
         return new UpbitOrderChanceResponse(
                 "0.0005",
                 "0.0005",
@@ -694,9 +764,9 @@ class TradingExecutionServiceTest {
                         "BTC/KRW",
                         null,
                         null,
-                        null,
-                        null,
-                        "100000000"
+                        new UpbitOrderChanceResponse.OrderPolicy("KRW", null, "5000"),
+                        new UpbitOrderChanceResponse.OrderPolicy("BTC", null, "5000"),
+                        maxTotal
                 )
         );
     }

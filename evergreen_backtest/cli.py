@@ -51,7 +51,16 @@ def _parse_date(value: str) -> datetime:
 
 
 def _print_summary(rows: list[dict[str, object]]) -> None:
-    headers = ["version", "phase", "final_equity", "final_equity_bh", "cagr", "mdd", "trades"]
+    headers = [
+        "version",
+        "phase",
+        "selection_mode",
+        "final_equity",
+        "final_equity_bh",
+        "cagr",
+        "mdd",
+        "trades",
+    ]
     print(" | ".join(headers))
     print("-" * 86)
     for row in rows:

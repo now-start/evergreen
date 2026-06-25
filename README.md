@@ -15,11 +15,11 @@ Upbit 기반 자동매매(Spring Boot) 프로젝트입니다.
 ## 실행 모드
 - `PAPER`
   - 거래소 실제 주문 없이 가체결
-  - 매수 금액은 `TRADING_SCHEDULER_SIGNAL_ORDER_NOTIONAL` 사용
+  - 매수 금액은 `EVERGREEN_TRADING_SIGNAL_ORDER_NOTIONAL` 사용
 - `LIVE`
   - 실제 거래소 주문
   - 현재 구현 기준:
-    - 매수: 요청 금액이 없으면 계좌 KRW 가용금액 기준(사실상 전액 매수)
+    - 매수: 요청 금액이 없으면 `EVERGREEN_TRADING_SIGNAL_ORDER_NOTIONAL`, 수수료 차감 후 가용 KRW, Upbit `market.max_total` 중 작은 금액으로 시장가 매수하고 `market.bid.min_total` 미만은 사전 거절
     - 매도: 현재 포지션 수량 기준(사실상 전량 매도)
 
 ## 로컬 실행
@@ -32,7 +32,15 @@ Upbit 기반 자동매매(Spring Boot) 프로젝트입니다.
 ./gradlew test
 ```
 
-### 3) 앱 실행
+### 3) 로컬 앱 실행
+```bash
+./gradlew bootRun --args='--spring.profiles.active=local' --no-daemon
+```
+
+`local` 프로필은 Config Server, Eureka, OTEL export를 끄고 H2 메모리 DB와 `PAPER` 모드를 사용합니다.
+기본 대상 마켓은 비워 두므로 자동 신호 실행은 외부 API 호출 없이 종료됩니다.
+
+### 4) 운영 설정으로 앱 실행
 ```bash
 ./gradlew bootRun --no-daemon
 ```
@@ -52,10 +60,10 @@ gradlew.bat bootRun --no-daemon
   - `UPBIT_SECRET_KEY`
   - `UPBIT_FEE_RATE`
 - Trading Scheduler
-  - `TRADING_SCHEDULER_MODE` (`PAPER` or `LIVE`)
-  - `TRADING_SCHEDULER_MARKETS` (예: `KRW-BTC,KRW-ETH`)
-  - `TRADING_SCHEDULER_CANDLE_COUNT` (권장: `400`)
-  - `TRADING_SCHEDULER_SIGNAL_ORDER_NOTIONAL` (`PAPER`에서 매수 금액)
+  - `EVERGREEN_TRADING_EXECUTION_MODE` (`PAPER` or `LIVE`)
+  - `EVERGREEN_TRADING_MARKETS` (예: `KRW-BTC,KRW-ETH`)
+  - `EVERGREEN_TRADING_CANDLE_COUNT` (권장: `400`)
+  - `EVERGREEN_TRADING_SIGNAL_ORDER_NOTIONAL` (`PAPER` 매수 금액 및 LIVE 자동 매수 상한)
 
 전체 목록은 `src/main/resources/application.yaml` 참고.
 
@@ -80,7 +88,7 @@ java -jar build/libs/*.jar
 ```
 
 ### 4) 배포 시 권장 설정
-- `TRADING_SCHEDULER_MODE=PAPER`로 먼저 배포 후 모니터링
+- `EVERGREEN_TRADING_EXECUTION_MODE=PAPER`로 먼저 배포 후 모니터링
 - 운영 전환 시 `LIVE`로 변경
 - `JPA_DDL_AUTO=validate` 권장(운영)
 - 로그 수집 파이프라인(Loki)과 알람 연동

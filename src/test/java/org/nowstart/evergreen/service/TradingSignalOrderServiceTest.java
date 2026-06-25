@@ -34,7 +34,7 @@ class TradingSignalOrderServiceTest {
     private TradingSignalStateService tradingSignalStateService;
 
     @Test
-    void submitBuySignal_liveUsesFullKrwBalanceByLeavingPriceNull() {
+    void submitBuySignal_liveLeavesPriceNullForExecutionLayerSizing() {
         TradingSignalOrderService service = serviceFor(ExecutionMode.LIVE, new BigDecimal("100000"));
         TradingDayCandleDto signal = candle("100");
 
@@ -54,7 +54,7 @@ class TradingSignalOrderServiceTest {
     }
 
     @Test
-    void submitBuySignal_liveStillSubmitsWithoutConfiguredNotional() {
+    void submitBuySignal_liveStillSubmitsThroughExecutionLayerCap() {
         TradingSignalOrderService service = serviceFor(ExecutionMode.LIVE, new BigDecimal("100000"));
         TradingDayCandleDto signal = candle("100");
 

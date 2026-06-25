@@ -38,19 +38,34 @@ class ExperimentResult:
     bars: list[CandleBar]
     runs: dict[str, VersionRun]
     walk_forward: WalkForwardResult | None = None
+    walk_forward_by_version: dict[str, WalkForwardResult] = field(default_factory=dict)
 
     def summary_rows(self) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
+        if self.walk_forward is not None:
+            for version in self.request.resolved_versions():
+                if version not in self.walk_forward_by_version:
+                    continue
+                rows.append(
+                    self.walk_forward_by_version[version].summary_row(
+                        phase="walk_forward_version",
+                        version=version,
+                        selection_mode="fixed_version",
+                    )
+                )
+            return rows
+
         for version in self.request.resolved_versions():
             rows.extend(self.runs[version].summary_rows())
-        if self.walk_forward is not None:
-            rows.append(self.walk_forward.summary_row())
         return rows
 
     def summary_dataframe(self) -> Any:
         import pandas as pd
 
-        return pd.DataFrame(self.summary_rows())
+        df = pd.DataFrame(self.summary_rows())
+        columns = [column for column in _SUMMARY_FIELD_ORDER if column in df.columns]
+        columns.extend(column for column in df.columns if column not in columns)
+        return df[columns]
 
     def contracts(self) -> dict[str, Any]:
         return {
@@ -62,11 +77,10 @@ class ExperimentResult:
             "from": self.bars[0].timestamp.isoformat() if self.bars else None,
             "to": self.bars[-1].timestamp.isoformat() if self.bars else None,
             "versions": {version: run.contract() for version, run in self.runs.items()},
-            "walkForwardSelection": (
-                self.walk_forward.contract({version: run.adapter for version, run in self.runs.items()})
-                if self.walk_forward is not None
-                else None
-            ),
+            "walkForwardByVersion": {
+                version: result.contract({version: run.adapter for version, run in self.runs.items()})
+                for version, result in self.walk_forward_by_version.items()
+            },
         }
 
     def write_outputs(self, output_dir: str | Path | None = None) -> Path:
@@ -83,8 +97,9 @@ class ExperimentResult:
         rows = self.summary_rows()
         if not rows:
             return
-        extra_fields = sorted({key for row in rows for key in row if key not in {"version", "phase"}})
-        fieldnames = ["version", "phase", *extra_fields]
+        all_fields = {key for row in rows for key in row}
+        fieldnames = [field for field in _SUMMARY_FIELD_ORDER if field in all_fields]
+        fieldnames.extend(sorted(all_fields - set(fieldnames)))
         with path.open("w", encoding="utf-8", newline="") as fp:
             writer = csv.DictWriter(fp, fieldnames=fieldnames)
             writer.writeheader()
@@ -115,14 +130,23 @@ def run_backtest(
         runs[adapter.name] = adapter.run(bars, overrides)
 
     walk_forward = None
+    walk_forward_by_version = {}
     if req.walk_forward_config.enabled:
-        walk_forward = WalkForwardSelector().run(
+        walk_forward_runs = WalkForwardSelector().run_set(
             bars=bars,
             adapters=adapters,
             configs=configs,
             config=req.walk_forward_config,
         )
-    return ExperimentResult(request=req, bars=bars, runs=runs, walk_forward=walk_forward)
+        walk_forward = walk_forward_runs.selected
+        walk_forward_by_version = walk_forward_runs.by_version
+    return ExperimentResult(
+        request=req,
+        bars=bars,
+        runs=runs,
+        walk_forward=walk_forward,
+        walk_forward_by_version=walk_forward_by_version,
+    )
 
 
 def _config_for_version(request: BacktestRunRequest, adapter: VersionAdapter) -> dict[str, Any]:
@@ -137,3 +161,18 @@ def _config_for_version(request: BacktestRunRequest, adapter: VersionAdapter) ->
         )
     overrides.update(version_overrides)
     return overrides
+
+
+_SUMMARY_FIELD_ORDER = [
+    "version",
+    "phase",
+    "selection_mode",
+    "current_version",
+    "final_equity",
+    "final_equity_bh",
+    "cagr",
+    "mdd",
+    "trades",
+    "range",
+    "window_count",
+]
