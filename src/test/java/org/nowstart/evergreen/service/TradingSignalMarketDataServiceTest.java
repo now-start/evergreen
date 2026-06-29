@@ -7,6 +7,9 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -24,6 +27,7 @@ import org.nowstart.evergreen.repository.UpbitFeignClient;
 import org.nowstart.evergreen.service.strategy.StrategyRegistry;
 import org.nowstart.evergreen.service.strategy.TradingStrategyParamResolver;
 import org.nowstart.evergreen.service.strategy.v5.V5StrategyOverrides;
+import org.nowstart.evergreen.service.strategy.v6.V6StrategyOverrides;
 
 @ExtendWith(MockitoExtension.class)
 class TradingSignalMarketDataServiceTest {
@@ -51,19 +55,19 @@ class TradingSignalMarketDataServiceTest {
     void fetchDailyCandles_returnsEmptyWhenExchangeReturnsNoRows() {
         when(strategyParamResolver.resolveActive()).thenReturn(new TradingStrategyParamResolver.ActiveStrategy("v5", params()));
         when(strategyRegistry.requiredWarmupCandles("v5", params())).thenReturn(10);
-        when(upbitFeignClient.getDayCandles("KRW-BTC", 12)).thenReturn(null);
+        when(upbitFeignClient.getDayCandles("KRW-BTC", 12, null)).thenReturn(null);
 
         List<TradingDayCandleDto> candles = service.fetchDailyCandles("KRW-BTC");
 
         assertThat(candles).isEmpty();
-        verify(upbitFeignClient).getDayCandles("KRW-BTC", 12);
+        verify(upbitFeignClient).getDayCandles("KRW-BTC", 12, null);
     }
 
     @Test
     void fetchDailyCandles_normalizesFiltersAndSortsRows() {
         when(strategyParamResolver.resolveActive()).thenReturn(new TradingStrategyParamResolver.ActiveStrategy("v5", params()));
         when(strategyRegistry.requiredWarmupCandles("v5", params())).thenReturn(1);
-        when(upbitFeignClient.getDayCandles("KRW-BTC", 5)).thenReturn(Arrays.asList(
+        when(upbitFeignClient.getDayCandles("KRW-BTC", 5, null)).thenReturn(Arrays.asList(
                 null,
                 dayCandle(null, "1", "2", "0.5", "1.5", "10"),
                 dayCandle("2026-02-02T00:00:00", null, "2", "0.5", "1.5", "10"),
@@ -88,7 +92,7 @@ class TradingSignalMarketDataServiceTest {
     void fetchDailyCandles_returnsEmptyWhenAllRowsAreInvalid() {
         when(strategyParamResolver.resolveActive()).thenReturn(new TradingStrategyParamResolver.ActiveStrategy("v5", params()));
         when(strategyRegistry.requiredWarmupCandles("v5", params())).thenReturn(1);
-        when(upbitFeignClient.getDayCandles("KRW-BTC", 5)).thenReturn(List.of(
+        when(upbitFeignClient.getDayCandles("KRW-BTC", 5, null)).thenReturn(List.of(
                 dayCandle(null, "1", "2", "0.5", "1.5", "10"),
                 dayCandle("bad", "1", "2", "0.5", "1.5", "10")
         ));
@@ -96,6 +100,39 @@ class TradingSignalMarketDataServiceTest {
         List<TradingDayCandleDto> candles = service.fetchDailyCandles("KRW-BTC");
 
         assertThat(candles).isEmpty();
+    }
+
+    @Test
+    void fetchDailyCandles_usesMinute240CandlesForV6() {
+        V6StrategyOverrides params = v6Params();
+        when(strategyParamResolver.resolveActive()).thenReturn(new TradingStrategyParamResolver.ActiveStrategy("v6", params));
+        when(strategyRegistry.requiredWarmupCandles("v6", params)).thenReturn(35);
+        when(strategyRegistry.candleIntervalKey("v6", params)).thenReturn("minute_240");
+        when(upbitFeignClient.getMinuteCandles(240, "KRW-BTC", 37, null)).thenReturn(List.of(
+                dayCandle("2026-02-01T00:00:00", "100", "102", "99", "101", "10")
+        ));
+
+        List<TradingDayCandleDto> candles = service.fetchDailyCandles("KRW-BTC");
+
+        assertThat(candles).hasSize(1);
+        assertThat(candles.getFirst().timestamp()).isEqualTo(Instant.parse("2026-02-01T00:00:00Z"));
+        verify(upbitFeignClient).getMinuteCandles(240, "KRW-BTC", 37, null);
+    }
+
+    @Test
+    void fetchDailyCandles_paginatesWhenRequiredCountExceedsUpbitLimit() {
+        when(strategyParamResolver.resolveActive()).thenReturn(new TradingStrategyParamResolver.ActiveStrategy("v5", params()));
+        when(strategyRegistry.requiredWarmupCandles("v5", params())).thenReturn(250);
+        when(upbitFeignClient.getDayCandles("KRW-BTC", 200, null))
+                .thenReturn(candlePage("2026-02-01T00:00:00", 200));
+        when(upbitFeignClient.getDayCandles("KRW-BTC", 52, "2026-01-31T23:59:59"))
+                .thenReturn(candlePage("2025-12-11T00:00:00", 52));
+
+        List<TradingDayCandleDto> candles = service.fetchDailyCandles("KRW-BTC");
+
+        assertThat(candles).hasSize(252);
+        verify(upbitFeignClient).getDayCandles("KRW-BTC", 200, null);
+        verify(upbitFeignClient).getDayCandles("KRW-BTC", 52, "2026-01-31T23:59:59");
     }
 
     @Test
@@ -183,6 +220,14 @@ class TradingSignalMarketDataServiceTest {
         );
     }
 
+    private V6StrategyOverrides v6Params() {
+        return new V6StrategyOverrides(
+                new BigDecimal("0.124825"),
+                new BigDecimal("0.055"),
+                new BigDecimal("0.25")
+        );
+    }
+
     private UpbitDayCandleResponse dayCandle(
             String ts,
             String open,
@@ -199,6 +244,23 @@ class TradingSignalMarketDataServiceTest {
                 decimal(close),
                 decimal(volume)
         );
+    }
+
+    private List<UpbitDayCandleResponse> candlePage(String oldestTs, int count) {
+        LocalDateTime oldest = LocalDateTime.parse(oldestTs);
+        List<UpbitDayCandleResponse> rows = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            rows.add(dayCandle(
+                    oldest.plusDays(i).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                    "100",
+                    "102",
+                    "99",
+                    "101",
+                    "10"
+            ));
+        }
+        Collections.reverse(rows);
+        return rows;
     }
 
     private BigDecimal decimal(String value) {

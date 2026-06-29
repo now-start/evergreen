@@ -43,7 +43,7 @@ evergreen:
     candle-count: 400
     closed-candle-only: true
     signal-order-notional: 100000
-    active-strategy-version: v5
+    active-strategy-version: v6
     v5:
       regime-ema-len: 120
       atr-period: 18
@@ -52,6 +52,10 @@ evergreen:
       vol-regime-lookback: 40
       vol-regime-threshold: 0.6
       regime-band: 0.01
+    v6:
+      rule-scale: 0.124825
+      buy-cutoff: 0.055
+      sell-cutoff: 0.25
 
 logging:
   level:

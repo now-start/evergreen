@@ -3,6 +3,8 @@ package org.nowstart.evergreen.service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -25,6 +27,11 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class TradingSignalMarketDataService {
 
+    private static final String DAILY_INTERVAL_KEY = "days";
+    private static final String MINUTE_240_INTERVAL_KEY = "minute_240";
+    private static final int MINUTE_240_UNIT = 240;
+    private static final int MAX_CANDLE_PAGE_SIZE = 200;
+
     private final UpbitFeignClient upbitFeignClient;
     private final TradingProperties tradingProperties;
     private final TradingStrategyParamResolver strategyParamResolver;
@@ -40,10 +47,16 @@ public class TradingSignalMarketDataService {
                 tradingProperties.candleCount(),
                 strategyWarmup + 2
         );
+        String candleIntervalKey = resolveCandleIntervalKey(activeStrategy);
 
-        List<UpbitDayCandleResponse> rows = upbitFeignClient.getDayCandles(market, required);
+        List<UpbitDayCandleResponse> rows = fetchExchangeCandles(market, required, candleIntervalKey);
         if (rows == null || rows.isEmpty()) {
-            log.warn("No daily candles received from exchange. market={}, requiredCount={}", market, required);
+            log.warn(
+                    "No candles received from exchange. market={}, interval={}, requiredCount={}",
+                    market,
+                    candleIntervalKey,
+                    required
+            );
             return List.of();
         }
 
@@ -53,11 +66,75 @@ public class TradingSignalMarketDataService {
                 .sorted(Comparator.comparing(TradingDayCandleDto::timestamp))
                 .toList();
         if (candles.isEmpty()) {
-            log.warn("No valid daily candles after normalization. market={}, rawCount={}", market, rows.size());
+            log.warn("No valid candles after normalization. market={}, rawCount={}", market, rows.size());
             return candles;
         }
 
         return candles;
+    }
+
+    private String resolveCandleIntervalKey(TradingStrategyParamResolver.ActiveStrategy activeStrategy) {
+        String value = strategyRegistry.candleIntervalKey(
+                activeStrategy.version(),
+                activeStrategy.params()
+        );
+        if (value == null || value.isBlank()) {
+            return DAILY_INTERVAL_KEY;
+        }
+        return value.trim().toLowerCase(Locale.ROOT).replace("-", "_");
+    }
+
+    private List<UpbitDayCandleResponse> fetchExchangeCandles(
+            String market,
+            int required,
+            String candleIntervalKey
+    ) {
+        List<UpbitDayCandleResponse> rows = new ArrayList<>();
+        String to = null;
+        while (rows.size() < required) {
+            int count = Math.min(MAX_CANDLE_PAGE_SIZE, required - rows.size());
+            List<UpbitDayCandleResponse> batch = fetchExchangeCandlePage(market, count, candleIntervalKey, to);
+            if (batch == null || batch.isEmpty()) {
+                break;
+            }
+            rows.addAll(batch);
+            if (batch.size() < count) {
+                break;
+            }
+            String nextTo = resolveNextPageTo(batch);
+            if (nextTo == null || nextTo.equals(to)) {
+                break;
+            }
+            to = nextTo;
+        }
+        return rows;
+    }
+
+    private List<UpbitDayCandleResponse> fetchExchangeCandlePage(
+            String market,
+            int count,
+            String candleIntervalKey,
+            String to
+    ) {
+        if (MINUTE_240_INTERVAL_KEY.equals(candleIntervalKey)) {
+            return upbitFeignClient.getMinuteCandles(MINUTE_240_UNIT, market, count, to);
+        }
+        if (DAILY_INTERVAL_KEY.equals(candleIntervalKey)
+                || "day".equals(candleIntervalKey)
+                || "daily".equals(candleIntervalKey)) {
+            return upbitFeignClient.getDayCandles(market, count, to);
+        }
+        throw new IllegalArgumentException("Unsupported candle interval: " + candleIntervalKey);
+    }
+
+    private String resolveNextPageTo(List<UpbitDayCandleResponse> batch) {
+        return batch.stream()
+                .map(this::parseCandleTimestamp)
+                .filter(Objects::nonNull)
+                .min(Comparator.naturalOrder())
+                .map(value -> value.minusSeconds(1).atZone(ZoneOffset.UTC).toLocalDateTime())
+                .map(value -> value.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                .orElse(null);
     }
 
     public int resolveSignalIndex(int size) {
@@ -104,8 +181,12 @@ public class TradingSignalMarketDataService {
         }
 
         try {
+            java.time.Instant timestamp = parseCandleTimestamp(row);
+            if (timestamp == null) {
+                return null;
+            }
             return new TradingDayCandleDto(
-                    LocalDateTime.parse(row.candle_date_time_utc()).toInstant(ZoneOffset.UTC),
+                    timestamp,
                     row.opening_price(),
                     row.high_price(),
                     row.low_price(),
@@ -114,6 +195,17 @@ public class TradingSignalMarketDataService {
             );
         } catch (Exception e) {
             log.warn("Failed to parse day candle row. row={}", row, e);
+            return null;
+        }
+    }
+
+    private java.time.Instant parseCandleTimestamp(UpbitDayCandleResponse row) {
+        if (row == null || row.candle_date_time_utc() == null) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(row.candle_date_time_utc()).toInstant(ZoneOffset.UTC);
+        } catch (Exception e) {
             return null;
         }
     }

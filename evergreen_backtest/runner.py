@@ -5,10 +5,10 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from evergreen_backtest.contracts import CONTRACT_SCHEMA_VERSION, strategy_io_contract
-from evergreen_backtest.data import CandleBar, DailyCandleClient, load_bars
+from evergreen_backtest.data import CandleBar, CandleClient, load_bars, normalize_interval_key
 from evergreen_backtest.versions import VersionAdapter, VersionRun, available_versions, get_version
 from evergreen_backtest.walk_forward import WalkForwardConfig, WalkForwardResult, WalkForwardSelector
 
@@ -17,6 +17,7 @@ from evergreen_backtest.walk_forward import WalkForwardConfig, WalkForwardResult
 class BacktestRunRequest:
     versions: tuple[str, ...] = ("all",)
     market: str = "KRW-BTC"
+    interval_key: str = "auto"
     from_dt: datetime = datetime(2020, 1, 1, tzinfo=timezone.utc)
     to_dt: datetime | None = None
     cache_dir: str | Path = "outputs/data/upbit-cache"
@@ -35,28 +36,33 @@ class BacktestRunRequest:
 @dataclass(frozen=True)
 class ExperimentResult:
     request: BacktestRunRequest
+    interval_key: str
     bars: list[CandleBar]
+    bars_by_interval: dict[str, list[CandleBar]]
+    interval_by_version: dict[str, str]
     runs: dict[str, VersionRun]
     walk_forward: WalkForwardResult | None = None
     walk_forward_by_version: dict[str, WalkForwardResult] = field(default_factory=dict)
 
     def summary_rows(self) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
-        if self.walk_forward is not None:
+        if self.walk_forward_by_version:
             for version in self.request.resolved_versions():
                 if version not in self.walk_forward_by_version:
                     continue
-                rows.append(
-                    self.walk_forward_by_version[version].summary_row(
-                        phase="walk_forward_version",
-                        version=version,
-                        selection_mode="fixed_version",
-                    )
+                row = self.walk_forward_by_version[version].summary_row(
+                    phase="walk_forward_version",
+                    version=version,
+                    selection_mode="fixed_version",
                 )
+                row["interval_key"] = self.interval_by_version[version]
+                rows.append(row)
             return rows
 
         for version in self.request.resolved_versions():
-            rows.extend(self.runs[version].summary_rows())
+            for row in self.runs[version].summary_rows():
+                row["interval_key"] = self.interval_by_version[version]
+                rows.append(row)
         return rows
 
     def summary_dataframe(self) -> Any:
@@ -68,15 +74,31 @@ class ExperimentResult:
         return df[columns]
 
     def contracts(self) -> dict[str, Any]:
+        version_contracts = {}
+        for version, run in self.runs.items():
+            contract = run.contract()
+            contract["intervalKey"] = self.interval_by_version[version]
+            version_contracts[version] = contract
+
         return {
             "contractSchemaVersion": CONTRACT_SCHEMA_VERSION,
             "strategyIoContract": strategy_io_contract(),
             "market": self.request.market,
             "dataProvider": "upbit",
-            "barCount": len(self.bars),
-            "from": self.bars[0].timestamp.isoformat() if self.bars else None,
-            "to": self.bars[-1].timestamp.isoformat() if self.bars else None,
-            "versions": {version: run.contract() for version, run in self.runs.items()},
+            "intervalKey": self.interval_key,
+            "barCount": _total_bar_count(self.bars_by_interval),
+            "from": _first_timestamp(self.bars_by_interval),
+            "to": _last_timestamp(self.bars_by_interval),
+            "intervals": {
+                interval: {
+                    "barCount": len(bars),
+                    "from": bars[0].timestamp.isoformat() if bars else None,
+                    "to": bars[-1].timestamp.isoformat() if bars else None,
+                }
+                for interval, bars in self.bars_by_interval.items()
+            },
+            "versionIntervals": self.interval_by_version,
+            "versions": version_contracts,
             "walkForwardByVersion": {
                 version: result.contract({version: run.adapter for version, run in self.runs.items()})
                 for version, result in self.walk_forward_by_version.items()
@@ -109,40 +131,60 @@ class ExperimentResult:
 def run_backtest(
     request: BacktestRunRequest | None = None,
     *,
-    client: DailyCandleClient | None = None,
+    client: CandleClient | None = None,
 ) -> ExperimentResult:
     req = request or BacktestRunRequest()
-    bars = load_bars(
-        market=req.market,
-        from_dt=req.from_dt,
-        to_dt=req.to_dt,
-        cache_dir=req.cache_dir,
-        client=client,
-    )
-
     adapters = [get_version(version) for version in req.resolved_versions()]
+    interval_by_version = _resolve_interval_by_version(req.interval_key, adapters)
+    interval_order = _ordered_unique(interval_by_version[adapter.name] for adapter in adapters)
+    bars_by_interval = {
+        interval: load_bars(
+            market=req.market,
+            from_dt=req.from_dt,
+            to_dt=req.to_dt,
+            cache_dir=req.cache_dir,
+            interval_key=interval,
+            client=client,
+        )
+        for interval in interval_order
+    }
+    interval_key = interval_order[0] if len(interval_order) == 1 else "mixed"
+    bars = bars_by_interval[interval_key] if interval_key != "mixed" else []
+
     runs: dict[str, VersionRun] = {}
     configs: dict[str, Any] = {}
     for adapter in adapters:
         overrides = _config_for_version(req, adapter)
         config = adapter.config(overrides)
         configs[adapter.name] = config
-        runs[adapter.name] = adapter.run(bars, overrides)
+        runs[adapter.name] = adapter.run(bars_by_interval[interval_by_version[adapter.name]], overrides)
 
     walk_forward = None
     walk_forward_by_version = {}
     if req.walk_forward_config.enabled:
-        walk_forward_runs = WalkForwardSelector().run_set(
-            bars=bars,
-            adapters=adapters,
-            configs=configs,
-            config=req.walk_forward_config,
-        )
-        walk_forward = walk_forward_runs.selected
-        walk_forward_by_version = walk_forward_runs.by_version
+        selector = WalkForwardSelector()
+        selected_results: list[WalkForwardResult] = []
+        for interval in interval_order:
+            interval_adapters = [
+                adapter
+                for adapter in adapters
+                if interval_by_version[adapter.name] == interval
+            ]
+            walk_forward_runs = selector.run_set(
+                bars=bars_by_interval[interval],
+                adapters=interval_adapters,
+                configs={adapter.name: configs[adapter.name] for adapter in interval_adapters},
+                config=req.walk_forward_config,
+            )
+            selected_results.append(walk_forward_runs.selected)
+            walk_forward_by_version.update(walk_forward_runs.by_version)
+        walk_forward = _select_top_walk_forward(selected_results)
     return ExperimentResult(
         request=req,
+        interval_key=interval_key,
         bars=bars,
+        bars_by_interval=bars_by_interval,
+        interval_by_version=interval_by_version,
         runs=runs,
         walk_forward=walk_forward,
         walk_forward_by_version=walk_forward_by_version,
@@ -163,9 +205,59 @@ def _config_for_version(request: BacktestRunRequest, adapter: VersionAdapter) ->
     return overrides
 
 
+def _resolve_interval_by_version(requested: str, adapters: list[VersionAdapter]) -> dict[str, str]:
+    if requested.strip().lower() != "auto":
+        interval_key = normalize_interval_key(requested)
+        return {adapter.name: interval_key for adapter in adapters}
+    return {
+        adapter.name: normalize_interval_key(adapter.preferred_interval_key)
+        for adapter in adapters
+    }
+
+
+def _ordered_unique(values: Iterable[str]) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        out.append(value)
+    return out
+
+
+def _select_top_walk_forward(results: list[WalkForwardResult]) -> WalkForwardResult | None:
+    if not results:
+        return None
+    return max(results, key=lambda result: result.summary.final_equity)
+
+
+def _total_bar_count(bars_by_interval: dict[str, list[CandleBar]]) -> int:
+    return sum(len(bars) for bars in bars_by_interval.values())
+
+
+def _first_timestamp(bars_by_interval: dict[str, list[CandleBar]]) -> str | None:
+    timestamps = [
+        bars[0].timestamp
+        for bars in bars_by_interval.values()
+        if bars
+    ]
+    return min(timestamps).isoformat() if timestamps else None
+
+
+def _last_timestamp(bars_by_interval: dict[str, list[CandleBar]]) -> str | None:
+    timestamps = [
+        bars[-1].timestamp
+        for bars in bars_by_interval.values()
+        if bars
+    ]
+    return max(timestamps).isoformat() if timestamps else None
+
+
 _SUMMARY_FIELD_ORDER = [
     "version",
     "phase",
+    "interval_key",
     "selection_mode",
     "current_version",
     "final_equity",

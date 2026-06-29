@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import importlib
+import dataclasses
 import math
 import re
-from dataclasses import asdict, dataclass, fields, is_dataclass
+from dataclasses import dataclass, fields, is_dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -35,6 +36,10 @@ class VersionAdapter:
         return set(getattr(self.module, "JAVA_PARAM_FIELDS"))
 
     @property
+    def preferred_interval_key(self) -> str:
+        return str(getattr(self.module, "PREFERRED_INTERVAL_KEY", "days"))
+
+    @property
     def config_field_names(self) -> set[str]:
         return {field.name for field in fields(self.config_class)}
 
@@ -50,6 +55,12 @@ class VersionAdapter:
 
     def iter_parameter_grid(self, config: Any) -> Any:
         return self.module.iter_parameter_grid(config)
+
+    def resolve_selected_params(self, bars: list[CandleBar], params: Any) -> Any:
+        resolver = getattr(self.module, "resolve_selected_params", None)
+        if resolver is None:
+            return params
+        return resolver(bars, params)
 
     def validation_split_index(self, total_bars: int, config: Any) -> int:
         if total_bars < 4:
@@ -80,9 +91,14 @@ class VersionAdapter:
         if not candidates:
             raise RuntimeError(f"{self.name} grid search returned no candidates")
 
-        selected_params = candidates[0].params
+        selected_params = self.resolve_selected_params(validation_bars, candidates[0].params)
         evaluator = BacktestEvaluator()
-        validation_result = candidates[0].result
+        validation_result = evaluator.evaluate(
+            validation_bars,
+            model.evaluate(validation_bars, selected_params),
+            fee_per_side=selected_params.fee_per_side,
+            slippage=selected_params.slippage,
+        )
         test_result = evaluator.evaluate(
             test_bars,
             model.evaluate(test_bars, selected_params),
@@ -182,7 +198,11 @@ def discover_versions() -> list[VersionAdapter]:
 
 def to_plain_dict(value: Any) -> dict[str, Any]:
     if is_dataclass(value):
-        return {key: _to_json_value(item) for key, item in asdict(value).items()}
+        return {
+            field.name: _to_json_value(getattr(value, field.name))
+            for field in dataclasses.fields(value)
+            if field.metadata.get("serialize", True)
+        }
     if isinstance(value, dict):
         return {str(key): _to_json_value(item) for key, item in value.items()}
     return {"value": _to_json_value(value)}

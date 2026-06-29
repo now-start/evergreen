@@ -18,6 +18,13 @@ public interface TradingStrategyEngine<P extends StrategyParams> {
     Class<P> parameterType();
 
     /**
+     * Returns the candle interval key required by this strategy.
+     */
+    default String candleIntervalKey(P params) {
+        return "days";
+    }
+
+    /**
      * Returns the minimum candle history length required to evaluate one signal.
      */
     int requiredWarmupCandles(P params);

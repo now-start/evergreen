@@ -11,6 +11,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run Evergreen versioned Python backtests.")
     parser.add_argument("--versions", default="all", help="Comma-separated versions, or 'all'. Example: v3,v4,v5")
     parser.add_argument("--market", default="KRW-BTC")
+    parser.add_argument("--interval", default="auto", help="Candle interval: auto, days, minute_240, or 240m")
     parser.add_argument("--from-date", default="2020-01-01")
     parser.add_argument("--to-date")
     parser.add_argument("--top-k", type=int, default=5)
@@ -26,6 +27,7 @@ def main() -> None:
     request = BacktestRunRequest(
         versions=versions,
         market=args.market,
+        interval_key=args.interval,
         from_dt=_parse_date(args.from_date),
         to_dt=_parse_date(args.to_date) if args.to_date else None,
         common_config={"top_k": args.top_k, "grid_parallelism": args.grid_parallelism},

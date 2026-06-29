@@ -29,13 +29,13 @@ public record TradingProperties(
         @NotNull @DefaultValue("LIVE") ExecutionMode executionMode,
         // 자동매매 대상 마켓 목록
         @NotNull @DefaultValue("KRW-BTC") List<String> markets,
-        // 일봉 기준 신호 계산에 사용할 캔들 수
+        // 신호 계산에 사용할 캔들 수
         @Positive @DefaultValue("400") int candleCount,
         // 실시간 미완성 캔들 제외 여부(백테스트 정합성)
         @DefaultValue("true") boolean closedCandleOnly,
         // PAPER 모드 시그널 진입 시도 주문 금액(KRW 기준)
         @DecimalMin(value = "0", inclusive = false) @DefaultValue("100000") BigDecimal signalOrderNotional,
-        // 활성 전략 버전 (v1~v5)
+        // 활성 전략 버전 (v1~v6)
         @NotBlank @DefaultValue("v5") String activeStrategyVersion
 ) {
 }

@@ -1,21 +1,21 @@
 # 백테스트 전략 의사결정 노트
 
-이 문서는 루트의 `backtest_playground.ipynb`를 실행한 뒤 v1~v5 전략을 비교하는 기준을 정리한다. 노트북이 README이자 스모크 테스트이며, 현재 문서는 실행 결과를 해석하는 보조 문서다.
+이 문서는 `evergreen_backtest/playground/backtest_playground.ipynb`를 실행한 뒤 v1~v6 전략을 비교하는 기준을 정리한다. 노트북이 README이자 스모크 테스트이며, 현재 문서는 실행 결과를 해석하는 보조 문서다.
 
 ## 실행 기준
 
-- 데이터: 공식 Upbit SDK 공개 일봉 데이터
-- 기본 실행 버전: v1~v5 전체
-- 모델 코드: `evergreen_backtest/models/v1.py`~`v5.py`
+- 데이터: 공식 Upbit SDK 공개 캔들 데이터. `auto` interval 기준 v1~v5는 일봉, v6는 240분봉을 사용한다.
+- 기본 실행 버전: v1~v6 전체
+- 모델 코드: `evergreen_backtest/models/v1.py`~`v6.py`
 - 평가/선택 코드: `evergreen_backtest/backtest.py`, `evergreen_backtest/optimizer.py`, `evergreen_backtest/walk_forward.py`
-- 전략 설명서: `backtest_playground.ipynb`의 "전략 설명서" 섹션
+- 전략 설명서: `evergreen_backtest/playground/backtest_playground.ipynb`의 "전략 설명서" 섹션
 - 실행 결과표: 노트북 변수 `요약`
 - 계약 파일: `outputs/backtests/latest/strategy_contracts.json`
 - 차트 파일: `outputs/backtests/latest/equity_walk_forward.png`
 
 ```bash
 uv sync
-uv run jupyter lab backtest_playground.ipynb
+uv run jupyter lab evergreen_backtest/playground/backtest_playground.ipynb
 ```
 
 ## 공통 계약
@@ -43,6 +43,7 @@ uv run jupyter lab backtest_playground.ipynb
 | v3 | 레짐 + 변동성 목표 비중 | 동적 비중 | `vol_target`, `max_leverage`, `min_exposure` |
 | v4 | 레짐 + 주간 EMA 필터 | 전량 진입/청산 | `weekly_ema_len`, v2 계열 파라미터 |
 | v5 | 변동성 국면별 ATR 손절 | 전량 진입/청산 | `atr_mult_low_vol`, `atr_mult_high_vol`, `vol_regime_lookback`, `vol_regime_threshold` |
+| v6 | 컨테스트 우승 Trend2 + DL 보조 스코어 | 전량 진입/청산 | `rule_scale`, `buy_cutoff`, `sell_cutoff` |
 
 ## 비교 기준
 

@@ -243,6 +243,26 @@ class WalkForwardSelector:
                 parallelism=getattr(config, "grid_parallelism", 1),
             )
             candidate = candidates[0]
+            selected_params = adapter.resolve_selected_params(train_bars, candidate.params)
+            if selected_params is not candidate.params:
+                model = adapter.model()
+                train_result = BacktestEvaluator().evaluate(
+                    train_bars,
+                    model.evaluate(train_bars, selected_params),
+                    fee_per_side=selected_params.fee_per_side,
+                    slippage=selected_params.slippage,
+                )
+                cagr = train_result.summary.cagr
+                mdd = train_result.summary.mdd
+                calmar_like = float("nan") if mdd == 0.0 else cagr / abs(mdd)
+                candidate = CandidateResult(
+                    params=selected_params,
+                    result=train_result,
+                    calmar_like=calmar_like,
+                    cagr=cagr,
+                    mdd=mdd,
+                    final_equity=train_result.summary.final_equity,
+                )
             selected.append((adapter, candidate))
         if not selected:
             raise RuntimeError("no enabled model for walk-forward selection")

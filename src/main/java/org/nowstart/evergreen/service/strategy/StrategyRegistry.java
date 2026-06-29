@@ -58,6 +58,11 @@ public class StrategyRegistry {
         return requiredWarmupInternal(engine, params);
     }
 
+    public String candleIntervalKey(String strategyVersion, StrategyParams params) {
+        TradingStrategyEngine<? extends StrategyParams> engine = resolveEngine(strategyVersion);
+        return candleIntervalKeyInternal(engine, params);
+    }
+
     private <P extends StrategyParams> StrategyEvaluation evaluateInternal(
             TradingStrategyEngine<P> engine,
             List<OhlcvCandle> candles,
@@ -76,6 +81,14 @@ public class StrategyRegistry {
     ) {
         P typedParams = castParams(engine, params);
         return engine.requiredWarmupCandles(typedParams);
+    }
+
+    private <P extends StrategyParams> String candleIntervalKeyInternal(
+            TradingStrategyEngine<P> engine,
+            StrategyParams params
+    ) {
+        P typedParams = castParams(engine, params);
+        return engine.candleIntervalKey(typedParams);
     }
 
     private <P extends StrategyParams> P castParams(TradingStrategyEngine<P> engine, StrategyParams params) {
