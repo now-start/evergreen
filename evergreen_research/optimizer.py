@@ -5,8 +5,8 @@ from dataclasses import dataclass
 import math
 from typing import Any, Iterable
 
-from evergreen_backtest.backtest import BacktestEvaluator, BacktestResult
-from evergreen_backtest.data import CandleBar
+from evergreen_research.backtest import BacktestEvaluator, BacktestResult
+from evergreen_research.data import CandleBar
 
 
 @dataclass(frozen=True)

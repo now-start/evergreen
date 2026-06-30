@@ -23,6 +23,12 @@ public class V6StrategyEngine implements TradingStrategyEngine<V6StrategyOverrid
     private static final double FULL_POSITION_RATIO = 1.0;
     private static final double POSITION_EPSILON = 1e-12;
 
+    private final V6DeepLearningProfile deepLearningProfile;
+
+    public V6StrategyEngine(V6DeepLearningProfile deepLearningProfile) {
+        this.deepLearningProfile = deepLearningProfile == null ? V6DeepLearningProfile.disabled() : deepLearningProfile;
+    }
+
     @Override
     public String version() {
         return VERSION;
@@ -56,31 +62,43 @@ public class V6StrategyEngine implements TradingStrategyEngine<V6StrategyOverrid
         Trend2Components trend = trend2Components(close);
         double trend2 = trend.trend2()[signalIndex];
         double ruleScale = params.ruleScale().doubleValue();
-        double trend2Score = Double.isFinite(trend2) && ruleScale > 0.0
+        double ruleScore = Double.isFinite(trend2) && ruleScale > 0.0
                 ? Math.abs(trend2) / ruleScale
                 : Double.NaN;
+
+        V6DeepLearningProfile.V6DeepLearningScore dlScore = params.dlEnabled()
+                ? deepLearningProfile.score(deepLearningFeatureRow(candles, close, trend, ruleScale, signalIndex), trend2)
+                : V6DeepLearningProfile.V6DeepLearningScore.neutral();
+        double scoreModifier = Double.isFinite(dlScore.scoreModifier()) ? dlScore.scoreModifier() : 1.0;
+        double effectiveScore = Double.isFinite(ruleScore) ? ruleScore * scoreModifier : Double.NaN;
 
         double buyCutoff = params.buyCutoff().doubleValue();
         double sellCutoff = params.sellCutoff().doubleValue();
         double currentRatio = StrategyMath.currentPositionRatio(position);
-        boolean buySetup = trend2 > 0.0 && trend2Score >= buyCutoff;
-        boolean sellSetup = trend2 < 0.0 && trend2Score >= sellCutoff;
-        boolean shouldBuy = buySetup && currentRatio < FULL_POSITION_RATIO - POSITION_EPSILON;
-        boolean shouldSell = sellSetup && currentRatio > POSITION_EPSILON;
+        boolean buySetup = trend2 > 0.0 && effectiveScore >= buyCutoff;
+        boolean sellSetup = trend2 < 0.0 && effectiveScore >= sellCutoff && currentRatio > POSITION_EPSILON;
+        boolean shouldSell = sellSetup;
+        boolean shouldBuy = buySetup && !sellSetup && currentRatio < FULL_POSITION_RATIO - POSITION_EPSILON;
 
         SignalAction action = StrategyMath.resolveAction(shouldBuy, shouldSell);
         BigDecimal targetPositionRatio = BigDecimal.valueOf(StrategyMath.targetRatio(action, currentRatio));
 
         List<StrategyDiagnostic> diagnostics = List.of(
                 StrategyDiagnostic.number("trend2.value", "Trend2", trend2),
-                StrategyDiagnostic.number("trend2.score", "Trend2 Score", trend2Score),
+                StrategyDiagnostic.number("trend2.score", "Trend2 Score", ruleScore),
+                StrategyDiagnostic.number("trend2.effective_score", "Trend2 Effective Score", effectiveScore),
                 StrategyDiagnostic.number("trend2.ema_component", "Trend2 EMA Component", trend.emaComponent()[signalIndex]),
                 StrategyDiagnostic.number("trend2.ma_component", "Trend2 MA Component", trend.maComponent()[signalIndex]),
                 StrategyDiagnostic.number("trend2.macd_component", "Trend2 MACD Component", trend.macdComponent()[signalIndex]),
                 StrategyDiagnostic.number("trend2.momentum_component", "Trend2 Momentum Component", trend.momentumComponent()[signalIndex]),
                 StrategyDiagnostic.number("trend2.rule_scale", "Trend2 Rule Scale", ruleScale),
                 StrategyDiagnostic.number("trend2.buy_cutoff", "Trend2 Buy Cutoff", buyCutoff),
-                StrategyDiagnostic.number("trend2.sell_cutoff", "Trend2 Sell Cutoff", sellCutoff)
+                StrategyDiagnostic.number("trend2.sell_cutoff", "Trend2 Sell Cutoff", sellCutoff),
+                StrategyDiagnostic.number("dl.probability", "DL Probability", dlScore.probability()),
+                StrategyDiagnostic.number("dl.model_side", "DL Model Side", dlScore.modelSide()),
+                StrategyDiagnostic.number("dl.confidence", "DL Confidence", dlScore.confidence()),
+                StrategyDiagnostic.number("dl.agreement", "DL Agreement", dlScore.agreement()),
+                StrategyDiagnostic.number("dl.score_modifier", "DL Score Modifier", scoreModifier)
         );
 
         return new StrategyEvaluation(
@@ -195,6 +213,54 @@ public class V6StrategyEngine implements TradingStrategyEngine<V6StrategyOverrid
             }
         }
         return out;
+    }
+
+    /**
+     * Builds the 14-feature row for the deep-learning forward pass, mirroring {@code _dl_feature_row}
+     * in {@code evergreen_research/models/v6.py} (order and NaN semantics must match exactly).
+     */
+    private double[] deepLearningFeatureRow(
+            List<OhlcvCandle> candles,
+            double[] close,
+            Trend2Components trend,
+            double ruleScale,
+            int index
+    ) {
+        OhlcvCandle bar = candles.get(index);
+        double previousVolume = index > 0 ? candles.get(index - 1).volume() : Double.NaN;
+        double trend2 = trend.trend2()[index];
+        double rangePct = Double.isFinite(bar.close()) && bar.close() > 0.0
+                ? (bar.high() - bar.low()) / bar.close()
+                : 0.0;
+        double signedScore = Double.isFinite(trend2) && ruleScale > 0.0 ? trend2 / ruleScale : 0.0;
+        return new double[] {
+                gap(bar.close(), bar.open()),
+                rangePct,
+                gap(bar.volume(), previousVolume),
+                returnLagAt(close, index, 1),
+                returnLagAt(close, index, 2),
+                returnLagAt(close, index, 3),
+                returnLagAt(close, index, 5),
+                returnLagAt(close, index, 10),
+                safe(trend.emaComponent()[index]),
+                safe(trend.maComponent()[index]),
+                safe(trend.macdComponent()[index]),
+                safe(trend.momentumComponent()[index]),
+                safe(trend2),
+                signedScore
+        };
+    }
+
+    private double returnLagAt(double[] close, int index, int lag) {
+        if (index < lag) {
+            return Double.NaN;
+        }
+        double previous = close[index - lag];
+        double current = close[index];
+        if (Double.isFinite(previous) && Double.isFinite(current) && previous > 0.0) {
+            return (current / previous) - 1.0;
+        }
+        return Double.NaN;
     }
 
     private double gap(double current, double anchor) {

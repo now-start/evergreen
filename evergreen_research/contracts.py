@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from evergreen_backtest.data import CandleBar
+from evergreen_research.data import CandleBar
 
 
 CONTRACT_SCHEMA_VERSION = 1

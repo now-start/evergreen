@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from evergreen_backtest.backtest import BacktestEvaluator, BacktestRow, BacktestSummary
-from evergreen_backtest.data import CandleBar
-from evergreen_backtest.modeling import ModelSignal
-from evergreen_backtest.optimizer import CandidateResult, HyperparameterOptimizer
-from evergreen_backtest.versions import VersionAdapter, snake_to_camel, summary_to_dict, to_plain_dict
+from evergreen_research.backtest import BacktestEvaluator, BacktestRow, BacktestSummary
+from evergreen_research.data import CandleBar
+from evergreen_research.modeling import ModelSignal
+from evergreen_research.optimizer import CandidateResult, HyperparameterOptimizer
+from evergreen_research.versions import VersionAdapter, snake_to_camel, summary_to_dict, to_plain_dict
 
 
 @dataclass(frozen=True)

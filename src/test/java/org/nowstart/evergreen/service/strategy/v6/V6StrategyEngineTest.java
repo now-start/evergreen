@@ -16,11 +16,12 @@ import org.nowstart.evergreen.service.strategy.core.StrategyInput;
 
 class V6StrategyEngineTest {
 
-    private final V6StrategyEngine engine = new V6StrategyEngine();
+    private final V6StrategyEngine engine = new V6StrategyEngine(V6DeepLearningProfile.disabled());
     private final V6StrategyOverrides params = new V6StrategyOverrides(
             new BigDecimal("0.01"),
             new BigDecimal("0.055"),
-            new BigDecimal("0.25")
+            new BigDecimal("0.25"),
+            false
     );
 
     @Test
@@ -82,7 +83,7 @@ class V6StrategyEngineTest {
         ));
 
         assertThat(evaluation.decision().action()).isEqualTo(SignalAction.HOLD);
-        assertThat(evaluation.decision().signalReason()).isEqualTo("SETUP_SELL_TREND2");
+        assertThat(evaluation.decision().signalReason()).isEqualTo("NONE");
         assertThat(evaluation.decision().targetPositionRatio()).isEqualByComparingTo("0.0");
     }
 

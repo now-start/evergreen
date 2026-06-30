@@ -1,21 +1,21 @@
 # 백테스트 전략 의사결정 노트
 
-이 문서는 `evergreen_backtest/playground/backtest_playground.ipynb`를 실행한 뒤 v1~v6 전략을 비교하는 기준을 정리한다. 노트북이 README이자 스모크 테스트이며, 현재 문서는 실행 결과를 해석하는 보조 문서다.
+이 문서는 `evergreen_research/playground/backtest_playground.ipynb`를 실행한 뒤 v1~v6 전략을 비교하는 기준을 정리한다. 노트북이 README이자 스모크 테스트이며, 현재 문서는 실행 결과를 해석하는 보조 문서다.
 
 ## 실행 기준
 
 - 데이터: 공식 Upbit SDK 공개 캔들 데이터. `auto` interval 기준 v1~v5는 일봉, v6는 240분봉을 사용한다.
 - 기본 실행 버전: v1~v6 전체
-- 모델 코드: `evergreen_backtest/models/v1.py`~`v6.py`
-- 평가/선택 코드: `evergreen_backtest/backtest.py`, `evergreen_backtest/optimizer.py`, `evergreen_backtest/walk_forward.py`
-- 전략 설명서: `evergreen_backtest/playground/backtest_playground.ipynb`의 "전략 설명서" 섹션
+- 모델 코드: `evergreen_research/models/v1.py`~`v6.py`
+- 평가/선택 코드: `evergreen_research/backtest.py`, `evergreen_research/optimizer.py`, `evergreen_research/walk_forward.py`
+- 전략 설명서: `evergreen_research/playground/backtest_playground.ipynb`의 "전략 설명서" 섹션
 - 실행 결과표: 노트북 변수 `요약`
 - 계약 파일: `outputs/backtests/latest/strategy_contracts.json`
 - 차트 파일: `outputs/backtests/latest/equity_walk_forward.png`
 
 ```bash
 uv sync
-uv run jupyter lab evergreen_backtest/playground/backtest_playground.ipynb
+uv run jupyter lab evergreen_research/playground/backtest_playground.ipynb
 ```
 
 ## 공통 계약
@@ -76,5 +76,5 @@ uv run jupyter lab evergreen_backtest/playground/backtest_playground.ipynb
 ## 주의사항
 
 - 공식 Upbit SDK는 데이터 조회에 사용한다. RSI, EMA, ATR 같은 지표 계산은 SDK가 제공하지 않아 모델 코드에서 계산한다.
-- `evergreen_backtest/models/v*.py`에는 모델의 신호/목표비중 계산만 둔다. 수익률, MDD, CAGR, 후보 점수화, 워크포워드 선택은 공통 평가/선택 모듈에서 처리한다.
+- `evergreen_research/models/v*.py`에는 모델의 신호/목표비중 계산만 둔다. 수익률, MDD, CAGR, 후보 점수화, 워크포워드 선택은 공통 평가/선택 모듈에서 처리한다.
 - `targetPositionRatio`는 실행 계약의 일부다. Java에서 `action`만 보고 주문하면 v3 같은 비중 조절 전략을 잘못 실행할 수 있다. Java 주문 계층은 `signal-order-notional` 기준 목표 비중으로 전량 진입/청산과 중간 비중 조정을 같은 계약으로 처리한다.

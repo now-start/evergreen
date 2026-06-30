@@ -5,8 +5,8 @@ from datetime import datetime
 import math
 from typing import Any
 
-from evergreen_backtest.data import CandleBar
-from evergreen_backtest.modeling import ModelSignal
+from evergreen_research.data import CandleBar
+from evergreen_research.modeling import ModelSignal
 
 
 MIN_EQUITY = 1e-12

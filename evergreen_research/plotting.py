@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from evergreen_backtest.runner import ExperimentResult
+from evergreen_research.runner import ExperimentResult
 
 
 def plot_equity_curves(result: ExperimentResult, *, phase: str = "test", save_to: str | Path | None = None) -> Any:

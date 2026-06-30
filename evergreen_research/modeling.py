@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Protocol
 
-from evergreen_backtest.contracts import SignalAction
-from evergreen_backtest.data import CandleBar
+from evergreen_research.contracts import SignalAction
+from evergreen_research.data import CandleBar
 
 
 @dataclass(frozen=True)

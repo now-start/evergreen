@@ -9,14 +9,14 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
-from evergreen_backtest.backtest import BacktestEvaluator, BacktestResult
-from evergreen_backtest.contracts import CONTRACT_SCHEMA_VERSION, evaluation_from_row, evaluation_to_dict
-from evergreen_backtest.data import CandleBar
-from evergreen_backtest.optimizer import CandidateResult, HyperparameterOptimizer
+from evergreen_research.backtest import BacktestEvaluator, BacktestResult
+from evergreen_research.contracts import CONTRACT_SCHEMA_VERSION, evaluation_from_row, evaluation_to_dict
+from evergreen_research.data import CandleBar
+from evergreen_research.optimizer import CandidateResult, HyperparameterOptimizer
 
 
 MODEL_DIR = Path(__file__).resolve().parent / "models"
-MODEL_PACKAGE = "evergreen_backtest.models"
+MODEL_PACKAGE = "evergreen_research.models"
 VERSION_FILE = re.compile(r"^v(?P<number>\d+)\.py$")
 
 

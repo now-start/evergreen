@@ -6,9 +6,9 @@ from dataclasses import dataclass, field
 import math
 from typing import Iterator
 
-from evergreen_backtest.data import CandleBar
-from evergreen_backtest.modeling import ModelSignal, action_from_target, parse_double_range
-from evergreen_backtest.models.indicators import moving_average
+from evergreen_research.data import CandleBar
+from evergreen_research.modeling import ModelSignal, action_from_target, parse_double_range
+from evergreen_research.models.indicators import moving_average
 
 
 PREFERRED_INTERVAL_KEY = "minute_240"
@@ -87,8 +87,10 @@ class StrategyModelV6:
             trend2 = trend.trend2[i]
             rule_score = abs(trend2) / rule_scale if math.isfinite(trend2) else math.nan
             dl = dl_scores[i]
-            setup_buy = trend2 > 0.0 and rule_score >= params.buy_cutoff
-            setup_sell = trend2 < 0.0 and rule_score >= params.sell_cutoff and current_open > 0.0
+            score_modifier = dl.score_modifier if math.isfinite(dl.score_modifier) else 1.0
+            effective_score = rule_score * score_modifier if math.isfinite(rule_score) else math.nan
+            setup_buy = trend2 > 0.0 and effective_score >= params.buy_cutoff
+            setup_sell = trend2 < 0.0 and effective_score >= params.sell_cutoff and current_open > 0.0
 
             if not math.isfinite(rule_score):
                 target = current_open
@@ -112,6 +114,7 @@ class StrategyModelV6:
                     diagnostics={
                         "trend2": trend2,
                         "trend2_score": rule_score,
+                        "effective_score": effective_score,
                         "ema_component": trend.ema_component[i],
                         "ma_component": trend.ma_component[i],
                         "macd_component": trend.macd_component[i],

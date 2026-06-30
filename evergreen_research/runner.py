@@ -7,10 +7,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-from evergreen_backtest.contracts import CONTRACT_SCHEMA_VERSION, strategy_io_contract
-from evergreen_backtest.data import CandleBar, CandleClient, load_bars, normalize_interval_key
-from evergreen_backtest.versions import VersionAdapter, VersionRun, available_versions, get_version
-from evergreen_backtest.walk_forward import WalkForwardConfig, WalkForwardResult, WalkForwardSelector
+from evergreen_research.contracts import CONTRACT_SCHEMA_VERSION, strategy_io_contract
+from evergreen_research.data import CandleBar, CandleClient, load_bars, normalize_interval_key
+from evergreen_research.versions import VersionAdapter, VersionRun, available_versions, get_version
+from evergreen_research.walk_forward import WalkForwardConfig, WalkForwardResult, WalkForwardSelector
 
 
 @dataclass(frozen=True)

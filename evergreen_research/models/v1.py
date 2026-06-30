@@ -6,9 +6,9 @@ from dataclasses import dataclass
 import math
 from typing import Iterator
 
-from evergreen_backtest.data import CandleBar
-from evergreen_backtest.modeling import ModelSignal, action_from_target, parse_double_range, parse_int_range
-from evergreen_backtest.models.indicators import moving_average, wilder_rsi
+from evergreen_research.data import CandleBar
+from evergreen_research.modeling import ModelSignal, action_from_target, parse_double_range, parse_int_range
+from evergreen_research.models.indicators import moving_average, wilder_rsi
 
 
 RSI_PERIOD = 14
