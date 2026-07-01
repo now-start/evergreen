@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+# Ported from the legacy evergreen_research package: Upbit candle fetch + CSV cache.
 import csv
 import time
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Literal, Protocol
@@ -21,14 +21,9 @@ MINUTE_UNITS: set[int] = {1, 3, 5, 10, 15, 30, 60, 240}
 DEFAULT_INTERVAL_KEY = "days"
 
 
-@dataclass(frozen=True)
-class CandleBar:
-    timestamp: datetime
-    open: float
-    high: float
-    low: float
-    close: float
-    volume: float
+# Candles are the core evergreen_lab Candle (identical shape); alias keeps this
+# ported fetcher's body unchanged while returning the framework's own type.
+from evergreen_lab.core.candle import Candle as CandleBar
 
 
 class DailyCandleClient(Protocol):
@@ -129,8 +124,18 @@ def load_bars(
     interval_key: str = DEFAULT_INTERVAL_KEY,
     client: CandleClient | None = None,
 ) -> list[CandleBar]:
-    resolved_to_dt = to_dt or datetime.now(timezone.utc)
-    normalized_interval_key = normalize_interval_key(interval_key)
+    normalized_interval_key, minute_unit = _interval_spec_from_key(interval_key)
+    if to_dt is not None:
+        resolved_to_dt = to_dt
+    elif minute_unit is None:
+        # Daily: floor "now" to the UTC day so the cache key is stable across runs.
+        resolved_to_dt = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        # Minute intervals: floor "now" to the current interval bucket so the cache key is
+        # stable within the bucket WITHOUT dropping completed same-day candles.
+        now = datetime.now(timezone.utc)
+        floored = ((now.hour * 60 + now.minute) // minute_unit) * minute_unit
+        resolved_to_dt = now.replace(hour=floored // 60, minute=floored % 60, second=0, microsecond=0)
     cache = _CsvCandleCache(cache_dir)
     cache_path = cache.path_for(
         market=market,
