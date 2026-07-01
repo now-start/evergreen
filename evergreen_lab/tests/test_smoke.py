@@ -140,6 +140,14 @@ def test_initial_equity_is_normalized() -> None:
     assert abs(r.summary.total_return) < 1e-9  # flat strategy => 0% regardless of starting capital
 
 
+
+def test_regime_warmup_covers_atr_period() -> None:
+    # tuning atr_period above regime_ema_len must still wait for ATR (trailing stop needs it)
+    for name in ("v2", "v3", "v4", "v5"):
+        strat = create(name, regime_ema_len=50, atr_period=120)
+        assert strat.warmup() >= 120, name
+
+
 if __name__ == "__main__":
     tests = [
         test_all_versions_registered,
@@ -151,6 +159,7 @@ if __name__ == "__main__":
         test_analysis_grid_search_and_walk_forward,
         test_buy_hold_captures_full_market,
         test_initial_equity_is_normalized,
+        test_regime_warmup_covers_atr_period,
     ]
     for test in tests:
         test()
