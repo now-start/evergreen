@@ -3,7 +3,6 @@ from __future__ import annotations
 # Ported from the legacy evergreen_research package: Upbit candle fetch + CSV cache.
 import csv
 import time
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Literal, Protocol
