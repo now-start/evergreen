@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# Ported from the legacy evergreen_research package: Upbit candle fetch + CSV cache.
+# 예전 evergreen_research 패키지에서 포팅: Upbit 캔들 fetch + CSV 캐시.
 import csv
 import time
 from datetime import datetime, timezone
@@ -21,27 +21,27 @@ MINUTE_UNITS: set[int] = {1, 3, 5, 10, 15, 30, 60, 240}
 DEFAULT_INTERVAL_KEY = "days"
 
 
-# Candles are the core evergreen_lab Candle (identical shape); alias keeps this
-# ported fetcher's body unchanged while returning the framework's own type.
+# 캔들은 evergreen_lab의 코어 Candle과 형태가 동일하다; alias를 써서 포팅해온
+# fetcher 본문은 그대로 두면서 프레임워크 자체 타입을 반환하게 한다.
 from evergreen_lab.core.candle import Candle as CandleBar
 
 
 class DailyCandleClient(Protocol):
     def list_days(self, *, market: str, to_dt: datetime, count: int) -> list[CandleBar]:
-        """Return daily candles sorted newest first, matching Upbit's candle API order."""
+        """Upbit 캔들 API 순서와 동일하게, 최신 순으로 정렬된 일봉 캔들을 반환한다."""
 
 
 class MinuteCandleClient(Protocol):
     def list_minutes(self, *, unit: MinuteUnit, market: str, to_dt: datetime, count: int) -> list[CandleBar]:
-        """Return minute candles sorted newest first, matching Upbit's candle API order."""
+        """Upbit 캔들 API 순서와 동일하게, 최신 순으로 정렬된 분봉 캔들을 반환한다."""
 
 
 class CandleClient(DailyCandleClient, MinuteCandleClient, Protocol):
-    """Candle client contract for daily and minute backtests."""
+    """일봉/분봉 백테스트를 위한 캔들 클라이언트 계약."""
 
 
 class UpbitSdkDailyCandleClient:
-    """Thin adapter around the official upbit-sdk candle client."""
+    """공식 upbit-sdk 캔들 클라이언트를 감싸는 얇은 어댑터."""
 
     def __init__(self, client: Any | None = None, *, environment: str = "kr", timeout: float = 20.0) -> None:
         if client is not None:
@@ -128,11 +128,11 @@ def load_bars(
     if to_dt is not None:
         resolved_to_dt = to_dt
     elif minute_unit is None:
-        # Daily: floor "now" to the UTC day so the cache key is stable across runs.
+        # 일봉: 캐시 키가 실행마다 안정적이도록 "현재"를 UTC 기준 하루 단위로 내림한다.
         resolved_to_dt = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     else:
-        # Minute intervals: floor "now" to the current interval bucket so the cache key is
-        # stable within the bucket WITHOUT dropping completed same-day candles.
+        # 분봉: 당일 완성된 캔들을 놓치지 않으면서도 같은 버킷 안에서는 캐시 키가
+        # 안정적이도록, "현재"를 현재 인터벌 버킷 단위로 내림한다.
         now = datetime.now(timezone.utc)
         floored = ((now.hour * 60 + now.minute) // minute_unit) * minute_unit
         resolved_to_dt = now.replace(hour=floored // 60, minute=floored % 60, second=0, microsecond=0)

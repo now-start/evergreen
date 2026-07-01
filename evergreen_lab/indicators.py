@@ -1,9 +1,9 @@
-"""Causal technical indicators. Every series is aligned to the input and uses
-only past/current values, so reading ``series[i]`` never leaks the future.
+"""인과적(causal) 기술 지표들. 모든 시리즈는 입력과 길이가 맞춰져 있고 과거/현재
+값만 사용하므로, ``series[i]``를 읽어도 미래 정보가 새지 않는다.
 
-EMA uses ``adjust=False`` seeded at the first finite value and MACD is built the
-same way pandas ``ewm(adjust=False, min_periods=...)`` does, so these match the
-feature definitions the strategies were validated against.
+EMA는 첫 유효(finite) 값에서 시작해 ``adjust=False``로 계산하고, MACD도 pandas의
+``ewm(adjust=False, min_periods=...)``와 동일한 방식으로 만든다. 그래야 전략들이
+검증받았을 때의 피처 정의와 일치한다.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import math
 
 
 def gap(current: float, anchor: float) -> float:
-    """Relative gap ``current/anchor - 1``; 0.0 when either side is unusable."""
+    """상대적 갭 ``current/anchor - 1``; 어느 한쪽이라도 유효하지 않으면 0.0."""
     if not math.isfinite(current) or not math.isfinite(anchor) or anchor <= 0.0:
         return 0.0
     return (current / anchor) - 1.0
@@ -85,7 +85,7 @@ def macd(close: list[float]) -> tuple[list[float], list[float]]:
 
 
 def trend2_series(close: list[float]) -> list[float]:
-    """The conference 'trend2' rule signal (see strategies/trend2.py)."""
+    """컨퍼런스 'trend2' 규칙 시그널 (strategies/v6_trend2.py 참고)."""
     ema12 = ewm_adjust_false(close, 12)
     ema26 = ewm_adjust_false(close, 26)
     ma10 = moving_average(close, 10)
@@ -121,7 +121,7 @@ def quantile_linear(values: list[float], q: float) -> float:
 
 
 def robust_scale_q70(abs_values: list[float]) -> float:
-    """70th percentile of positive-finite magnitudes; 1.0 fallback."""
+    """양수이고 유효한(finite) 값들의 70번째 백분위수; 값이 없으면 1.0 기본값."""
     xs = [v for v in abs_values if math.isfinite(v) and v > 0.0]
     if not xs:
         return 1.0
@@ -132,7 +132,7 @@ def robust_scale_q70(abs_values: list[float]) -> float:
     return midpoint if math.isfinite(midpoint) and midpoint > 1e-12 else 1.0
 
 
-# --- indicators for the v1..v5 daily strategies (ported from the legacy package) ---
+# --- v1~v5 일봉 전략용 지표 (예전 패키지에서 포팅) ---
 
 REGIME_BULL = 1.0
 REGIME_BEAR = -1.0
@@ -140,7 +140,7 @@ REGIME_UNKNOWN = 0.0
 
 
 def exponential_moving_average(values: list[float], length: int) -> list[float]:
-    """SMA-seeded EMA (the seeding the v1..v5 regime filters were validated with)."""
+    """SMA로 시작하는 EMA (v1~v5 레짐 필터가 검증받았을 때의 시딩 방식)."""
     n = len(values)
     ema = [math.nan] * n
     if length <= 0 or n < length:
@@ -196,7 +196,7 @@ def wilder_atr(high: list[float], low: list[float], close: list[float], period: 
 
 
 def regime_codes(close: list[float], anchor: list[float], band: float) -> list[float]:
-    """BULL(1.0) / BEAR(-1.0) / UNKNOWN(0.0) with a hysteresis band around ``anchor``."""
+    """``anchor`` 주변에 히스테리시스 밴드를 적용한 BULL(1.0) / BEAR(-1.0) / UNKNOWN(0.0)."""
     n = len(close)
     out = [REGIME_UNKNOWN] * n
     for i in range(n):

@@ -1,17 +1,17 @@
-"""trend2 — faithful spot port of the conference winner 'agent_05' rule.
+"""trend2 — 컨퍼런스 우승작 'agent_05' 규칙을 스팟으로 충실하게 포팅한 것.
 
     trend2 = ema_gap_12 + 0.7*ema_gap_26 + ma_gap_10 + ma_gap_20
              + macd + macd_signal + 0.5*(return_lag_5 + return_lag_10)
 
-Decision (spot):
-    * BUY  when trend2 > 0 and |trend2| / scale >= buy_cutoff
-    * SELL when trend2 < 0 and |trend2| / scale >= sell_cutoff  (only while holding)
+결정 (스팟):
+    * trend2 > 0이고 |trend2| / scale >= buy_cutoff이면 BUY
+    * trend2 < 0이고 |trend2| / scale >= sell_cutoff이면 SELL (보유 중일 때만)
 
-``scale`` is the 70th percentile of |trend2| fit on the first ``train_fraction``
-of the series. Trading is suppressed (score = NaN -> HOLD) until that training
-window ends, so every traded bar is normalized by a scale fit on strictly earlier
-data -> no look-ahead. Pass ``rule_scale`` to use a fixed scale and trade from
-warmup instead.
+``scale``은 시리즈의 첫 ``train_fraction`` 구간에 맞춘(fit) |trend2|의 70번째
+백분위수다. 그 학습 구간이 끝나기 전까지는 거래가 억제되며(score = NaN -> HOLD),
+그래서 거래되는 모든 바는 엄격히 더 이전 데이터로 맞춘 scale로 정규화된다
+-> 미리보기 없음. 고정된 scale을 쓰고 warmup부터 바로 거래하려면 ``rule_scale``을
+넘기면 된다.
 """
 
 from __future__ import annotations

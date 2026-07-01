@@ -24,28 +24,27 @@ def run_backtest(
     initial_equity: float = 1.0,
     warmup: int | None = None,
 ) -> BacktestResult:
-    """Replay ``strategy`` over ``candles`` on spot and report how much it made.
+    """``strategy``를 ``candles``에 스팟으로 리플레이해서 얼마를 벌었는지 알려준다.
 
-    Fills happen at the next bar's open (a decision at bar i takes effect from
-    open[i+1]), so there is no same-bar look-ahead. The final bar is forced to
-    HOLD (nothing to fill it). Position is fed back into the strategy each bar, so
-    exits only fire while holding, and a filled entry's ``entry_price`` is the
-    actual fill price (next open).
+    체결은 다음 바의 open에서 일어난다(바 i에서의 결정은 open[i+1]부터 적용됨).
+    그래서 같은 바 안에서 미리보기는 없다. 마지막 바는 강제로 HOLD다(체결할
+    다음 바가 없음). 포지션은 매 바 전략에 다시 피드백되므로, 청산은 보유 중일
+    때만 발생하고, 체결된 진입의 ``entry_price``는 실제 체결가(다음 open)다.
 
-    ``warmup`` optionally overrides (raises) the strategy's own warmup — used by
-    walk-forward to force a flat start at a test-window boundary while still
-    warming indicators with the preceding history.
+    ``warmup``은 선택적으로 전략 자체의 warmup을 덮어쓴다(올릴 수만 있음) —
+    walk-forward가 테스트 구간 경계에서 이전 히스토리로 지표는 워밍업하면서도
+    포지션은 flat 상태로 강제 시작하기 위해 사용한다.
     """
     if candles is None or len(candles) < 2:
         raise ValueError("at least 2 candles are required")
     cost = cost or Cost()
     n = len(candles)
-    strategy.reset()  # clear per-run state so a strategy instance can be reused safely
+    strategy.reset()  # 실행별 상태를 초기화해서 전략 인스턴스를 안전하게 재사용할 수 있게 함
     features = strategy.features(candles) or {}
     warmup_bars = int(strategy.warmup()) if warmup is None else max(int(strategy.warmup()), int(warmup))
     warmup_bars = max(0, warmup_bars)
 
-    # 1) per-bar decisions -> target position ratio series (spot: 0.0 or 1.0)
+    # 1) 바마다의 결정 -> 목표 포지션 비율 시리즈 (스팟: 0.0 또는 1.0)
     target = [0.0] * n
     action_taken = [Action.HOLD] * n
     held = 0.0
@@ -66,7 +65,7 @@ def run_backtest(
 
         if new_target > held + EPS:
             action_taken[i] = Action.BUY
-            entry_price = candles[i + 1].open  # actual fill price; i < n-1 here
+            entry_price = candles[i + 1].open  # 실제 체결가; 여기서 i < n-1
         elif new_target < held - EPS:
             action_taken[i] = Action.SELL
         else:
@@ -85,9 +84,9 @@ def simulate_targets(
     *,
     initial_equity: float = 1.0,
 ) -> tuple[BacktestRow, ...]:
-    """Equity for a pre-decided per-bar target ratio series (spot). Actions are
-    derived from target transitions. Used to stitch walk-forward OOS windows into
-    one continuous equity curve."""
+    """이미 정해진 바별 목표 비율 시리즈(스팟)에 대한 equity를 계산한다. 액션은
+    목표값 변화로부터 유도된다. walk-forward의 OOS 구간들을 하나의 연속된
+    equity 곡선으로 이어붙일 때 사용한다."""
     if len(candles) != len(targets):
         raise ValueError("candles and targets must be the same length")
     actions: list[str] = []

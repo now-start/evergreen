@@ -8,7 +8,7 @@ _REGISTRY: dict[str, type[Strategy]] = {}
 
 
 def register(name: str) -> Callable[[type[Strategy]], type[Strategy]]:
-    """Class decorator: register a strategy under ``name`` (case-insensitive)."""
+    """클래스 데코레이터: 전략을 ``name``으로 등록한다 (대소문자 구분 없음)."""
     key = name.strip().lower()
     if not key:
         raise ValueError("strategy name must be non-empty")

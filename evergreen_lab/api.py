@@ -1,11 +1,11 @@
-"""Notebook entry points.
+"""노트북 진입점.
 
     import evergreen_lab as lab
     r = lab.evaluate("trend2", from_dt=datetime(2020, 1, 1, tzinfo=timezone.utc))
     print(r.describe()); r.plot_equity()
 
-``evaluate`` loads candles then backtests; ``evaluate_candles`` skips loading when
-you already hold a candle list (tests, custom data).
+``evaluate``는 캔들을 로드한 뒤 백테스트하고, ``evaluate_candles``는 이미 캔들
+리스트를 갖고 있을 때(테스트, 커스텀 데이터) 로딩을 건너뛴다.
 """
 
 from __future__ import annotations

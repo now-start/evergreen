@@ -1,4 +1,4 @@
-"""Grid search over strategy hyperparameters, ranked by a backtest metric."""
+"""전략 하이퍼파라미터에 대한 그리드 서치, 백테스트 지표로 순위를 매긴다."""
 
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ def grid_search(
     metric: str = "calmar",
     top_k: int = 5,
 ) -> list[Candidate]:
-    """Backtest every param combination and return the ``top_k`` by ``metric``."""
+    """모든 파라미터 조합을 백테스트하고 ``metric`` 기준 상위 ``top_k``를 반환한다."""
     if top_k <= 0:
         raise ValueError("top_k must be > 0")
     cost = cost or Cost()

@@ -1,10 +1,10 @@
-"""v3 — regime + ATR trailing stop, exiting whenever the regime leaves BULL (daily).
+"""v3 — 레짐 + ATR 트레일링 스탑, 레짐이 BULL을 벗어나면 즉시 청산 (일봉).
 
-Spot adaptation: the original v3 sized the position by a volatility target (up to
-2x leverage). This framework is binary spot (in / out), so the *sizing* is dropped
-and only v3's entry/exit *timing* is kept: enter on BEAR->BULL, hold while BULL,
-exit as soon as the regime is no longer BULL or the ATR trailing stop triggers.
-Intended interval: ``days``.
+스팟 적용: 원래 v3는 변동성 타겟으로 포지션 크기를 조절했다(최대 2배 레버리지).
+이 프레임워크는 이진(binary) 스팟(진입/청산)이라, *사이징*은 빼고 v3의
+진입/청산 *타이밍*만 유지한다: BEAR->BULL에서 진입, BULL인 동안 유지,
+레짐이 더 이상 BULL이 아니거나 ATR 트레일링 스탑이 발동하는 즉시 청산.
+권장 인터벌: ``days``.
 """
 
 from __future__ import annotations

@@ -1,23 +1,24 @@
-"""Walk-forward (out-of-sample) evaluation.
+"""Walk-forward (아웃오브샘플) 평가.
 
-Slide a fixed train window; on each step pick the best params by grid search on
-the train slice, then apply them to the following, unseen test slice. Params are
-always chosen on strictly earlier bars (no look-ahead).
+고정된 학습(train) 구간을 슬라이드한다; 각 단계마다 train 구간에 대한 그리드
+서치로 최적 파라미터를 고르고, 그 파라미터를 다음의 아직 보지 않은 test 구간에
+적용한다. 파라미터는 항상 엄격히 이전 바들로만 선택한다(미리보기 없음).
 
-Each test window is evaluated with its indicators warmed by that window's train
-history but **starting flat** (``run_backtest(..., warmup=test_start)``). The
-per-window target ratios are assembled onto a single contiguous out-of-sample
-timeline and run through one equity pass (``simulate_targets``).
+각 test 구간은 그 구간의 train 히스토리로 지표를 워밍업하되 **flat 상태로
+시작**해서 평가한다(``run_backtest(..., warmup=test_start)``). 구간별 목표
+비율들은 하나의 연속된 아웃오브샘플 타임라인으로 이어붙여져 한 번의 equity
+계산(``simulate_targets``)을 통과한다.
 
-Three correctness details:
-* The position is **flattened at every window boundary** — each window's targets
-  were produced from a flat start, so a position must not bleed across the seam
-  (that would under-charge turnover / inherit an inconsistent position).
-* A strategy that fits on a train prefix (e.g. v6's scale via ``train_fraction``)
-  is **aligned to this window's train boundary**, so its fit never sees test
-  candles. Harmless for strategies without a ``train_fraction`` parameter.
-* The **final OOS bar is carried** (no next open exists to fill it), mirroring
-  ``run_backtest``'s forced last-bar HOLD, so no phantom fill is recorded.
+정확성과 관련된 세 가지 세부사항:
+* 포지션은 **매 구간 경계에서 flat으로 강제**된다 — 각 구간의 목표값은 flat
+  상태에서 만들어졌으므로, 포지션이 경계를 넘어 이어지면 안 된다(그러면
+  turnover가 실제보다 적게 계산되거나 일관되지 않은 포지션을 이어받게 된다).
+* train 구간 앞부분에 스스로 맞추는(fit) 전략(예: v6의 ``train_fraction``을
+  통한 scale)은 **이번 구간의 train 경계에 맞춰진다**, 그래서 그 fit이 test
+  캔들을 절대 보지 않는다. ``train_fraction`` 파라미터가 없는 전략에는 영향 없음.
+* **마지막 OOS 바는 그대로 이어간다**(체결할 다음 open이 없음). 이는
+  ``run_backtest``가 마지막 바를 강제로 HOLD하는 것과 같은 맥락이라, 가상의
+  체결이 기록되지 않는다.
 """
 
 from __future__ import annotations
@@ -70,7 +71,7 @@ def walk_forward(
 
     targets: list[float | None] = [None] * n
     windows: list[WalkForwardWindow] = []
-    boundary_starts: list[int] = []  # global test-start index of each window after the first
+    boundary_starts: list[int] = []  # 첫 구간 이후 각 구간의 전역 test 시작 인덱스
     last_end = train_size
 
     a = 0
@@ -80,10 +81,10 @@ def walk_forward(
         end = min(b + test_size, n)
         best = grid_search(strategy, candles[a:b], param_grid, cost=cost, metric=metric, top_k=1)[0].params
 
-        # One extra bar so the last test-bar decision is fillable (not the slice's final bar).
+        # 마지막 test 바의 결정도 체결 가능하도록 한 바를 더 포함(슬라이스의 마지막 바가 아니게).
         end_slice = min(end + 1, n)
-        # Align a self-fitting train window (v6 scale) to THIS window's train boundary so the
-        # fit never sees test candles; falls back gracefully for strategies without the kwarg.
+        # 스스로 맞추는(self-fitting) train 구간(v6의 scale)을 이번 구간의 train 경계에
+        # 맞춰서 fit이 test 캔들을 절대 보지 않게 한다; 해당 kwarg가 없는 전략은 정상적으로 대체됨.
         aligned = {**best, "train_fraction": (b - a) / (end_slice - a)}
         try:
             strat = _make(strategy, aligned)
@@ -106,8 +107,8 @@ def walk_forward(
         first = False
         a += test_size
 
-    # Flatten at each boundary: force the previous window's last bar to 0.0 so the next
-    # (flat-start) window does not inherit a position across the seam.
+    # 매 경계에서 flat으로: 이전 구간의 마지막 바를 강제로 0.0으로 만들어서 다음
+    # (flat 시작) 구간이 경계를 넘어 포지션을 이어받지 않게 한다.
     for b in boundary_starts:
         if targets[b - 1] is not None:
             targets[b - 1] = 0.0
@@ -116,7 +117,7 @@ def walk_forward(
     if len(oos_candles) < 2:
         raise ValueError("walk-forward produced too few out-of-sample bars")
     oos_targets = [targets[train_size + i] or 0.0 for i in range(len(oos_candles))]
-    # Final OOS bar has no next open to fill on — carry it (no phantom trade).
+    # 마지막 OOS 바는 체결할 다음 open이 없다 — 그대로 이어간다(가상의 거래 없음).
     oos_targets[-1] = oos_targets[-2]
 
     rows = simulate_targets(oos_candles, oos_targets, cost)

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Cost:
-    """Per-side trading cost (fee + slippage). A market property, not a strategy one."""
+    """편도(per-side) 거래 비용 (수수료 + 슬리피지). 전략의 속성이 아니라 시장의 속성."""
 
     fee_per_side: float = 0.0005
     slippage: float = 0.0002

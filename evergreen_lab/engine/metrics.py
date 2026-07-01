@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Summary:
-    """Headline backtest metrics: how much profit, versus buy & hold, and risk."""
+    """백테스트 핵심 지표: 얼마나 벌었는지, buy & hold 대비 성과, 그리고 리스크."""
 
     total_return: float
     buy_hold_return: float
@@ -32,9 +32,9 @@ def summarize(rows) -> "Summary":
     final_equity_bh = rows[-1].equity_bh
     initial = equity[0] if equity[0] > 0.0 else 1.0
 
-    # Round-trip realized return: baseline = equity at the (flat) entry-decision bar;
-    # exit settles one bar later (that row carries the exit cost). A win is a
-    # net-positive completed round trip. An entry with no completed exit is left open.
+    # 라운드트립 실현 수익: 기준선 = (flat 상태였던) 진입 결정 바의 equity;
+    # 청산은 한 바 뒤에 정산된다(그 row가 청산 비용을 반영함). 완결된 라운드트립이
+    # 순이익이면 승리로 본다. 청산이 완결되지 않은 진입은 열린 상태로 남긴다.
     round_trips = 0
     wins = 0
     entry_idx: int | None = None

@@ -1,8 +1,8 @@
-"""v4 — v2 regime + ATR trailing stop, with a weekly-EMA trend filter on entries.
+"""v4 — v2 레짐 + ATR 트레일링 스탑에, 진입 시 주간 EMA 트렌드 필터를 추가.
 
-Same as v2, but a BEAR->BULL entry only fires when the current weekly close is at
-or above its ``weekly_ema_len``-period weekly EMA. Stateful (post-entry peak).
-Intended interval: ``days``.
+v2와 동일하지만, BEAR->BULL 진입은 현재 주간 close가 ``weekly_ema_len``기간
+주간 EMA 이상일 때만 발동한다. 상태 유지(진입 이후 peak).
+권장 인터벌: ``days``.
 """
 
 from __future__ import annotations
@@ -63,7 +63,7 @@ class RegimeWeeklyStrategy(Strategy):
         out = [0.0] * len(candles)
         for i, candle in enumerate(candles):
             iso = candle.timestamp.isocalendar()
-            key = (iso[0], iso[1])  # (iso year, iso week)
+            key = (iso[0], iso[1])  # (ISO 연도, ISO 주차)
             if not week_keys or week_keys[-1] != key:
                 week_keys.append(key)
                 weekly_closes.append(candle.close)

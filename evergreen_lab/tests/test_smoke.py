@@ -1,5 +1,5 @@
-"""Offline smoke test: no network, no numpy/pandas. Runs as a plain script
-(``python3 evergreen_lab/tests/test_smoke.py``) or under pytest.
+"""오프라인 스모크 테스트: 네트워크도, numpy/pandas도 필요 없음. 일반 스크립트로
+(``python3 evergreen_lab/tests/test_smoke.py``) 또는 pytest로 실행할 수 있다.
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ import os
 import sys
 from datetime import datetime, timedelta, timezone
 
-# Make the package importable when run as a plain script from anywhere.
+# 어디서든 일반 스크립트로 실행해도 패키지를 import할 수 있게 함.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from evergreen_lab import Action, BarContext, Candle, Cost, Strategy, create, list_strategies, run_backtest
@@ -73,7 +73,7 @@ def test_reset_makes_reuse_deterministic() -> None:
     strat = create("v2")
     candles = synthetic_candles(400)
     first = run_backtest(strat, candles, Cost())
-    second = run_backtest(strat, candles, Cost())  # same instance reused
+    second = run_backtest(strat, candles, Cost())  # 같은 인스턴스를 재사용
     assert first.summary.total_return == second.summary.total_return
 
 
@@ -117,7 +117,7 @@ def test_analysis_grid_search_and_walk_forward() -> None:
 
 def test_buy_hold_captures_full_market() -> None:
     start = datetime(2022, 1, 1, tzinfo=timezone.utc)
-    opens = [100.0, 110.0, 121.0]  # two +10% open-to-open intervals
+    opens = [100.0, 110.0, 121.0]  # +10% open-to-open 구간이 두 번
     candles = [Candle(start + timedelta(days=i), o, o, o, o, 1.0) for i, o in enumerate(opens)]
 
     class _Hold(Strategy):
@@ -125,7 +125,7 @@ def test_buy_hold_captures_full_market() -> None:
             return Action.HOLD
 
     r = run_backtest(_Hold(), candles, Cost(fee_per_side=0.0, slippage=0.0))
-    # buy & hold over the whole window must include the first interval
+    # 전체 구간에 대한 buy & hold는 첫 구간도 포함해야 한다
     assert abs(r.summary.buy_hold_return - (opens[-1] / opens[0] - 1.0)) < 1e-9
 
 
@@ -137,16 +137,16 @@ def test_initial_equity_is_normalized() -> None:
             return Action.HOLD
 
     r = run_backtest(_Hold(), candles, Cost(fee_per_side=0.0, slippage=0.0), initial_equity=1000.0)
-    assert abs(r.summary.total_return) < 1e-9  # flat strategy => 0% regardless of starting capital
+    assert abs(r.summary.total_return) < 1e-9  # flat 전략 => 시작 자본과 무관하게 0%
 
 
 
 def test_regime_warmup_covers_atr_period() -> None:
-    # tuning atr_period above regime_ema_len must still wait for ATR (trailing stop needs it)
+    # atr_period를 regime_ema_len보다 크게 튜닝해도 ATR을 기다려야 한다(트레일링 스탑에 필요)
     for name in ("v2", "v3", "v4", "v5"):
         strat = create(name, regime_ema_len=50, atr_period=120)
         assert strat.warmup() >= 120, name
-    # v5 must also wait out its volatility-state lookback window
+    # v5는 자신의 변동성 상태 lookback 구간도 기다려야 한다
     v5 = create("v5", regime_ema_len=50, atr_period=40, vol_regime_lookback=200)
     assert v5.warmup() >= 200
 

@@ -10,13 +10,13 @@ from evergreen_lab.core.position import Position
 
 @dataclass(frozen=True)
 class BarContext:
-    """Everything a strategy may read *at* the current bar. Causal by contract:
-    read only information up to and including ``index`` (no look-ahead) — do NOT
-    index ``candles`` past ``index``.
+    """전략이 현재 바에서 읽을 수 있는 모든 것. 계약상 인과적(causal)이다:
+    ``index``까지의(포함) 정보만 읽어야 하며(미래 미리보기 없음) — ``candles``를
+    ``index`` 이후로 인덱싱해서는 안 된다.
 
-    ``features`` holds indicator series precomputed once by the engine via
-    ``Strategy.features``; ``feature(name)`` returns that series at the current
-    bar and ``feature(name, lag=k)`` returns it ``k`` bars back.
+    ``features``는 엔진이 ``Strategy.features``를 통해 한 번 미리 계산해둔
+    지표 시리즈를 담고 있다; ``feature(name)``은 현재 바의 값을,
+    ``feature(name, lag=k)``는 ``k``바 이전 값을 반환한다.
     """
 
     candles: Sequence[Candle]
@@ -42,5 +42,5 @@ class BarContext:
         return series[j]
 
     def closes(self) -> list[float]:
-        """Closing prices up to and including the current bar (causal slice)."""
+        """현재 바까지의(포함) 종가들 (인과적 슬라이스)."""
         return [candle.close for candle in self.candles[: self.index + 1]]

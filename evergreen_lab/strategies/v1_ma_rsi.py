@@ -1,8 +1,8 @@
-"""v1 — moving-average trend filter + RSI oversold entry, MA-break exit (daily).
+"""v1 — 이동평균 트렌드 필터 + RSI 과매도 진입, MA 이탈 청산 (일봉).
 
-BUY  when close > MA, MA is sloping up over ``ma_slope_days``, and RSI < ``rsi_buy``.
-SELL (exit) when close < MA. Stateless: MA and RSI are precomputed causal series.
-Intended interval: ``days``. Defaults are sensible mid-range values — tune freely.
+close > MA이고, MA가 ``ma_slope_days``기간 동안 상승 중이고, RSI < ``rsi_buy``일 때 BUY.
+close < MA일 때 SELL(청산). 상태 없음(stateless): MA와 RSI는 미리 계산된 인과적 시리즈.
+권장 인터벌: ``days``. 기본값은 무난한 중간값들 — 자유롭게 튜닝하면 됨.
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ class MaRsiStrategy(Strategy):
             return Action.HOLD
         close = ctx.now.close
         if close < ma:
-            return Action.SELL  # engine drops this to HOLD when flat
+            return Action.SELL  # 이미 flat이면 엔진이 이걸 HOLD로 무너뜨림
         ma_prev = ctx.feature("ma", lag=self.ma_slope_days)
         slope_ok = math.isfinite(ma_prev) and ma > ma_prev
         if close > ma and slope_ok and rsi < self.rsi_buy:

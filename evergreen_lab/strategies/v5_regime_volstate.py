@@ -1,9 +1,9 @@
-"""v5 — v2 regime + ATR trailing stop with a volatility-state-dependent multiplier.
+"""v5 — v2 레짐 + ATR 트레일링 스탑에, 변동성 상태에 따른 배수를 적용.
 
-Same as v2, but the ATR trail multiplier switches between ``atr_mult_low_vol`` and
-``atr_mult_high_vol`` depending on whether the ATR/price ratio is in a high-vol
-state (its rolling percentile over ``vol_regime_lookback`` >= ``vol_regime_threshold``).
-Stateful (post-entry peak). Intended interval: ``days``.
+v2와 동일하지만, ATR 트레일 배수는 ATR/price 비율이 고변동성 상태인지에
+따라 ``atr_mult_low_vol``와 ``atr_mult_high_vol`` 사이를 전환한다(``vol_regime_lookback``
+구간의 롤링 백분위수가 ``vol_regime_threshold`` 이상이면 고변동성).
+상태 유지(진입 이후 peak). 권장 인터벌: ``days``.
 """
 
 from __future__ import annotations

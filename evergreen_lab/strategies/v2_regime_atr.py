@@ -1,9 +1,9 @@
-"""v2 — EMA regime transition entry + ATR trailing-stop exit (daily).
+"""v2 — EMA 레짐 전환 진입 + ATR 트레일링 스탑 청산 (일봉).
 
-BUY  on a BEAR->BULL regime flip (200-EMA with a hysteresis band).
-SELL on a BULL->BEAR flip, or when close falls ``atr_trail_multiplier`` * ATR
-below the highest close since entry. Stateful: tracks the post-entry peak.
-Intended interval: ``days``.
+BEAR->BULL 레짐 전환(히스테리시스 밴드가 있는 200-EMA)일 때 BUY.
+BULL->BEAR 전환이거나, close가 진입 이후 최고 close보다 ``atr_trail_multiplier``
+* ATR만큼 낮아지면 SELL. 상태 유지(stateful): 진입 이후 peak를 추적한다.
+권장 인터벌: ``days``.
 """
 
 from __future__ import annotations
