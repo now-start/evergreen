@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 from evergreen_lab import Action, BarContext, Candle, Cost, Strategy, create, list_strategies, run_backtest
 from evergreen_lab.core.registry import register
 
-VERSIONS = ("trend2", "v1", "v2", "v3", "v4", "v5")
+VERSIONS = ("v6", "v1", "v2", "v3", "v4", "v5")
 
 
 def synthetic_candles(n: int = 300, seed_price: float = 30_000_000.0) -> list[Candle]:
@@ -43,7 +43,7 @@ def test_all_versions_registered() -> None:
 
 
 def test_backtest_runs_and_is_spot_consistent() -> None:
-    result = run_backtest(create("trend2"), synthetic_candles(), Cost())
+    result = run_backtest(create("v6"), synthetic_candles(), Cost())
     assert len(result.rows) == 300
     assert result.rows[-1].action == "HOLD", "final bar cannot be executed, must be HOLD"
     for row in result.rows:
@@ -79,7 +79,7 @@ def test_reset_makes_reuse_deterministic() -> None:
 
 def test_no_lookahead_before_training_cut() -> None:
     candles = synthetic_candles()
-    result = run_backtest(create("trend2"), candles)
+    result = run_backtest(create("v6"), candles)
     cut = int(len(candles) * 0.6)
     for i, row in enumerate(result.rows):
         if i < cut:
@@ -103,12 +103,12 @@ def test_analysis_grid_search_and_walk_forward() -> None:
 
     candles = synthetic_candles(500)
     grid = {"buy_cutoff": [0.03, 0.055, 0.08], "sell_cutoff": [0.2, 0.25]}
-    top = grid_search("trend2", candles, grid, top_k=3)
+    top = grid_search("v6", candles, grid, top_k=3)
     assert len(top) == 3
     assert top[0].score >= top[-1].score
     assert set(top[0].params) == {"buy_cutoff", "sell_cutoff"}
 
-    wf = walk_forward("trend2", candles, grid, train_size=250, test_size=60)
+    wf = walk_forward("v6", candles, grid, train_size=250, test_size=60)
     assert len(wf.windows) >= 1
     assert len(wf.rows) > 0
     assert math.isfinite(wf.summary.total_return)

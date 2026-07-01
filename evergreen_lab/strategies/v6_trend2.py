@@ -24,7 +24,7 @@ from evergreen_lab.core import Action, BarContext, Candle, Strategy
 from evergreen_lab.core.registry import register
 
 
-@register("trend2")
+@register("v6")
 class Trend2Strategy(Strategy):
     def __init__(
         self,

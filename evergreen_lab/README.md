@@ -10,15 +10,15 @@ Java engine by hand (no JSON contract / weight export).
 import evergreen_lab as lab
 from datetime import datetime, timezone
 
-r = lab.evaluate("trend2", from_dt=datetime(2020, 1, 1, tzinfo=timezone.utc))
+r = lab.evaluate("v6", from_dt=datetime(2020, 1, 1, tzinfo=timezone.utc))
 print(r.describe())      # total_return / buy&hold / cagr / mdd / win_rate ...
 r.plot_equity()          # strategy vs buy & hold
 ```
 
 `lab.list_strategies()` shows everything registered. Tune params inline:
-`lab.evaluate("trend2", buy_cutoff=0.08, cost=lab.Cost(fee_per_side=0.0005))`.
+`lab.evaluate("v6", buy_cutoff=0.08, cost=lab.Cost(fee_per_side=0.0005))`.
 
-Offline (your own candle list, no network): `lab.evaluate_candles("trend2", candles)`.
+Offline (your own candle list, no network): `lab.evaluate_candles("v6", candles)`.
 
 ## Add a strategy (one file)
 
@@ -79,7 +79,7 @@ python evergreen_lab/tests/test_smoke.py     # or: python -m pytest evergreen_la
 
 | name | what | interval |
 |---|---|---|
-| `trend2` | conference-winner "agent_05" trend rule (= v6 rule) | `minute_240` |
+| `v6` | conference-winner "agent_05" trend2 rule | `minute_240` |
 | `v1` | MA trend + RSI oversold entry, MA-break exit | `days` |
 | `v2` | EMA regime flip entry + ATR trailing-stop exit | `days` |
 | `v3` | v2 regime timing, exit whenever regime leaves BULL (sizing dropped for spot) | `days` |
