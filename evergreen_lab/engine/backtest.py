@@ -122,7 +122,8 @@ def _simulate(
 
     per_side = cost.per_side
     equity[0] = max(MIN_EQUITY, initial_equity)
-    equity_bh[0] = max(MIN_EQUITY, initial_equity * (1.0 - per_side))
+    first_bh = initial_equity * (1.0 - per_side) * (1.0 + ret_oo[0])
+    equity_bh[0] = MIN_EQUITY if (not math.isfinite(first_bh) or first_bh <= 0.0) else max(MIN_EQUITY, first_bh)
     for i in range(1, n):
         gross = 1.0 + (pos_open[i] * ret_oo[i]) - (trade[i] * per_side)
         equity[i] = MIN_EQUITY if (not math.isfinite(gross) or gross <= 0.0) else max(MIN_EQUITY, equity[i - 1] * gross)

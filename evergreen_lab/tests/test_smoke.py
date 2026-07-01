@@ -114,6 +114,32 @@ def test_analysis_grid_search_and_walk_forward() -> None:
     assert math.isfinite(wf.summary.total_return)
 
 
+
+def test_buy_hold_captures_full_market() -> None:
+    start = datetime(2022, 1, 1, tzinfo=timezone.utc)
+    opens = [100.0, 110.0, 121.0]  # two +10% open-to-open intervals
+    candles = [Candle(start + timedelta(days=i), o, o, o, o, 1.0) for i, o in enumerate(opens)]
+
+    class _Hold(Strategy):
+        def decide(self, ctx: BarContext) -> Action:
+            return Action.HOLD
+
+    r = run_backtest(_Hold(), candles, Cost(fee_per_side=0.0, slippage=0.0))
+    # buy & hold over the whole window must include the first interval
+    assert abs(r.summary.buy_hold_return - (opens[-1] / opens[0] - 1.0)) < 1e-9
+
+
+def test_initial_equity_is_normalized() -> None:
+    candles = synthetic_candles(50)
+
+    class _Hold(Strategy):
+        def decide(self, ctx: BarContext) -> Action:
+            return Action.HOLD
+
+    r = run_backtest(_Hold(), candles, Cost(fee_per_side=0.0, slippage=0.0), initial_equity=1000.0)
+    assert abs(r.summary.total_return) < 1e-9  # flat strategy => 0% regardless of starting capital
+
+
 if __name__ == "__main__":
     tests = [
         test_all_versions_registered,
@@ -123,6 +149,8 @@ if __name__ == "__main__":
         test_no_lookahead_before_training_cut,
         test_hold_forever_returns_zero,
         test_analysis_grid_search_and_walk_forward,
+        test_buy_hold_captures_full_market,
+        test_initial_equity_is_normalized,
     ]
     for test in tests:
         test()

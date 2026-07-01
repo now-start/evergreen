@@ -30,6 +30,7 @@ def summarize(rows) -> "Summary":
     equity = [row.equity for row in rows]
     final_equity = equity[-1]
     final_equity_bh = rows[-1].equity_bh
+    initial = equity[0] if equity[0] > 0.0 else 1.0
 
     # Round-trip realized return: baseline = equity at the (flat) entry-decision bar;
     # exit settles one bar later (that row carries the exit cost). A win is a
@@ -54,8 +55,8 @@ def summarize(rows) -> "Summary":
     orders = sum(1 for row in rows if row.trade > 1e-12)
 
     return Summary(
-        total_return=final_equity - 1.0,
-        buy_hold_return=final_equity_bh - 1.0,
+        total_return=(final_equity / initial) - 1.0,
+        buy_hold_return=(final_equity_bh / initial) - 1.0,
         cagr=cagr,
         mdd=_max_drawdown(equity),
         orders=orders,

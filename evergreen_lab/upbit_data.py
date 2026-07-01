@@ -124,7 +124,12 @@ def load_bars(
     interval_key: str = DEFAULT_INTERVAL_KEY,
     client: CandleClient | None = None,
 ) -> list[CandleBar]:
-    resolved_to_dt = to_dt or datetime.now(timezone.utc)
+    if to_dt is not None:
+        resolved_to_dt = to_dt
+    else:
+        # Open-ended: round "now" down to the UTC day so the cache filename is stable
+        # across runs (a second-granular timestamp would bypass the CSV cache every run).
+        resolved_to_dt = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     normalized_interval_key = normalize_interval_key(interval_key)
     cache = _CsvCandleCache(cache_dir)
     cache_path = cache.path_for(
