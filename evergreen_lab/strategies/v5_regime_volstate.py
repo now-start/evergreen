@@ -47,7 +47,7 @@ class RegimeVolStateStrategy(Strategy):
         self._was_in = False
 
     def warmup(self) -> int:
-        return max(self.regime_ema_len, self.atr_period)
+        return max(self.regime_ema_len, self.atr_period, self.vol_regime_lookback)
 
     def reset(self) -> None:
         self._peak = math.nan

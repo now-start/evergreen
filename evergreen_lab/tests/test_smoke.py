@@ -146,6 +146,9 @@ def test_regime_warmup_covers_atr_period() -> None:
     for name in ("v2", "v3", "v4", "v5"):
         strat = create(name, regime_ema_len=50, atr_period=120)
         assert strat.warmup() >= 120, name
+    # v5 must also wait out its volatility-state lookback window
+    v5 = create("v5", regime_ema_len=50, atr_period=40, vol_regime_lookback=200)
+    assert v5.warmup() >= 200
 
 
 if __name__ == "__main__":
