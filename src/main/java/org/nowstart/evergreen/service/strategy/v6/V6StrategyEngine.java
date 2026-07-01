@@ -216,8 +216,8 @@ public class V6StrategyEngine implements TradingStrategyEngine<V6StrategyOverrid
     }
 
     /**
-     * Builds the 14-feature row for the deep-learning forward pass, mirroring {@code _dl_feature_row}
-     * in {@code evergreen_research/models/v6.py} (order and NaN semantics must match exactly).
+     * 딥러닝 forward pass용 14개 피처 행을 만든다. {@code evergreen_research/models/v6.py}의
+     * {@code _dl_feature_row}를 그대로 옮긴 것이다(순서와 NaN 의미가 정확히 일치해야 한다).
      */
     private double[] deepLearningFeatureRow(
             List<OhlcvCandle> candles,

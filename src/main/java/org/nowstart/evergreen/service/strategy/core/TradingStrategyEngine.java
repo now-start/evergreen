@@ -1,39 +1,39 @@
 package org.nowstart.evergreen.service.strategy.core;
 
 /**
- * Versioned strategy engine contract.
+ * 버전이 지정된(versioned) 전략 엔진 계약.
  *
- * @param <P> parameter type consumed by the strategy implementation
+ * @param <P> 전략 구현이 소비하는 파라미터 타입
  */
 public interface TradingStrategyEngine<P extends StrategyParams> {
 
     /**
-     * Returns the strategy version key (for example {@code v5}, {@code v6}).
+     * 전략 버전 key를 반환한다(예: {@code v5}, {@code v6}).
      */
     String version();
 
     /**
-     * Returns the runtime class for parameter binding/validation.
+     * 파라미터 바인딩/검증에 쓰이는 런타임 클래스를 반환한다.
      */
     Class<P> parameterType();
 
     /**
-     * Returns the candle interval key required by this strategy.
+     * 이 전략이 요구하는 캔들 인터벌 key를 반환한다.
      */
     default String candleIntervalKey(P params) {
         return "days";
     }
 
     /**
-     * Returns the minimum candle history length required to evaluate one signal.
+     * 신호 하나를 평가하는 데 필요한 최소 캔들 히스토리 길이를 반환한다.
      */
     int requiredWarmupCandles(P params);
 
     /**
-     * Evaluates one signal point and returns decision plus diagnostics.
+     * 신호 지점 하나를 평가해 결정과 진단 값을 반환한다.
      *
-     * <p>Implementations should place strategy-specific explainability values in
-     * {@link StrategyEvaluation#diagnostics()} using {@link StrategyDiagnostic} factories.
+     * <p>구현체는 전략별 설명 가능(explainability) 값을 {@link StrategyDiagnostic} 팩토리로
+     * {@link StrategyEvaluation#diagnostics()}에 담아야 한다.
      */
     StrategyEvaluation evaluate(StrategyInput<P> input);
 }

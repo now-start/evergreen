@@ -4,11 +4,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
 /**
- * Jackson view of the exported v6 model bundle written by
- * {@code evergreen_research/model_export.py}. The production resource
- * ({@code strategy-models/v6.json}) carries {@link #version}, {@link #params} and
- * {@link #deepLearning}; the golden test fixture additionally carries {@link #candles}
- * and {@link #expectedSignals}. Unknown fields are ignored so one DTO parses both.
+ * {@code evergreen_research/model_export.py}가 내보낸 v6 모델 번들의 Jackson 뷰.
+ * 프로덕션 리소스({@code strategy-models/v6.json})는 {@link #version}, {@link #params},
+ * {@link #deepLearning}을 담고, 골든 테스트 픽스처는 추가로 {@link #candles}와
+ * {@link #expectedSignals}를 담는다. 알 수 없는 필드는 무시하므로 하나의 DTO로 둘 다 파싱된다.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record V6ModelBundle(
@@ -19,7 +18,7 @@ public record V6ModelBundle(
         List<ExpectedSignal> expectedSignals
 ) {
 
-    /** Builds the immutable forward-pass profile, or a disabled profile when DL is absent/off. */
+    /** 불변 forward-pass 프로파일을 만든다. DL이 없거나 꺼져 있으면 비활성 프로파일을 반환한다. */
     public V6DeepLearningProfile toProfile() {
         if (deepLearning == null || !deepLearning.enabled()) {
             return V6DeepLearningProfile.disabled();

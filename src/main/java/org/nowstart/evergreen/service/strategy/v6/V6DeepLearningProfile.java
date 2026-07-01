@@ -3,14 +3,14 @@ package org.nowstart.evergreen.service.strategy.v6;
 import java.util.List;
 
 /**
- * Immutable v6 MLP profile (14 → 32 → 12 → 1) trained offline in Python and loaded from
- * {@code strategy-models/v6.json}. Java only runs the forward pass; training stays in Python
- * because the numpy RNG/dropout/quantile reductions are not bit-reproducible here.
+ * 불변(immutable) v6 MLP 프로파일 (14 → 32 → 12 → 1). Python에서 오프라인 학습해
+ * {@code strategy-models/v6.json}에서 로드한다. Java는 forward pass만 수행하며, 학습은
+ * Python에 남긴다(numpy의 RNG/dropout/quantile 축약이 여기서는 비트 단위로 재현되지 않으므로).
  *
- * <p>Standardization and forward pass mirror {@code _dl_signal_scores} in
- * {@code evergreen_research/models/v6.py} exactly:
+ * <p>표준화(standardization)와 forward pass는 {@code evergreen_research/models/v6.py}의
+ * {@code _dl_signal_scores}를 정확히 그대로 옮긴 것이다:
  * {@code x = clip(nan_to_num((raw - center) / scale, nan=0, posinf=8, neginf=-8), -8, 8)},
- * then {@code relu}/{@code relu}/{@code sigmoid}.
+ * 그 뒤 {@code relu}/{@code relu}/{@code sigmoid}.
  */
 public record V6DeepLearningProfile(
         boolean enabled,
@@ -30,7 +30,7 @@ public record V6DeepLearningProfile(
     private static final double DISAGREEMENT_FACTOR = 0.94;
     private static final double CONFIDENCE_WEIGHT = 0.05;
 
-    /** Defensively copies the weight arrays so the profile cannot be mutated through its inputs. */
+    /** 가중치 배열을 방어적으로 복사해, 입력을 통해 프로파일이 변경되지 않도록 한다. */
     public V6DeepLearningProfile {
         featureNames = featureNames == null ? List.of() : List.copyOf(featureNames);
         center = copy(center);
@@ -42,20 +42,20 @@ public record V6DeepLearningProfile(
         w3 = copy(w3);
     }
 
-    /** Neutral profile: DL contributes nothing (score modifier is always 1.0). */
+    /** 중립 프로파일: DL이 아무 기여도 하지 않는다(score modifier가 항상 1.0). */
     public static V6DeepLearningProfile disabled() {
         return new V6DeepLearningProfile(false, List.of(), new double[0], new double[0],
                 new double[0][], new double[0], new double[0][], new double[0], new double[0], 0.0);
     }
 
-    /** Number of input features the network expects, or 0 when disabled. */
+    /** 네트워크가 기대하는 입력 피처 개수, 비활성 상태면 0. */
     public int inputDim() {
         return center.length;
     }
 
     /**
-     * Forward pass for a single raw feature row. Returns {@link Double#NaN} when the profile is
-     * disabled or the row length does not match the trained input dimension.
+     * 단일 raw 피처 행에 대한 forward pass. 프로파일이 비활성이거나 행 길이가 학습된 입력
+     * 차원과 맞지 않으면 {@link Double#NaN}을 반환한다.
      */
     public double probability(double[] rawFeatureRow) {
         if (!enabled || rawFeatureRow == null || rawFeatureRow.length != inputDim() || inputDim() == 0) {
@@ -74,8 +74,8 @@ public record V6DeepLearningProfile(
     }
 
     /**
-     * Computes the deep-learning score for the bar, mirroring {@code _dl_signal_scores}. When the
-     * profile is disabled or the probability is non-finite, returns the neutral score (modifier 1.0).
+     * 해당 바의 딥러닝 score를 계산한다({@code _dl_signal_scores}를 그대로 옮김). 프로파일이
+     * 비활성이거나 확률이 유한하지 않으면 중립 score(modifier 1.0)를 반환한다.
      */
     public V6DeepLearningScore score(double[] rawFeatureRow, double trend2) {
         double probability = probability(rawFeatureRow);
@@ -134,7 +134,7 @@ public record V6DeepLearningProfile(
         return out;
     }
 
-    /** One bar's deep-learning score, mirroring {@code DeepLearningScoreV6}. */
+    /** 한 바의 딥러닝 score({@code DeepLearningScoreV6}를 그대로 옮김). */
     public record V6DeepLearningScore(
             double probability,
             int modelSide,
@@ -143,7 +143,7 @@ public record V6DeepLearningProfile(
             double scoreModifier
     ) {
 
-        /** Neutral score used when DL is disabled or unavailable. */
+        /** DL이 비활성이거나 사용 불가일 때 쓰는 중립 score. */
         public static V6DeepLearningScore neutral() {
             return new V6DeepLearningScore(Double.NaN, 0, Double.NaN, 1.0, 1.0);
         }

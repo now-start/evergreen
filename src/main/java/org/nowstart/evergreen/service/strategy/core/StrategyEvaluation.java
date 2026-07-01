@@ -3,13 +3,13 @@ package org.nowstart.evergreen.service.strategy.core;
 import java.util.List;
 
 /**
- * Immutable output of one strategy evaluation.
+ * 전략 평가 한 번의 불변(immutable) 출력.
  *
- * <p>{@link #decision()} contains the executable signal decision (buy/sell/hold reason),
- * and {@link #diagnostics()} contains strategy-specific explainability metrics for logging/dashboard use.
+ * <p>{@link #decision()}은 실행 가능한 신호 결정(매수/매도/보류 사유)을 담고,
+ * {@link #diagnostics()}는 로깅/대시보드용 전략별 설명 가능(explainability) 지표를 담는다.
  *
- * @param decision    final signal decision for the evaluated candle
- * @param diagnostics optional diagnostics emitted by the strategy
+ * @param decision    평가된 캔들에 대한 최종 신호 결정
+ * @param diagnostics 전략이 방출한 선택적 진단 값들
  */
 public record StrategyEvaluation(
         StrategySignalDecision decision,

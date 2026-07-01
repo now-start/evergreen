@@ -8,11 +8,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 
 /**
- * Loads the offline-trained v6 MLP profile from {@code strategy-models/v6.json} on the classpath.
+ * 클래스패스의 {@code strategy-models/v6.json}에서 오프라인 학습된 v6 MLP 프로파일을 로드한다.
  *
- * <p>When the resource is absent or DL is disabled in it, a {@link V6DeepLearningProfile#disabled()}
- * profile is provided so the app still boots and v6 falls back to pure rule decisions
- * (score modifier 1.0). Regenerate the resource from a notebook/REPL with
+ * <p>리소스가 없거나 그 안에서 DL이 비활성화돼 있으면 {@link V6DeepLearningProfile#disabled()}
+ * 프로파일을 제공한다. 그래야 앱이 계속 부팅되고 v6가 순수 규칙 결정으로 폴백한다
+ * (score modifier 1.0). 리소스는 노트북/REPL에서 다음으로 재생성한다:
  * {@code evergreen_research.model_export.export_v6("src/main/resources/strategy-models/v6.json")}.
  */
 @Slf4j
@@ -39,8 +39,8 @@ public class V6ModelConfig {
             }
             return profile;
         } catch (Exception ex) {
-            // Present-but-unreadable is a deploy bug: fail fast rather than silently trade rule-only.
-            // (An absent resource above is the intentional rule-only path and stays graceful.)
+            // 존재하지만 읽을 수 없는 경우는 배포 버그다: 조용히 규칙만으로 거래하지 말고 빠르게 실패한다.
+            // (위의 '리소스 없음'은 의도된 규칙 전용 경로이며 그대로 우아하게 폴백한다.)
             throw new IllegalStateException(
                     "v6 model resource " + MODEL_RESOURCE + " is present but unreadable/corrupt; "
                             + "refusing to start with a silently-disabled deep-learning gate.", ex);

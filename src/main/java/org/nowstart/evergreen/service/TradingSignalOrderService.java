@@ -97,7 +97,7 @@ public class TradingSignalOrderService {
                     signalCandle.timestamp().toString()
             );
         } else {
-            // LIVE fallback buys leave price empty; execution caps the notional by signal-order-notional.
+            // LIVE 폴백 매수는 가격을 비워 둔다; 실행 단계에서 notional을 signal-order-notional로 상한 처리한다.
             request = new SignalExecuteRequest(
                     market,
                     OrderSide.BUY,

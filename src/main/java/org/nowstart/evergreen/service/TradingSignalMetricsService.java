@@ -82,7 +82,7 @@ public class TradingSignalMetricsService {
                 continue;
             }
 
-            // When exchange data drifts (e.g. oversell correction), apply fee proportionally to matched quantity.
+            // 거래소 데이터가 어긋날 때(예: 초과매도 보정) 수수료를 체결된 수량에 비례해 적용한다.
             double effectiveFee = sellQty < qty ? fee * (sellQty / qty) : fee;
             double proceedsAfterFee = (price * sellQty) - effectiveFee;
             double costBasis = avgCost * sellQty;
