@@ -1,6 +1,7 @@
-"""Candle loading. Reuses the proven Upbit fetch + CSV cache in
-``evergreen_research.data`` (the one piece worth keeping from the old package);
-the import is lazy so ``import evergreen_lab`` never needs the network or the SDK.
+"""Candle loading — Upbit fetch + CSV cache, returning core ``Candle`` objects.
+
+Self-contained: the fetcher lives in ``evergreen_lab/upbit_data.py``. The
+upbit-sdk import there is lazy, so ``import evergreen_lab`` needs no network or SDK.
 """
 
 from __future__ import annotations
@@ -19,14 +20,8 @@ def load_candles(
     cache_dir: str = "outputs/data/upbit-cache",
     client=None,
 ) -> list[Candle]:
-    from evergreen_research.data import load_bars  # lazy: no import-time network dep
+    from evergreen_lab.upbit_data import load_bars  # lazy: no import-time network/SDK dep
 
-    bars = load_bars(
-        market=market,
-        from_dt=from_dt,
-        to_dt=to_dt,
-        cache_dir=cache_dir,
-        interval_key=interval,
-        client=client,
+    return load_bars(
+        market=market, from_dt=from_dt, to_dt=to_dt, cache_dir=cache_dir, interval_key=interval, client=client
     )
-    return [Candle(b.timestamp, b.open, b.high, b.low, b.close, b.volume) for b in bars]

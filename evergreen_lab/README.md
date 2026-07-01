@@ -74,3 +74,38 @@ look-ahead). Cost (`Cost`, per side) is charged on turnover. `describe()` report
 ```bash
 python evergreen_lab/tests/test_smoke.py     # or: python -m pytest evergreen_lab/tests
 ```
+
+## Strategy lineup
+
+| name | what | interval |
+|---|---|---|
+| `trend2` | conference-winner "agent_05" trend rule (= v6 rule) | `minute_240` |
+| `v1` | MA trend + RSI oversold entry, MA-break exit | `days` |
+| `v2` | EMA regime flip entry + ATR trailing-stop exit | `days` |
+| `v3` | v2 regime timing, exit whenever regime leaves BULL (sizing dropped for spot) | `days` |
+| `v4` | v2 + weekly-EMA trend filter on entries | `days` |
+| `v5` | v2 with a volatility-state-dependent ATR multiplier | `days` |
+
+`lab.evaluate("v2", interval="days", ...)`. `list_strategies()` shows them all.
+
+## Tuning & out-of-sample (optional `analysis` layer)
+
+Not needed for a plain "run over history" evaluation — reach for it only when
+tuning params or when you want an honest out-of-sample estimate.
+
+```python
+from datetime import datetime, timezone
+from evergreen_lab.data import load_candles
+from evergreen_lab.analysis import grid_search, walk_forward
+
+candles = load_candles(market="KRW-BTC", from_dt=datetime(2020, 1, 1, tzinfo=timezone.utc), interval="days")
+
+# rank param combos by Calmar (cagr / |mdd|)
+top = grid_search("v2", candles, {"atr_trail_multiplier": [2, 3, 4], "regime_band": [0.01, 0.02]}, top_k=3)
+print(top[0].params, top[0].score)
+
+# walk-forward: params re-picked on each train window, applied to the next unseen
+# window; the out-of-sample test windows are stitched into one continuous curve.
+wf = walk_forward("v2", candles, {"atr_trail_multiplier": [2, 3, 4]}, train_size=750, test_size=180)
+print(f"OOS total_return={wf.summary.total_return:+.2%} over {len(wf.windows)} windows")
+```
