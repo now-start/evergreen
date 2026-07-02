@@ -28,8 +28,11 @@ from evergreen_lab.api import evaluate, evaluate_candles
 # strategies 패키지를 import하면 부작용으로 registry가 채워진다.
 from evergreen_lab import strategies as strategies  # noqa: F401,E402
 
+# 여러 전략 병렬 평가 + 진행 바 (registry가 채워진 뒤 import).
+from evergreen_lab.analysis.compare import evaluate_strategies  # noqa: E402
+
 __all__ = [
     "Action", "BarContext", "BacktestResult", "BacktestRow", "Candle", "Cost",
     "Position", "Strategy", "Summary", "create", "evaluate", "evaluate_candles",
-    "list_strategies", "register", "run_backtest",
+    "evaluate_strategies", "list_strategies", "register", "run_backtest",
 ]

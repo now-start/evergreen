@@ -21,7 +21,7 @@ import org.nowstart.evergreen.service.strategy.core.StrategyInput;
 /**
  * 골든 마스터 패리티: Java v6 엔진(규칙 + MLP 게이트)은 같은 캔들 시리즈에 대해
  * {@code strategy-models/v6-golden.json}에 기록된 Python v6 신호를 그대로 재현해야 한다.
- * 픽스처는 {@code evergreen_research.model_export.export_v6(out, golden_path=...)}로 생성된다.
+ * 픽스처는 {@code evergreen_lab.strategies.v6_trend2.export_v6(out, bars, golden_path=...)}로 생성된다.
  *
  * <p>액션·목표비율·사유는 정확히 일치해야 하고, MLP forward-pass 값(dl 확률, effective score)은
  * 부동소수 허용오차(float tolerance) 이내로 일치해야 한다.
@@ -58,8 +58,7 @@ class V6StrategyParityTest {
         params = new V6StrategyOverrides(
                 BigDecimal.valueOf(bundle.params().ruleScale()),
                 BigDecimal.valueOf(bundle.params().buyCutoff()),
-                BigDecimal.valueOf(bundle.params().sellCutoff()),
-                true);
+                BigDecimal.valueOf(bundle.params().sellCutoff()));
     }
 
     @Test

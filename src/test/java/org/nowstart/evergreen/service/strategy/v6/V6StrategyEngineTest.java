@@ -20,8 +20,7 @@ class V6StrategyEngineTest {
     private final V6StrategyOverrides params = new V6StrategyOverrides(
             new BigDecimal("0.01"),
             new BigDecimal("0.055"),
-            new BigDecimal("0.25"),
-            false
+            new BigDecimal("0.25")
     );
 
     @Test

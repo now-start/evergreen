@@ -7,8 +7,8 @@ import java.util.List;
  * {@code strategy-models/v6.json}에서 로드한다. Java는 forward pass만 수행하며, 학습은
  * Python에 남긴다(numpy의 RNG/dropout/quantile 축약이 여기서는 비트 단위로 재현되지 않으므로).
  *
- * <p>표준화(standardization)와 forward pass는 {@code evergreen_research/models/v6.py}의
- * {@code _dl_signal_scores}를 정확히 그대로 옮긴 것이다:
+ * <p>표준화(standardization)와 forward pass는 {@code evergreen_lab/strategies/v6_trend2.py}의
+ * {@code _dl_scores}를 정확히 그대로 옮긴 것이다:
  * {@code x = clip(nan_to_num((raw - center) / scale, nan=0, posinf=8, neginf=-8), -8, 8)},
  * 그 뒤 {@code relu}/{@code relu}/{@code sigmoid}.
  */
@@ -40,6 +40,9 @@ public record V6DeepLearningProfile(
         w2 = copy(w2);
         b2 = copy(b2);
         w3 = copy(w3);
+        if (enabled) {
+            validateShape(center, scale, w1, b1, w2, b2, w3);
+        }
     }
 
     /** 중립 프로파일: DL이 아무 기여도 하지 않는다(score modifier가 항상 1.0). */
@@ -132,6 +135,33 @@ public record V6DeepLearningProfile(
             out[i] = values[i] == null ? new double[0] : values[i].clone();
         }
         return out;
+    }
+
+    /** 로드 시 가중치 배열 차원을 검증한다: 손상된 모델 JSON이면 즉시(fail-fast) 예외를 던진다. */
+    private static void validateShape(double[] center, double[] scale, double[][] w1, double[] b1,
+            double[][] w2, double[] b2, double[] w3) {
+        int inputDim = center.length;
+        int hidden1 = b1.length;
+        int hidden2 = b2.length;
+        if (inputDim == 0 || hidden1 == 0 || hidden2 == 0) {
+            throw new IllegalArgumentException("v6 model: empty layer dims (inputDim/hidden1/hidden2 must be > 0)");
+        }
+        require(scale.length == inputDim, "scale length", scale.length, inputDim);
+        require(w1.length == inputDim, "w1 rows", w1.length, inputDim);
+        for (double[] row : w1) {
+            require(row.length == hidden1, "w1 row width", row.length, hidden1);
+        }
+        require(w2.length == hidden1, "w2 rows", w2.length, hidden1);
+        for (double[] row : w2) {
+            require(row.length == hidden2, "w2 row width", row.length, hidden2);
+        }
+        require(w3.length == hidden2, "w3 length", w3.length, hidden2);
+    }
+
+    private static void require(boolean ok, String what, int actual, int expected) {
+        if (!ok) {
+            throw new IllegalArgumentException("v6 model: " + what + " " + actual + " != " + expected);
+        }
     }
 
     /** 한 바의 딥러닝 score({@code DeepLearningScoreV6}를 그대로 옮김). */

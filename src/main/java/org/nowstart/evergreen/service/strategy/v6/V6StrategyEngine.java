@@ -66,9 +66,8 @@ public class V6StrategyEngine implements TradingStrategyEngine<V6StrategyOverrid
                 ? Math.abs(trend2) / ruleScale
                 : Double.NaN;
 
-        V6DeepLearningProfile.V6DeepLearningScore dlScore = params.dlEnabled()
-                ? deepLearningProfile.score(deepLearningFeatureRow(candles, close, trend, ruleScale, signalIndex), trend2)
-                : V6DeepLearningProfile.V6DeepLearningScore.neutral();
+        V6DeepLearningProfile.V6DeepLearningScore dlScore =
+                deepLearningProfile.score(deepLearningFeatureRow(candles, close, trend, ruleScale, signalIndex), trend2);
         double scoreModifier = Double.isFinite(dlScore.scoreModifier()) ? dlScore.scoreModifier() : 1.0;
         double effectiveScore = Double.isFinite(ruleScore) ? ruleScore * scoreModifier : Double.NaN;
 
@@ -216,7 +215,7 @@ public class V6StrategyEngine implements TradingStrategyEngine<V6StrategyOverrid
     }
 
     /**
-     * 딥러닝 forward pass용 14개 피처 행을 만든다. {@code evergreen_research/models/v6.py}의
+     * 딥러닝 forward pass용 14개 피처 행을 만든다. {@code evergreen_lab/strategies/v6_trend2.py}의
      * {@code _dl_feature_row}를 그대로 옮긴 것이다(순서와 NaN 의미가 정확히 일치해야 한다).
      */
     private double[] deepLearningFeatureRow(

@@ -11,10 +11,9 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "evergreen.trading.v6")
 public record V6StrategyOverrides(
-        @NotNull @DecimalMin(value = "0", inclusive = false) @DefaultValue("0.124825") BigDecimal ruleScale,
+        @NotNull @DecimalMin(value = "0", inclusive = false) @DefaultValue("0.09911035209223365") BigDecimal ruleScale,
         @NotNull @DecimalMin("0") @DefaultValue("0.055") BigDecimal buyCutoff,
-        @NotNull @DecimalMin("0") @DefaultValue("0.25") BigDecimal sellCutoff,
-        @DefaultValue("true") boolean dlEnabled
+        @NotNull @DecimalMin("0") @DefaultValue("0.25") BigDecimal sellCutoff
 ) implements VersionedStrategyParams {
 
     @Override

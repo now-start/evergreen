@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
 /**
- * {@code evergreen_research/model_export.py}가 내보낸 v6 모델 번들의 Jackson 뷰.
+ * {@code evergreen_lab/strategies/v6_trend2.py}가 내보낸 v6 모델 번들의 Jackson 뷰.
  * 프로덕션 리소스({@code strategy-models/v6.json})는 {@link #version}, {@link #params},
  * {@link #deepLearning}을 담고, 골든 테스트 픽스처는 추가로 {@link #candles}와
  * {@link #expectedSignals}를 담는다. 알 수 없는 필드는 무시하므로 하나의 DTO로 둘 다 파싱된다.

@@ -10,10 +10,15 @@ import org.springframework.core.io.ClassPathResource;
 /**
  * 클래스패스의 {@code strategy-models/v6.json}에서 오프라인 학습된 v6 MLP 프로파일을 로드한다.
  *
+ * <p>주의: Java는 번들의 {@code params.ruleScale}을 읽지 않는다 — 규칙 score와 DL의
+ * {@code trend2_signed_score} 피처 모두 {@code evergreen.trading.v6.rule-scale}(config)만 쓴다.
+ * 따라서 config의 rule-scale은 반드시 이 모델을 학습할 때의 rule_scale과 동일해야 한다
+ * (번들의 {@code provenance.ruleScale}로 대조 가능). 불일치 시 라이브 피처 분포가 학습과 어긋난다.
+ *
  * <p>리소스가 없거나 그 안에서 DL이 비활성화돼 있으면 {@link V6DeepLearningProfile#disabled()}
  * 프로파일을 제공한다. 그래야 앱이 계속 부팅되고 v6가 순수 규칙 결정으로 폴백한다
  * (score modifier 1.0). 리소스는 노트북/REPL에서 다음으로 재생성한다:
- * {@code evergreen_research.model_export.export_v6("src/main/resources/strategy-models/v6.json")}.
+ * {@code evergreen_lab.strategies.v6_trend2.export_v6("src/main/resources/strategy-models/v6.json", bars)}.
  */
 @Slf4j
 @Configuration

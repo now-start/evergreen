@@ -222,10 +222,9 @@ class TradingSignalMarketDataServiceTest {
 
     private V6StrategyOverrides v6Params() {
         return new V6StrategyOverrides(
-                new BigDecimal("0.124825"),
+                new BigDecimal("0.09911035209223365"),
                 new BigDecimal("0.055"),
-                new BigDecimal("0.25"),
-                true
+                new BigDecimal("0.25")
         );
     }
 
