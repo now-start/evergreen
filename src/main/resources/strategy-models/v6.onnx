@@ -1,0 +1,404 @@
+
+pytorch2.12.1:ÎÌ
+´
+features
+centersubnode_sub"SubJd
+	namespaceW: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/sub: aten.sub.TensorJy
+pkg.torch.onnx.class_hierarchyW['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.sub.Tensor']J…
+pkg.torch.onnx.fx_nodek%sub : [num_users=1] = call_function[target=torch.ops.aten.sub.Tensor](args = (%x, %b_center), kwargs = {})J)
+pkg.torch.onnx.name_scopes['', 'sub']J÷
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 624, in forward
+    z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
+¯
+sub
+scaledivnode_div"DivJd
+	namespaceW: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/div: aten.div.TensorJy
+pkg.torch.onnx.class_hierarchyW['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.div.Tensor']J†
+pkg.torch.onnx.fx_nodel%div : [num_users=4] = call_function[target=torch.ops.aten.div.Tensor](args = (%sub, %b_scale), kwargs = {})J)
+pkg.torch.onnx.name_scopes['', 'div']J÷
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 624, in forward
+    z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
+¬
+divisnann0"IsNaNJi
+	namespace\: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/isnan: aten.isnan.defaultJ|
+pkg.torch.onnx.class_hierarchyZ['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.isnan.default']J‚
+pkg.torch.onnx.fx_nodeh%isnan : [num_users=1] = call_function[target=torch.ops.aten.isnan.default](args = (%div,), kwargs = {})J+
+pkg.torch.onnx.name_scopes['', 'isnan']J÷
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 624, in forward
+    z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
+é
+isnan
+scalar_tensor_default
+divwhere
+node_where"WhereJf
+	namespaceY: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/where: aten.where.selfJy
+pkg.torch.onnx.class_hierarchyW['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.where.self']JŸ
+pkg.torch.onnx.fx_node„%where : [num_users=1] = call_function[target=torch.ops.aten.where.self](args = (%isnan, %scalar_tensor_default, %div), kwargs = {})J+
+pkg.torch.onnx.name_scopes['', 'where']J÷
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 624, in forward
+    z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
+Ë
+divself_0n0_2"Cast*	
+to Jo
+	namespaceb: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/isneginf: aten.isneginf.defaultJ
+pkg.torch.onnx.class_hierarchy]['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.isneginf.default']Jˆ
+pkg.torch.onnx.fx_noden%isneginf : [num_users=1] = call_function[target=torch.ops.aten.isneginf.default](args = (%div,), kwargs = {})J.
+pkg.torch.onnx.name_scopes['', 'isneginf']J÷
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 624, in forward
+    z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
+Ì
+self_0
+int64_0_casttmpn3"LessJo
+	namespaceb: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/isneginf: aten.isneginf.defaultJ
+pkg.torch.onnx.class_hierarchy]['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.isneginf.default']Jˆ
+pkg.torch.onnx.fx_noden%isneginf : [num_users=1] = call_function[target=torch.ops.aten.isneginf.default](args = (%div,), kwargs = {})J.
+pkg.torch.onnx.name_scopes['', 'isneginf']J÷
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 624, in forward
+    z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
+Á
+self_0tmp_1n4"IsInfJo
+	namespaceb: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/isneginf: aten.isneginf.defaultJ
+pkg.torch.onnx.class_hierarchy]['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.isneginf.default']Jˆ
+pkg.torch.onnx.fx_noden%isneginf : [num_users=1] = call_function[target=torch.ops.aten.isneginf.default](args = (%div,), kwargs = {})J.
+pkg.torch.onnx.name_scopes['', 'isneginf']J÷
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 624, in forward
+    z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
+Æ
+tmp
+tmp_1isneginfn5"AndJo
+	namespaceb: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/isneginf: aten.isneginf.defaultJ
+pkg.torch.onnx.class_hierarchy]['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.isneginf.default']Jˆ
+pkg.torch.onnx.fx_noden%isneginf : [num_users=1] = call_function[target=torch.ops.aten.isneginf.default](args = (%div,), kwargs = {})J.
+pkg.torch.onnx.name_scopes['', 'isneginf']J÷
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 624, in forward
+    z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
+
+isneginf
+scalar_tensor_default_1
+wherewhere_1node_where_1"WhereJh
+	namespace[: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/where_1: aten.where.selfJy
+pkg.torch.onnx.class_hierarchyW['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.where.self']J¨
+pkg.torch.onnx.fx_node%where_1 : [num_users=1] = call_function[target=torch.ops.aten.where.self](args = (%isneginf, %scalar_tensor_default_1, %where), kwargs = {})J-
+pkg.torch.onnx.name_scopes['', 'where_1']J÷
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 624, in forward
+    z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
+Ó
+self_0
+int64_0_casttmp_2n3_2"GreaterJo
+	namespaceb: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/isposinf: aten.isposinf.defaultJ
+pkg.torch.onnx.class_hierarchy]['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.isposinf.default']Jˆ
+pkg.torch.onnx.fx_noden%isposinf : [num_users=1] = call_function[target=torch.ops.aten.isposinf.default](args = (%div,), kwargs = {})J.
+pkg.torch.onnx.name_scopes['', 'isposinf']J÷
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 624, in forward
+    z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
+Ê
+tmp_2
+tmp_1isposinfn5_2"AndJo
+	namespaceb: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/isposinf: aten.isposinf.defaultJ
+pkg.torch.onnx.class_hierarchy]['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.isposinf.default']Jˆ
+pkg.torch.onnx.fx_noden%isposinf : [num_users=1] = call_function[target=torch.ops.aten.isposinf.default](args = (%div,), kwargs = {})J.
+pkg.torch.onnx.name_scopes['', 'isposinf']J÷
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 624, in forward
+    z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
+…
+isposinf
+scalar_tensor_default_2
+where_1where_2node_where_2"WhereJh
+	namespace[: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/where_2: aten.where.selfJy
+pkg.torch.onnx.class_hierarchyW['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.where.self']Jª
+pkg.torch.onnx.fx_node%where_2 : [num_users=1] = call_function[target=torch.ops.aten.where.self](args = (%isposinf, %scalar_tensor_default_2, %where_1), kwargs = {})J-
+pkg.torch.onnx.name_scopes['', 'where_2']J÷
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 624, in forward
+    z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
+×
+where_2
+scalar_tensor_default_1
+scalar_tensor_default_2clampnode_Clip_10"ClipJh
+	namespace[: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/clamp: aten.clamp.TensorJ5
+!pkg.onnxscript.rewriter.rule_nameFuseMaxMinToClipJ{
+pkg.torch.onnx.class_hierarchyY['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.clamp.Tensor']J¹
+pkg.torch.onnx.fx_node%clamp : [num_users=1] = call_function[target=torch.ops.aten.clamp.Tensor](args = (%where_2, %scalar_tensor_default_3, %scalar_tensor_default_4), kwargs = {})J+
+pkg.torch.onnx.name_scopes['', 'clamp']J÷
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 624, in forward
+    z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
+Ù
+clamp
+	l1.weight
+l1.biaslinearnode_linear"Gemm*
+beta  €? *
+transB *
+alpha  €? *
+transA  J
+	namespace: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/l1: torch.nn.modules.linear.Linear/linear: aten.linear.defaultJŸ
+pkg.torch.onnx.class_hierarchy}['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J 
+pkg.torch.onnx.fx_node…%linear : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%clamp, %p_l1_weight, %p_l1_bias), kwargs = {})J2
+pkg.torch.onnx.name_scopes['', 'l1', 'linear']JÖ
+pkg.torch.onnx.stack_trace·File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 625, in forward
+    z = torch.relu(self.l1(z))
+  File "/Users/moon/IdeaProjects/evergreen/.venv/lib/python3.14/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+İ
+linearrelu	node_relu"ReluJg
+	namespaceZ: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/relu: aten.relu.defaultJ{
+pkg.torch.onnx.class_hierarchyY['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.relu.default']Jƒ
+pkg.torch.onnx.fx_nodei%relu : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%linear,), kwargs = {})J*
+pkg.torch.onnx.name_scopes['', 'relu']J£
+pkg.torch.onnx.stack_trace„File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 625, in forward
+    z = torch.relu(self.l1(z))
+á
+relu
+	l2.weight
+l2.biaslinear_1node_linear_1"Gemm*
+beta  €? *
+transB *
+alpha  €? *
+transA  J‘
+	namespaceƒ: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/l2: torch.nn.modules.linear.Linear/linear_1: aten.linear.defaultJŸ
+pkg.torch.onnx.class_hierarchy}['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J¡
+pkg.torch.onnx.fx_node†%linear_1 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%relu, %p_l2_weight, %p_l2_bias), kwargs = {})J4
+pkg.torch.onnx.name_scopes['', 'l2', 'linear_1']JÖ
+pkg.torch.onnx.stack_trace·File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 626, in forward
+    z = torch.relu(self.l2(z))
+  File "/Users/moon/IdeaProjects/evergreen/.venv/lib/python3.14/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+ë
+linear_1relu_1node_relu_1"ReluJi
+	namespace\: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/relu_1: aten.relu.defaultJ{
+pkg.torch.onnx.class_hierarchyY['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.relu.default']J‡
+pkg.torch.onnx.fx_nodem%relu_1 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%linear_1,), kwargs = {})J,
+pkg.torch.onnx.name_scopes['', 'relu_1']J£
+pkg.torch.onnx.stack_trace„File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 626, in forward
+    z = torch.relu(self.l2(z))
+÷
+relu_1
+	l3.weight
+l3.biaslinear_2node_linear_2"Gemm*
+beta  €? *
+transB *
+alpha  €? *
+transA  J‘
+	namespaceƒ: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/l3: torch.nn.modules.linear.Linear/linear_2: aten.linear.defaultJŸ
+pkg.torch.onnx.class_hierarchy}['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J£
+pkg.torch.onnx.fx_nodeˆ%linear_2 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%relu_1, %p_l3_weight, %p_l3_bias), kwargs = {})J4
+pkg.torch.onnx.name_scopes['', 'l3', 'linear_2']Jè
+pkg.torch.onnx.stack_traceÉFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 627, in forward
+    return torch.sigmoid(self.l3(z)).reshape(-1)
+  File "/Users/moon/IdeaProjects/evergreen/.venv/lib/python3.14/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+
+linear_2sigmoidnode_sigmoid"SigmoidJm
+	namespace`: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/sigmoid: aten.sigmoid.defaultJ~
+pkg.torch.onnx.class_hierarchy\['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.sigmoid.default']J‹
+pkg.torch.onnx.fx_nodeq%sigmoid : [num_users=1] = call_function[target=torch.ops.aten.sigmoid.default](args = (%linear_2,), kwargs = {})J-
+pkg.torch.onnx.name_scopes['', 'sigmoid']Jµ
+pkg.torch.onnx.stack_trace–File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 627, in forward
+    return torch.sigmoid(self.l3(z)).reshape(-1)
+™
+sigmoid
+val_6probability	node_view"Reshape*
+	allowzero Jg
+	namespaceZ: evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP/view: aten.view.defaultJ{
+pkg.torch.onnx.class_hierarchyY['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.view.default']J‰
+pkg.torch.onnx.fx_nodeo%view : [num_users=1] = call_function[target=torch.ops.aten.view.default](args = (%sigmoid, [-1]), kwargs = {})J*
+pkg.torch.onnx.name_scopes['', 'view']Jµ
+pkg.torch.onnx.stack_trace–File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 627, in forward
+    return torch.sigmoid(self.l3(z)).reshape(-1)
+main_graph*– B	l1.weightJ€Í$[Äúƒ?q³ù™º“?MÁÓn®¥?3#X[5¥?²J(?íP¢?…Õ‘b[×’¿Ôs’Î®j?´s¤/EW¿BB’X§m¿%ÔùvH/n¿WÅ‹¯§B³¿0bÖÖWñc¿ãiİˆYq¿yëûH¬¿…I ä'’? )òÏß2¿IoW½‘?Ñ~–ñö-•?A2iV“<±?şs‰¸E?ScÉí û®¿,Qu]Lf?ï\>ÆX'©¿ÿ]ZĞ/gn?3k‚RNDƒ¿ºnŠ;=:¨¿2Hiºš?¯½é-ú\2¿yZ#üj«¿Ô:¶QÑ{¿Í÷ƒJüÌ£¿åEÒC«¿Æ?™ôtª¿(ş0T»”¿Á:‡û±Õœ¿3íJá¼µ€¿şòIW–¿™‚¸<f„¿æ	‰4£?Jï“B…?ı+OˆuZ?Yùãº§»c?\9q™‰¿ƒ¡0•Z?­ÇüÿŠ i?ÔíœÅóB€¿]º°(<•¿ñı}O»[p?J÷YÒì½ˆ¿ÔÁ4}@e?<ßÂ¨Òg?éĞcKL­?ªA7‘¡£?ğ«G4"‘?¬W|‰Ã­?¥$§kâ’?öÜic³?nu!îû¦¦?uûAë¢²?ÿÎ-şmÏ¥?Œƒ$¥áá™?ÛD†`Xr?6òZØš¿ ò6œ_É–?€³ZD€¿¡¹ôw„@E¿(]èˆ‹••¿ °ôèaÕx¿·‚Ø
+h¿2X;
+Ç~¿°QÒ71ù¹?È+¾X@p¿ÆÂ_q×g­?7š/ãšÄ¹?}ıü>¸°°?
+Æ/d{¿®S—¯ÿ¤®¿óû=Ü! ¤?ö-p€jp–?–è\?Ót„ª¿8bƒH´Ê?PÚ8¸uŸ¿_œ©Q2g‘¿0ñ@Õ³¿¨\Án£¿§Y‹Çæò–¿;ÏT¯¿ºØ.Ô³œ¿GL”ÃaX¡¿ ·æ¥gã?{0˜T_?ÓTªà(òp?^ëšdx?v¬Mø—?ì(Tlt©?øgœ4V¨„?ÜUIÉ|Ï~?¶ï¾!q¡¿wsı¤¿"]?BoH¤^ ¿ŞÌQ¦¿—£ÈpäÒœ¿Ò~-Ä4ˆ­?VQ3<j?¶µ?“û?P;È,~¿Ikä30b¥¿’ğ*aHº”?8<L¶ònX?™nH3ÛRu?Šı“éx?ŒI_ğá¬?ƒXzja`¿NiÎrx?_MÕ#Š€?½vcR¿‚n?J%?ôËF‘¿ïUm"N™¢?­ƒİ#¥¿	ÀGù ?t¢Â’Z^Q¿ÛÂoğbo¿å«°Ed¿®Ë9 -a¿É)ãK­Ic¿ây~`*•¸?0¨Éé¥?`î˜0­Œ¿´	ò Ä3²?½÷…—Ó¡?œøP9I­?Jô'qS®¤?tÂ ‚Œy¿t?["!z?:DÉZå
+’¿á,Øß•¤?ä¿İıR¿µÎ·)Ë—?jÕUXİÅ®¿¼g0Š™< ¿TÄ‘Ş2D¿!¡¢JÓ_¿¿İ}Åï t¿PÈL¸;€t¿òf!(ƒ¿êÆ4š{m¿Lİ'wqX¿uöşQP¿Š=$¨¥a¿ÿ´,g?Ş¾'İ^¿iïŸòÂ]N¿ÀãÔw²mp?Ó
+Pˆcf§¿bˆÍà³_S¿Æ ,Ño¡¥¿¯Gøx£³¿]ÚÉVµµ¿0œÎ`mà|¿€Ç;Ïó‡?§PX³x„¿¡ëşÛê‚¿ê‚;ä=†¿vx¿KÂ/¬?<TOj’£?o-Î´n?mbèëw?ˆæú·¨?0²‹ ë>™Ó™.ğ1?&ğšÚ}&¿E_­ä3¦?³âÀâ§¼]?á‰“f[‰¿jğ/Ô^)?Yoºå-z~?Ôsd{[¿e¸ßÓwú¿BxÿåŠ¿×‡¬£ÅO¿ÍxpqÀZ$?ğ1×Æ“v¿=Á°Ğ?	²©¿Ó„À‡-}?d\÷mˆ¿xs´8Ò­?A%„ÖW±?I³†•¶°b¿0êÍxĞª?$\ÏÄĞP¿©É&zJz?²)ıÏ.fƒ?|ÓuiåV}?¢İâŒÿ|?6	‚úIf¿‰_Kÿb›‚?Ì/%üŒP¿´uÉöÙˆd?ë¬Xn†£¿ó>†tK?”7ß‹aÑn?ò5‘#¦B?ê\nï÷R?OÄ’X²Ñ¨?%3şæ›b?—V`Ö*\¿’ı•iVw?GN¾JÎ»[?Gc˜Á÷¥¿ß¢Ğ•¢3t¿½¹ß£WW¡¿c‡p¯‡¥¿š!Ú)Ş¤¿­®½’ü•¿UË´¡ñ\™¿p!4M4u¿<®¹¢Ù0b¿ámÎœå#˜¿×Ğ³×›?†ßVŸë•?z%—#©I¥?Ğ:ZéöÜ«¿$õT•~•…¿ğz®ˆa£?èÒ. .Ÿ¿¢¨"4•„¿´)cz/™r¿¨’³,g? JI¯°Rq?0÷ ¸ftW¿cÁŞ&ïY?ˆÚ¹]­ğk?iú69/Şt?–û§‹Ïd?rkè@9z?­S	Í$»`?|3ÛšæçF?(Ëİ^Ş0?Å:û_}#6?}É
+(B8w?Aâ1ev8?‡AùCæw?¢¹<A’4Š¿0c¿Ír©¿'sÖ…rd¢?°n”FéÙ2?¼¤–?ŒÜ©Ÿ¯e?ÃçôÍ}¢4?fñOâ3?ÆàNâæ²?¢ÔŞ‚¥?|›Zp ?0)ìPà§?¢¡Ä2Í0…?4äp„€? 7†Z’?F¦}€}¿ÖJ!’æ@w?FãÖ5ie§?Û¬è¹òÚi?PA•CŸ—?eâÈùu?9ík¥½os?Ô.çW™0f?ò’¶[J¨?ğ®›²’¿ò!†Y{?ş}€°ÏM¿ı¾;éÆÄq¿\¶€ïü¬¿’p´'uÜ«?ñ)…«-¨?„Ä¶ùø†¿£v:MÈ‹?ìTPTš?µjÓÛ>¿AjMSñ?^yam/¦¿€°ª‡x¿2Àí”{­¿˜¾Şy.¤¿v–HÁ›±¿DéÇ"4.­¿B=Nï¥q¿C¼@öAq¿*hE.-?W¹ÊÑ^!¨¿›g¥d$g–?‹cV~dşs¿‘Àæp?wŞ•1ÿg~?AÅ¾Ì€Ü¥¿PÌ÷PQ¿>ÉÅW¢¿°¼Tá†¿Q´ú2ş ™¿DÖfFÊ…¿K¨}p¬tQ?åiÙäoÓ¿øâS
+Õ™??Ş"Mv¿e1WûQ‡?o×Çk¥¿¹^{3œ‡?ıò§8š#D?Õ0€]Á²?ŸFÔàs‚¿4=s.£?ãV|F­?¾ J7F¥?¤“M©¯?åÏ2†;¦¯¿ßŞ\8_¿dƒz9¸g¿´ÄE l?ä÷­–HÛ—?qÛÒÿd8?"dNAU>t¿ú/aŠD›¿DÿËuË†¿º,øQLêl?‹­ˆëßv¿Kÿµø.œ¿Y‚‚u¯ß¿©¤E‡š?œö¸|‘?œöœSîj?´î+=+­?Éõw†)®?;CÀø]÷­?Íî”±ƒ?±qµ¯¸‚?²~G,ÈEc?¦ñs¤…ø”?ù¼á¢4R¿^ğ‹LŒ?8ñê&ª3‘?1EÅ×ç„?Œ³] u¤¿¤PğÒ™‰¿UPT˜ª?àø:w¿“í‚R¡?§|rqZ ¿£€M™¾˜y¿§-Aäq_?™B¥+˜a{¿³5×Ènè¿uß\:ÅP¿ÊjÏy‚?…t5¹ˆ?^™„£†?CßV¾İÅo?İS”‰rF¿;‰Ï‚ÔV?_CCu÷¢?{« ?+W?EÂ0“³‹¿µîa•¥¿y+ÆŠßY¿1'ı”dÕ\¿óà°JtS\¿w»%“øƒ?¢i¸Ş×Y¿úÍ€õin¿÷ˆÁ‹q¿%ë™:3S¿_÷¼1¡H?†He+•¿èÎu$¿kËœ[šB¿—ğ	Ç–¿ƒoo˜Ç+"¿°Yô„Å¿ymÌ$™?y^#ÌÙ’¿æÄ`ài1°?…Ş¸ÕŠf¿M.úË“”¿âµ¼RÁÖ¢¿¿ØX{’«?d”¦uí˜?5ôJ¨ñ.ª?¯wZZqr?¥nNg~g£? 
+ühÈ©?\oìÆ{½«?dmfõŞbŠ?”5-HtŠ?ùÂ>vñÿ¤¿ÂÍİş5~¿ˆ>Ñ«^t‰¿µt½¸ğZ«¿¸BGöO‘¿^™K¼V¥¿ƒaçì†¡¿òÿ/ú¿(A8°j¿Ñ{§¨²…¿…ØÈdÅ]–?»-ı€,¼¿D5ù÷…?œ½¯’ÓîS¿ê¬ #(Åp¿´ ¹ [¡?]‡~c‚ƒL¿¼e\:«¿ÈC¯ê<„?QQ{U4´¥¿@âå¼#Q¿
+Ur¼G¿I¶å±Ö•¿Ö,*é˜Â¿Ş= ·Ú¿LÕØ4Ás¿ÃØË.¤,£¿üÏaDîşD¿_k•ø)ƒ?3ßË#Ş[?_ñ¨q¥‘¿W\´Š…?V½¬ñ“¡?ƒ¡ßäwth?'8Óåh¶§¿ûæŸ¾œ¿Í?ëàA?KÜœ¥À¦?z¥½^¿Z¿¶u¸"ˆLœ¿m])ôn_¿8;t$Ó$¿rŒû¼·—?¦D¡nDM?t?ô“W7P?êId:{c?ñ~­}Y?¼#yátiK¿tÔµÇY¿B¯Õ»š×-¿Íîş±%¤¿ˆ`3´zâ‚¿‚‚W*ã/?¬Ã5Ê0	«¿öK —/¿ÚµÔó5¿p * Bl1.biasJ€°_Áçg?zÉÕJ£?{¥à­?ñ®ÛœŠÙV?ˆb/g¤©±?ÖâÒEISÀ?ëOéƒB,†¿\0¹t¤ ?¬	ÀxŠ?09Q+ ³?+#ƒ™w‚¿¾`Q_>´?¬‰NÂaµ«¿%oÙóœy¿~,@Ë€ˆ¿+HpqœQ¦?Ek¹ÿí…?¸Ù´_,¥¿›¬¼§,0¿{­uV¯¿på§‘ví¦?¼,/ÈO™?x»¯¬°?„æä”Ùö}?§á~x”?qªØ_uÀ¦?–waß”W_¿ÅÈGlV—}?fÀ´òp?sz|„¿"5Äi?âìo„Ï“¦¿*– B	l2.weightJ€Óíp<(N…¿áëuY`W¿³´Á^ñ÷‰? T‹..fw?²xÆŒ´¯W¿*SôôÂÛ¿¶âĞ­‰?MÑù’¶ú…?ê–ıyü]¿#Õ3Z~¿šıuƒBd?ø` ¼›?¦ßó;<¥0?>¡Ikw?$À–,Z]?Vr é\°‘?ª7ú	–Šs?0ÿİ,Æ‡€?ï&¨Èìa¿KàÛã 0?evèj…Ú•?BHc~ä‚?§S%±¥ƒ¿."7´(?.=¡Dî\t¿T‹Ms;U¿,nËìc?›úÀÉYÓƒ?İİñ+nØ‰?©æÌ«ºu?µßRÊ„V¿ŠTÑ!/´T?nPü5Á’?„³a3~¥?ÿ£'	e¦¿ªTÇ-ht|¿Û=˜Ş¬?û¥õ[q²?„ŸªQÈ¥Ÿ¿*‰*˜|š¿ß$8K÷Ét?/*·:‹¨?{Gq2×v¿|p®}M¢¿6Qµ&IÜ‰¿»ÔÎñ•¿<0BHp¿5}39%³¢¿1æe¤Í„¿úxÒÁB?½ÁÊòt¿=O6üŸM¿Cd`+Ó¤¿+4KW"ì–¿è{ æ„e¬?fL©Dì
+˜¿m2¼ØÜ?NÌT=(„?æ±{Şu”Z¿OÊ¼ı¿yn1PÑ ¿,··ŠV—c¿æªDñ?o¾£ª[ì ?Ï»W9f¡ ?¦7fıi?Â]éà“0±¿Âêa»Sr¿©XÔ» ˜“?|=¯ÜÿzÂ?ZEËëˆª¿”$Q‚Ç¦¿Üt=Ëğ¿Š?”ˆŞ°º?åêÔ—ñ}¿bğ‡¥·¿ßşÁ‚c`?kÓ]-;H¦¿ş<ùF]d?õ<†*ç¬¿~ñ·Ç…¿’ë[â¨t?Ê¬ãw	N€¿ûıº˜¸ï˜?u`Õó‘±¿IZÄÑ$¡¿	Óø"ç»?†8ËßR‘¿Š‘ç…·›?÷LÚJ®™„?|u­ò1Ÿa¿Rx–W…[®¿h{.ã§¿ûLË’¡V¿‚ÀM¯?^"xd†Q~?¢…T/f?18Do}¿/û¿Ÿmv›?òhí·[&?Ó–ì˜A¿á1 m@‚¿à–üq°j•?pÌø™3ï?Õæé+>`¿…`h‡¿ö¸[~ğr?I,œ©œ¢?˜ÒˆNâ??'—³ßpƒ?ŠhK‡Ki?}ıœáŠa—?XOÙâŞ…?PÂí<ª,?ô}=ü-j?ÓBiinV?¾>¼²Pƒœ?=|iv’óŒ?Öt=”A6?¾uˆİ=‰?qØ¹µ&u¿9 C0R^¿ÃR€}TÅa?…¶³Úf?(S4`ÜÆ“?¼a}…-x?lgé3p?pú=9ˆ°Q?ş^OÖ<£?ø-}Mšª?§ù~°1v°¿¡C²Ñ–q¿G:µIá´?–§æh‘kÁ??B¸Gª¿›
+(sĞ£¿¦;†Âß}Œ?:äí“§?å”l2å€¿=ª¨J Í¶¿µÚ÷Rf?¡şš˜ë¢¿&ÑArË…¿Ån!§Ã·«¿½pEèÓúŒ¿CÙÖ&éU?!x%¾÷¢A?ÿD†£¾w?hÆUàñ¨¿ŠgÔÕã’ ¿†ÈÄ÷;¡?¹„(Qè§¿®]õ{. ?¦k!@N?†ıÀÀä`¿óæÄvÀ‹¿³‹©72s§¿Ê,qs´+¿ƒTĞ°Ûw?uñô¼n¬Œ?ä.S;¿_§Ñ–U1[¿{ğÁ2b?†ÿåÃ25¿I¾LDô”?ôû`Ü[¿È¢æ¾ì\í>ifg’@?a/³k”2?Sò=·3T@?ˆ›ÿÕÄ)?t!ìJ8?„á2Z™Øä¾&nÀ„èT?ÍTšn*t?gü–ÍlB?
+­B$Õ`¿}®áîûåT?ªZğƒxŒ?¾0[u_5v¿âÛw-L?i7•h=?—æt)oP¿q¸û{h5?Åª}·ÊQ4?0G†&¤¿(¬-­y+ ?œÇ,×H2<?İËü8è"w?ŸÅLQ{7¿¶ÕÇ6ÄS¿œiÓ;+?q¸Ó ’?ì`—©¹<?¥‹ä$2Ÿ¿jÆR_Dˆ¿©[L¤?<ÛŒ,è¢°?”)!iÅö™¿"§‚ï’¿ÍœTw^ì€?Zû‡?Õ|­’>Àp¿úDEGI¥¿Ä(ó–¥xH?×öØh†ù‘¿Ú¿3x³h¿$íìùI›¿«uâ,Ù½}¿Õ=mâ=<?ŞşcŒS}?ÄâB÷	b¿Ô¹ïş™¿IÜ@Íq*¿ËXï”€@x¿-8ª˜£û¿:
+¹â¬¸ƒ¿¸ø…Éõ<}?rH:kÊb¿ rø©ˆ”¿û¯#¹f —¿nqÓZ7d?u}Í£ò­z?î½m#§&s?·t0Ø¬ãf¿ö7IÖso“?‚Âˆ;p³›?Ãª}‰?7ƒšCáw?KL;š‘¿w`Êš)’?€hÿ&Ò«?í£’IX-S¿àã´cÀd?Zô_æÉ×k?U ƒ·•›œ?íÚä÷”Ó ?ûÎ]që‹?^õ¡@Ø€?,c¾3Ï?c•WF‰y?¥•	Ù9@¿‚”-Pã?¯n†¿|~?îã¡5‘š?ïÒ?1¢)‘?p·¤f-Şe¿l¡Š:‹?,hİŒC¹[¿F'Ğ	Ò7¿Ü›Âoõ^?Hí¢‚Ï+“?½í“±‘?3ìe;dÁr?.ıĞk°±p¿KLÒĞØ8…?
+`ÃE;j¿jEŞÛŞÁb¿ì2…dV’?æ]•Xu?4ĞgÁ‡¿œÃX2“¿ƒÜÉıÑ˜‹? „fAø†?Û(¦´R½e¿B;ûöo¿š¦ğ	ñßi?áês8G˜?W|O1¸§¿«¦hö#w?¸mO}d?\0d(Ã‰y?djÏO°Bu?Îq’£"?gÆ2¤¨×a¿¢Á9?°¤ X¢—?„pTŒÚ‚?j2ß&]„¿ZXº2ÿ}?âK±k¿IæF,_[¿tZfD
+¥l?¼´¡CmŠ?)öÇÏ±Š?áäd`o?¢{VÇN1¿Æç ¢7fO?»0FåMœ?ØpŞó|¿†,~êK?²,’Şb?Åá[x	Ê¨?Í˜ùšU?xcÎ—ÛFQ¿?÷R?*?jÚÇs?É.ˆÑ­ ¿3.!f'?¿!¼ÚBÛ4¿@•ş­|Q¿©ë, ìu?ç¨-~l#?!F¢Ÿµ]O?¨õ*(É?/à¤b2E%?CJÅ? 0@9áÌw¿ëÉÅÛìÕT?#Uò§ı&B?;·ûãóœ?m·.¹P?RÊ‹Ï•?¤Q}çÕ—?÷İøD¡H3?FYZ?ƒt?_ØA5¿í4ÁºäN¿ÄÄá…'a¿ªèíò‹2…?ïaá$q?Ó¤PÎ‘?ˆ‘®İU?¡ö±ü–ue¿20»°?‚¯ïr‹?Âs³!5Y¿L\D™R	:¿N¼#ºõs?şÄˆ¢¿ã@Z4•ô¾P+¸IQ(¿,4¸³O+…?ˆ¬Íf÷(ƒ¿ß‡!·—ƒ¿ĞÎìO@?’UŞÆ¬Eñ>\*\•e€?İ¤à%°?8”üˆS¿¤òŸ)²`?I]¡º˜&?ç3\4¨]“?8„:C¡I¿Ş,Îq–?¶]õâ”?9Ws9s?üÊÃÏ¾¥‚?(z™™#d¿­Ü¾±o­v¿÷_uƒşf¿Ó¡Dó~¿;õët÷XU¿I¸ÿÕ:#ğ>ar$¯#k%?
+ÕsŸıb¿«&˜¢kY¿èå´›±Ä¾–‡aí¾q#¿„6g°üK¿}ªAKÓJ¿W-Yíƒd¿Í6³8¹&?Úœ¥…™rt¿¶ã’òŸ'¿Ù4|f¿GÄ¹nyİ?0gzé•~ú>äf|qN ¿7
+–ƒ‰Ãr¿}m5ãîO¿{ é²6\¿\âRÙ×K:?…:£1+?N˜Lº22¿iâ[)±‡? ;¨×S¿b…ò;¿ß½ÍG2? ÑòzÍÁn?ÌÂŸKÆ¼/?î"ÊØZÒ&?k{K†[¿à×¤Ÿ;¿p *oBl2.biasJ`2&˜%Ü,…?&Ã„F“ıµ?³}¨j Ä?§ET`ğ‘?ğ¼×u+hÁ?¯5¼§¸€¿ÂhÇÂÇ±?¾)Ø›°p?o
+ˆ_=g?vˆµ&[„—¿ÚÑºÈ¥¿R¬c&€¦h¿*sB	l3.weightJ`­êl(  ­?ge‚8ú²Ç¿	/æÓ¿Ğ‚§/¶?ÒÆŒöQÒ¿4£øp6•‘?e¿fsÔÁ¿0LA®Š³?Jü†Œ0	­?$Z½èo¸?+B>K”‰À?	ÖcKK¡¿*Bl3.biasJÄãµ1¿?*~BcenterJp €§ËQz(?Á½µıh¼Š? °ÿôQU? ğ…Ìğ£-? `B¸ø/6? X&ĞnB<? jóê3G? ´*–DQ?Ì|:ö0[? êŸé
+=]? ‚L±²,X? (xŒ‹)M?x’±Wš6x?”;¡b‹ì«?*}BscaleJp ÑĞë¿ï‚?˜:@›Œ?„óÂ=Å(í?Ğ:^‰×‚?À!­„s‹?°¤j7Ï%‘?x˜£â (˜?Èò£Œ)›¢?Ræ’©šÅ£?pÁjB J§?’w6ıÒ”?ŒI9,?œ? = èÅÙÀ?Ÿ,İÜnó?*#Bscalar_tensor_defaultJ        *Bint64_0_castJ    *%Bscalar_tensor_default_1J       À*%Bscalar_tensor_default_2J       @*Bval_6JÿÿÿÿÿÿÿÿZÅ
+features
+
+batch
+"=
+/pkg.torch.export.graph_signature.InputSpec.kind
+USER_INPUT"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone"&
+!pkg.torch.onnx.original_node_namexbŠ
+probability
+	
+batch"?
+0pkg.torch.export.graph_signature.OutputSpec.kindUSER_OUTPUT")
+!pkg.torch.onnx.original_node_nameviewjÊ
+	l1.weight
+
+ 
+"<
+/pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone"0
+!pkg.torch.onnx.original_node_namep_l1_weightjÂ
+l1.bias
+
+
+ "<
+/pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone".
+!pkg.torch.onnx.original_node_name	p_l1_biasjÊ
+	l2.weight
+
+
+ "<
+/pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone"0
+!pkg.torch.onnx.original_node_namep_l2_weightjÂ
+l2.bias
+
+
+"<
+/pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone".
+!pkg.torch.onnx.original_node_name	p_l2_biasjÊ
+	l3.weight
+
+
+"<
+/pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone"0
+!pkg.torch.onnx.original_node_namep_l3_weightjÂ
+l3.bias
+
+
+"<
+/pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone".
+!pkg.torch.onnx.original_node_name	p_l3_biasj½
+center
+
+
+"9
+/pkg.torch.export.graph_signature.InputSpec.kindBUFFER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentTrue"-
+!pkg.torch.onnx.original_node_nameb_centerj»
+scale
+
+
+"9
+/pkg.torch.export.graph_signature.InputSpec.kindBUFFER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentTrue",
+!pkg.torch.onnx.original_node_nameb_scalejR
+scalar_tensor_default
+ "1
+$pkg.onnxscript.optimizer.folded_from	['val_0']jK
+int64_0_cast
+ "3
+$pkg.onnxscript.optimizer.folded_from['int64_0']jT
+scalar_tensor_default_1
+ "1
+$pkg.onnxscript.optimizer.folded_from	['val_1']jT
+scalar_tensor_default_2
+ "1
+$pkg.onnxscript.optimizer.folded_from	['val_2']jF
+val_6
+
+
+"1
+$pkg.onnxscript.optimizer.folded_from	['val_5']j
+sub
+
+batch
+j
+div
+
+batch
+j
+isnan
+	
+batch
+j
+where
+
+batch
+j
+self_0
+
+batch
+j
+tmp
+	
+batch
+j
+tmp_1
+	
+batch
+j
+isneginf
+	
+batch
+j
+where_1
+
+batch
+j
+tmp_2
+	
+batch
+j
+isposinf
+	
+batch
+j
+where_2
+
+batch
+j
+clamp
+
+batch
+j
+linear
+
+batch
+ j
+relu
+
+batch
+ j
+linear_1
+
+batch
+j
+relu_1
+
+batch
+j
+linear_2
+
+batch
+j
+sigmoid
+
+batch
+‚º
+0pkg.torch.export.ExportedProgram.graph_signature…
+# inputs
+p_l1_weight: PARAMETER target='l1.weight'
+p_l1_bias: PARAMETER target='l1.bias'
+p_l2_weight: PARAMETER target='l2.weight'
+p_l2_bias: PARAMETER target='l2.bias'
+p_l3_weight: PARAMETER target='l3.weight'
+p_l3_bias: PARAMETER target='l3.bias'
+b_center: BUFFER target='center' persistent=True
+b_scale: BUFFER target='scale' persistent=True
+x: USER_INPUT
+
+# outputs
+view: USER_OUTPUT
+‚J
+2pkg.torch.export.ExportedProgram.range_constraints{s77: VR[0, int_oo]}B
+ 
