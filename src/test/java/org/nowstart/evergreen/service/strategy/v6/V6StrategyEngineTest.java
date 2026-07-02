@@ -16,12 +16,11 @@ import org.nowstart.evergreen.service.strategy.core.StrategyInput;
 
 class V6StrategyEngineTest {
 
-    private final V6StrategyEngine engine = new V6StrategyEngine(V6DeepLearningProfile.disabled());
+    private final V6StrategyEngine engine = new V6StrategyEngine(V6DeepLearningModel.disabled());
     private final V6StrategyOverrides params = new V6StrategyOverrides(
             new BigDecimal("0.01"),
             new BigDecimal("0.055"),
-            new BigDecimal("0.25"),
-            false
+            new BigDecimal("0.25")
     );
 
     @Test

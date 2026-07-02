@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# 예전 evergreen_research 패키지에서 포팅: Upbit 캔들 fetch + CSV 캐시.
+# Upbit 캔들 fetch + CSV 캐시 (인과적 데이터 로딩 — 미래 정보 노출 없음).
 import csv
 import time
 from datetime import datetime, timezone
@@ -115,6 +115,24 @@ class _CsvCandleCache:
                 writer.writerow([bar.timestamp.isoformat(), bar.open, bar.high, bar.low, bar.close, bar.volume])
 
 
+def resolve_to_dt(interval_key: str, to_dt: datetime | None) -> datetime:
+    """``to_dt``가 None이면 "현재"를 해당 interval 버킷 단위로 내려 캐시 키가 실행마다 안정적이게 한다.
+
+    병렬 로딩 시 부모에서 한 번 호출해 확정한 값을 모든 워커에 넘기면, 워커마다 ``datetime.now()``를
+    따로 불러 캐시 버킷이 갈리는 드리프트를 없앨 수 있다.
+    """
+    if to_dt is not None:
+        return to_dt
+    _, minute_unit = _interval_spec_from_key(interval_key)
+    now = datetime.now(timezone.utc)
+    if minute_unit is None:
+        # 일봉: "현재"를 UTC 기준 하루 단위로 내림.
+        return now.replace(hour=0, minute=0, second=0, microsecond=0)
+    # 분봉: "현재"를 현재 인터벌 버킷 단위로 내림(당일 완성 캔들 포함, 버킷 내 캐시 키 안정).
+    floored = ((now.hour * 60 + now.minute) // minute_unit) * minute_unit
+    return now.replace(hour=floored // 60, minute=floored % 60, second=0, microsecond=0)
+
+
 def load_bars(
     *,
     market: str,
@@ -124,18 +142,8 @@ def load_bars(
     interval_key: str = DEFAULT_INTERVAL_KEY,
     client: CandleClient | None = None,
 ) -> list[CandleBar]:
-    normalized_interval_key, minute_unit = _interval_spec_from_key(interval_key)
-    if to_dt is not None:
-        resolved_to_dt = to_dt
-    elif minute_unit is None:
-        # 일봉: 캐시 키가 실행마다 안정적이도록 "현재"를 UTC 기준 하루 단위로 내림한다.
-        resolved_to_dt = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    else:
-        # 분봉: 당일 완성된 캔들을 놓치지 않으면서도 같은 버킷 안에서는 캐시 키가
-        # 안정적이도록, "현재"를 현재 인터벌 버킷 단위로 내림한다.
-        now = datetime.now(timezone.utc)
-        floored = ((now.hour * 60 + now.minute) // minute_unit) * minute_unit
-        resolved_to_dt = now.replace(hour=floored // 60, minute=floored % 60, second=0, microsecond=0)
+    normalized_interval_key, _ = _interval_spec_from_key(interval_key)
+    resolved_to_dt = resolve_to_dt(interval_key, to_dt)
     cache = _CsvCandleCache(cache_dir)
     cache_path = cache.path_for(
         market=market,

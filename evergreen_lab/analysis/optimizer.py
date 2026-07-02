@@ -50,6 +50,18 @@ def _make(spec: StrategySpec, params: dict[str, Any]) -> Strategy:
     return create(spec, **params) if isinstance(spec, str) else spec(**params)
 
 
+def _maybe_progress(iterable, total: int, desc: str, progress: bool):
+    """진행 바(tqdm.auto — 노트북/터미널 공용)로 감싼다. tqdm 없거나 progress=False면 그대로 반환한다.
+    조합마다 백테스트(+v6는 MLP 학습)가 돌아 오래 걸리므로 HPO 진행 상황을 보여주는 게 유용하다."""
+    if not progress:
+        return iterable
+    try:
+        from tqdm.auto import tqdm
+    except ImportError:
+        return iterable
+    return tqdm(iterable, total=total, desc=desc, unit="combo")
+
+
 def grid_search(
     strategy: StrategySpec,
     candles: Sequence[Candle],
@@ -58,15 +70,17 @@ def grid_search(
     cost: Cost | None = None,
     metric: str = "calmar",
     top_k: int = 5,
+    progress: bool = False,
 ) -> list[Candidate]:
-    """모든 파라미터 조합을 백테스트하고 ``metric`` 기준 상위 ``top_k``를 반환한다."""
+    """모든 파라미터 조합을 백테스트하고 ``metric`` 기준 상위 ``top_k``를 반환한다.
+    ``progress=True``면 조합 진행 바를 표시한다(조합마다 학습/백테스트가 돌아 오래 걸릴 때 유용)."""
     if top_k <= 0:
         raise ValueError("top_k must be > 0")
     cost = cost or Cost()
-    candidates = [
-        Candidate(params=params, result=(result := run_backtest(_make(strategy, params), candles, cost)),
-                  score=score_summary(result.summary, metric))
-        for params in expand_grid(param_grid)
-    ]
+    combos = expand_grid(param_grid)
+    candidates: list[Candidate] = []
+    for params in _maybe_progress(combos, len(combos), "HPO grid", progress):
+        result = run_backtest(_make(strategy, params), candles, cost)
+        candidates.append(Candidate(params=params, result=result, score=score_summary(result.summary, metric)))
     candidates.sort(key=lambda c: c.score, reverse=True)
     return candidates[:top_k]

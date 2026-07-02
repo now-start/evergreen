@@ -37,7 +37,7 @@ flowchart TD
     Workflow --> Guard["service<br/>TradingOrderGuardService"]
     Workflow --> SignalOrder["service<br/>TradingSignalOrderService"]
     Workflow --> PositionSync["service<br/>TradingPositionSyncService"]
-    Workflow --> Strategy["service.strategy<br/>StrategyRegistry / v1~v5 engines"]
+    Workflow --> Strategy["service.strategy<br/>StrategyRegistry / v1~v6 engines"]
     Workflow --> PositionRepo["repository<br/>PositionRepository"]
 
     SignalOrder --> Execution

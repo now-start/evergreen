@@ -12,7 +12,7 @@ Evergreen은 단일 Spring Boot 애플리케이션으로 동작한다. 외부 �
 flowchart LR
     Scheduler["TradingSignalScheduler"] --> Workflow["TradingSignalWorkflowService"]
     Workflow --> MarketData["TradingSignalMarketDataService"]
-    Workflow --> Strategy["StrategyRegistry / v1~v5 engines"]
+    Workflow --> Strategy["StrategyRegistry / v1~v6 engines"]
     Workflow --> Guard["TradingOrderGuardService"]
     Workflow --> SignalOrder["TradingSignalOrderService"]
     SignalOrder --> Execution["TradingExecutionService"]
@@ -33,7 +33,7 @@ flowchart LR
 | `service.TradingExecutionService` | 주문 검증, PAPER/LIVE 실행, Upbit 주문 요청/조회/취소를 담당한다. |
 | `service.TradingOrderGuardService` | 로컬 활성 주문과 거래소 미체결 주문 기반 차단 결정을 수행한다. |
 | `service.TradingPositionSyncService` | LIVE 모드 계좌 잔고를 포지션 상태로 동기화한다. |
-| `service.strategy` | 전략 파라미터 해석과 v1~v5 전략 평가를 담당한다. |
+| `service.strategy` | 전략 파라미터 해석과 v1~v6 전략 평가를 담당한다. |
 | `data.entity` | 주문, 체결, 포지션, drift snapshot, 감사 이벤트를 저장한다. |
 
 ## 3. Upbit API 계약
@@ -129,7 +129,7 @@ Upbit Exchange API 요청은 JWT Bearer 인증을 사용한다.
 | `candle-count` | `400` | 일봉 조회 수 |
 | `closed-candle-only` | `true` | 최신 미완성 캔들 제외 여부 |
 | `signal-order-notional` | `100000` | 목표 비중 주문의 기준 금액. PAPER 주문 금액과 LIVE 자동 증액 상한 계산에 사용 |
-| `active-strategy-version` | `v5` | 활성 전략 버전. `v1`~`v5` 중 선택 |
+| `active-strategy-version` | `v5` | 활성 전략 버전. `v1`~`v6` 중 선택 |
 
 운영에서는 `execution-mode` 기본값이 `LIVE`인 점을 별도로 통제해야 한다. 배포 기본값은 Config Server 또는 환경변수에서 `PAPER`로 명시하는 것이 안전하다.
 

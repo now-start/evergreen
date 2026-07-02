@@ -53,10 +53,9 @@ evergreen:
       vol-regime-threshold: 0.6
       regime-band: 0.01
     v6:
-      rule-scale: 0.124825
+      rule-scale: 0.10837330035002218
       buy-cutoff: 0.055
       sell-cutoff: 0.25
-      dl-enabled: true
 
 logging:
   level:

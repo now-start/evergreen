@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'org.nowstart'
-version = '1.0.16'
+version = '1.0.17'
 
 springBoot {
     buildInfo()
@@ -35,7 +35,7 @@ ext {
 }
 
 dependencies {
-
+    implementation 'com.microsoft.onnxruntime:onnxruntime:1.27.0'
     // default
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-api'
     implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'

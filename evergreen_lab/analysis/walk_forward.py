@@ -61,6 +61,7 @@ def walk_forward(
     test_size: int,
     cost: Cost | None = None,
     metric: str = "calmar",
+    progress: bool = False,
 ) -> WalkForwardResult:
     if train_size <= 1 or test_size <= 0:
         raise ValueError("train_size must be > 1 and test_size > 0")
@@ -76,6 +77,13 @@ def walk_forward(
 
     a = 0
     first = True
+    bar = None
+    if progress:
+        try:
+            from tqdm.auto import tqdm
+            bar = tqdm(total=(n - train_size - test_size) // test_size + 1, desc="walk-forward", unit="window")
+        except ImportError:
+            bar = None
     while a + train_size + test_size <= n:
         b = a + train_size
         end = min(b + test_size, n)
@@ -106,6 +114,10 @@ def walk_forward(
         last_end = end
         first = False
         a += test_size
+        if bar is not None:
+            bar.update(1)
+    if bar is not None:
+        bar.close()
 
     # 매 경계에서 flat으로: 이전 구간의 마지막 바를 강제로 0.0으로 만들어서 다음
     # (flat 시작) 구간이 경계를 넘어 포지션을 이어받지 않게 한다.
