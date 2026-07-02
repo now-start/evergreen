@@ -16,9 +16,9 @@ fit" 하는 확장점을 갖는다 — ``features()``가 그것이고, ``walk_fo
 캔들이 안 보이게 정렬한다. v6는 MLP 게이트를 항상 적용한다: ``features()``가 같은 train 구간에서 MLP(14→32→12→1)를
 학습해 바별 score_modifier를 만들고 ``effective_score``에 곱한다. 코어 변경 없이 전략 안에서 끝난다.
 
-학습(PyTorch autograd)은 Python(오프라인)에 남긴다 — Java엔 torch가 없어 forward pass만 손으로 옮긴다.
-Java ``V6StrategyEngine``은 :func:`export_v6`로 내보낸 가중치(``strategy-models/v6.json``)를
-로드해 forward pass만 수행한다. DL 피처 순서·NaN 의미·forward pass는 Java와 정확히 일치해야 한다.
+학습(PyTorch autograd)은 Python(오프라인)에 남긴다. :func:`export_v6`가 표준화+MLP를 self-contained
+ONNX 그래프(``strategy-models/v6.onnx``)로 내보내고, Java ``V6ModelConfig``가 이를 ONNX Runtime으로
+로드해 인퍼런스한다(JSON 매니페스트 없음). DL 피처 순서·NaN 의미·표준화는 Java 피처 생성과 정확히 일치해야 한다.
 """
 
 from __future__ import annotations
@@ -324,12 +324,11 @@ def _fit_dl_profile(
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=0.01)
     model.train()
-    for epoch in range(1, epochs + 1):
+    epochs_iter = _epoch_progress(epochs, label) if progress else range(1, epochs + 1)
+    for _epoch in epochs_iter:
         optimizer.zero_grad()
         loss_fn(model(features_x), labels_y).backward()
         optimizer.step()
-        if progress:
-            _print_train_progress(epoch, epochs, label)
     model.eval()
 
     # torch Linear는 weight를 (out, in)으로 저장한다 → numpy/Java forward pass가 쓰는 (in, out)으로
@@ -355,9 +354,22 @@ def _fit_dl_profile(
     )
 
 
+def _epoch_progress(epochs: int, label: str):
+    """학습 epoch 진행 바를 그리며 1..epochs를 yield한다. tqdm이 있으면 노트북(위젯/HTML)과
+    터미널 모두에서 깔끔하게 렌더되고, 없으면 의존성 없는 ``\\r`` 폴백 바를 쓴다. 병렬 워커에서는
+    progress=False라 호출되지 않는다(stdout이 뒤섞이므로)."""
+    try:
+        from tqdm.auto import tqdm as _tqdm
+    except ImportError:
+        for epoch in range(1, epochs + 1):
+            _print_train_progress(epoch, epochs, label)
+            yield epoch
+        return
+    yield from _tqdm(range(1, epochs + 1), desc=f"MLP 학습[{label}]", unit="epoch", leave=True)
+
+
 def _print_train_progress(epoch: int, epochs: int, label: str) -> None:
-    """의존성 없는 학습 진행 바: epoch마다 한 줄을 갱신한다. 단일 프로세스에서만 깔끔하며,
-    병렬 워커에서는 stdout이 뒤섞이므로 기본적으로 끈다(dl_progress=False)."""
+    """tqdm이 없을 때 쓰는 의존성 없는 폴백 진행 바: epoch마다 한 줄을 갱신한다."""
     width = 20
     filled = int(width * epoch / epochs)
     bar = ("█" * filled) + ("·" * (width - filled))
@@ -373,7 +385,7 @@ def _dl_scores(
     trend: Trend2Components,
     scale: float,
 ) -> list[tuple[float, float]]:
-    """바별 (확률, score_modifier). score_modifier = agreement * (1 + 0.05*confidence). Java ``V6DeepLearningProfile.score``와 동일."""
+    """바별 (확률, score_modifier). score_modifier = agreement * (1 + 0.05*confidence). Java ``V6DeepLearningScore.of``와 동일."""
     import numpy as np
 
     rows = [_dl_feature_row(bars, close, trend, scale, i) for i in range(len(bars))]
@@ -405,7 +417,7 @@ def _dl_scores(
     return scores
 
 
-# --- Java용 모델 번들 export (v6.json) -----------------------------------------
+# --- Java용 모델 export (v6.onnx) ----------------------------------------------
 
 def export_v6(
     out_path: str | Path,
@@ -417,10 +429,13 @@ def export_v6(
     golden_path: str | Path | None = None,
     progress: bool = True,
 ) -> DeepLearningProfile | None:
-    """전체 ``bars``로 규칙 scale(auto-q70)과 MLP를 학습해 프로덕션 ``v6.json``을 쓴다.
+    """전체 ``bars``로 규칙 scale(auto-q70)과 MLP를 학습해 프로덕션 ``v6.onnx``를 쓴다.
 
-    Java ``V6StrategyEngine``이 로드하는 스키마(version/params/deepLearning)를 낸다. 선택적으로
-    자바 패리티 골든 픽스처(candles + Python 기대 신호)도 함께 낼 수 있다.
+    Java ``V6ModelConfig``가 ONNX Runtime으로 로드하는 self-contained 그래프(표준화+MLP)를 낸다.
+    JSON 매니페스트는 쓰지 않으며(규칙 파라미터는 config로 관리), 해결된 rule_scale을 출력·반환하므로
+    운영자는 이를 config ``evergreen.trading.v6.rule-scale``에 맞춰야 한다. ``out_path``는 모델을 쓸
+    경로이며 확장자는 ``.onnx``로 맞춰진다(예: ``src/main/resources/strategy-models/v6.onnx``).
+    선택적으로 자바 패리티 골든 픽스처(candles + 기대 신호 JSON + 짝 onnx)도 함께 낼 수 있다.
     """
     strategy = Trend2Strategy(train_fraction=1.0, dl_epochs=dl_epochs, dl_min_train_rows=dl_min_train_rows,
                               dl_progress=progress)
@@ -432,14 +447,14 @@ def export_v6(
         raise ValueError("v6 MLP 학습이 프로파일을 만들지 못했다(numpy 부재 또는 학습 행 부족); export를 중단한다.")
     prov = _augment_provenance(provenance, bars, prep)
 
-    out_file = Path(out_path)
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-    out_file.write_text(
-        json.dumps(_bundle_dict(strategy, prep, prov), ensure_ascii=False, indent=2, allow_nan=False),
-        encoding="utf-8",
+    # 표준화+MLP를 self-contained ONNX 그래프로 내보낸다(Java onnxruntime 인퍼런스용). JSON은 쓰지 않는다.
+    onnx_file = Path(out_path).with_suffix(".onnx")
+    onnx_file.parent.mkdir(parents=True, exist_ok=True)
+    _export_onnx(prep.profile, onnx_file)
+    print(
+        f"[export_v6] wrote {onnx_file}  (resolved rule_scale={prep.scale!r} "
+        f"-> set config evergreen.trading.v6.rule-scale to this value)"
     )
-    # 표준화+MLP를 ONNX 그래프로도 내보낸다(Java onnxruntime 인퍼런스용). v6.json은 매니페스트/파라미터.
-    _export_onnx(prep.profile, out_file.with_suffix(".onnx"))
 
     if golden_path is not None:
         # 추론과 동일 의미(고정 scale + 학습된 프로파일, warmup부터 매매)로 골든을 만든다.
@@ -454,6 +469,9 @@ def export_v6(
             json.dumps(_golden_dict(eval_strategy, prep, bars, prov), ensure_ascii=False, indent=2, allow_nan=False),
             encoding="utf-8",
         )
+        # 골든 신호와 같은 프로파일에서 나온 ONNX 모델을 짝으로 낸다: Java 패리티 테스트가 이 onnx를
+        # ONNX Runtime으로 실행해 golden json의 기대 신호를 그대로 재현하는지 검증한다.
+        _export_onnx(prep.profile, golden_file.with_suffix(".onnx"))
     return prep.profile
 
 
@@ -557,36 +575,16 @@ def build_synthetic_bars(count: int, *, seed_price: float = 30_000_000.0) -> lis
     return bars
 
 
-def _profile_to_dict(profile: DeepLearningProfile) -> dict[str, Any]:
-    return {
-        "enabled": True,
-        "featureNames": list(profile.feature_names),
-        "inputDim": len(profile.center),
-        "hidden1": len(profile.b1),
-        "hidden2": len(profile.b2),
-        "center": [float(v) for v in profile.center],
-        "scale": [float(v) for v in profile.scale],
-        "w1": [[float(i) for i in row] for row in profile.w1],
-        "b1": [float(v) for v in profile.b1],
-        "w2": [[float(i) for i in row] for row in profile.w2],
-        "b2": [float(v) for v in profile.b2],
-        "w3": [float(v) for v in profile.w3],
-        "b3": float(profile.b3),
-    }
-
-
 def _bundle_dict(strategy: Trend2Strategy, prep: _Prepared, provenance: dict[str, Any] | None) -> dict[str, Any]:
-    deep_learning = _profile_to_dict(prep.profile) if prep.profile is not None else {"enabled": False}
+    """골든 픽스처의 메타데이터 헤더. 모델 가중치는 담지 않는다 — 인퍼런스는 ONNX가 담당한다."""
     bundle: dict[str, Any] = {
         "version": "v6",
         "intervalKey": PREFERRED_INTERVAL_KEY,
-        "onnxModel": "v6.onnx",
         "params": {
             "ruleScale": float(prep.scale),
             "buyCutoff": float(strategy.buy_cutoff),
             "sellCutoff": float(strategy.sell_cutoff),
         },
-        "deepLearning": deep_learning,
     }
     if provenance is not None:
         bundle["provenance"] = provenance

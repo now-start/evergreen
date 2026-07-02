@@ -24,6 +24,7 @@ from evergreen_lab.core import Action, BarContext, Candle, Position, Strategy
 from evergreen_lab.core.registry import create, list_strategies, register
 from evergreen_lab.engine import BacktestResult, BacktestRow, Cost, Summary, run_backtest
 from evergreen_lab.api import evaluate, evaluate_candles
+from evergreen_lab.data import load_candles
 
 # strategies 패키지를 import하면 부작용으로 registry가 채워진다.
 from evergreen_lab import strategies as strategies  # noqa: F401,E402
@@ -31,8 +32,13 @@ from evergreen_lab import strategies as strategies  # noqa: F401,E402
 # 여러 전략 병렬 평가 + 진행 바 (registry가 채워진 뒤 import).
 from evergreen_lab.analysis.compare import evaluate_strategies  # noqa: E402
 
+# v6 배포 모델(ONNX) 학습+export 진입점. torch/onnx는 함수 내부에서만 import하므로
+# 여기서 노출해도 lab import가 무거워지지 않는다.
+from evergreen_lab.strategies.v6_trend2 import export_v6  # noqa: E402
+
 __all__ = [
     "Action", "BarContext", "BacktestResult", "BacktestRow", "Candle", "Cost",
     "Position", "Strategy", "Summary", "create", "evaluate", "evaluate_candles",
-    "evaluate_strategies", "list_strategies", "register", "run_backtest",
+    "evaluate_strategies", "export_v6", "list_strategies", "load_candles", "register",
+    "run_backtest",
 ]

@@ -7,7 +7,7 @@
 pkg.torch.onnx.class_hierarchyW['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.sub.Tensor']J…
 pkg.torch.onnx.fx_nodek%sub : [num_users=1] = call_function[target=torch.ops.aten.sub.Tensor](args = (%x, %b_center), kwargs = {})J)
 pkg.torch.onnx.name_scopes['', 'sub']J÷
-pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 512, in forward
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 518, in forward
     z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
 ¯
 sub
@@ -16,7 +16,7 @@
 pkg.torch.onnx.class_hierarchyW['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.div.Tensor']J†
 pkg.torch.onnx.fx_nodel%div : [num_users=4] = call_function[target=torch.ops.aten.div.Tensor](args = (%sub, %b_scale), kwargs = {})J)
 pkg.torch.onnx.name_scopes['', 'div']J÷
-pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 512, in forward
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 518, in forward
     z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
 ¬
 divisnann0"IsNaNJi
@@ -24,7 +24,7 @@
 pkg.torch.onnx.class_hierarchyZ['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.isnan.default']J‚
 pkg.torch.onnx.fx_nodeh%isnan : [num_users=1] = call_function[target=torch.ops.aten.isnan.default](args = (%div,), kwargs = {})J+
 pkg.torch.onnx.name_scopes['', 'isnan']J÷
-pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 512, in forward
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 518, in forward
     z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
 é
 isnan
@@ -35,7 +35,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchyW['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.where.self']JŸ
 pkg.torch.onnx.fx_node„%where : [num_users=1] = call_function[target=torch.ops.aten.where.self](args = (%isnan, %scalar_tensor_default, %div), kwargs = {})J+
 pkg.torch.onnx.name_scopes['', 'where']J÷
-pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 512, in forward
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 518, in forward
     z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
 Ë
 divself_0n0_2"Cast*	
@@ -44,7 +44,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchy]['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.isneginf.default']Jˆ
 pkg.torch.onnx.fx_noden%isneginf : [num_users=1] = call_function[target=torch.ops.aten.isneginf.default](args = (%div,), kwargs = {})J.
 pkg.torch.onnx.name_scopes['', 'isneginf']J÷
-pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 512, in forward
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 518, in forward
     z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
 Ì
 self_0
@@ -53,7 +53,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchy]['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.isneginf.default']Jˆ
 pkg.torch.onnx.fx_noden%isneginf : [num_users=1] = call_function[target=torch.ops.aten.isneginf.default](args = (%div,), kwargs = {})J.
 pkg.torch.onnx.name_scopes['', 'isneginf']J÷
-pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 512, in forward
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 518, in forward
     z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
 Á
 self_0tmp_1n4"IsInfJo
@@ -61,7 +61,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchy]['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.isneginf.default']Jˆ
 pkg.torch.onnx.fx_noden%isneginf : [num_users=1] = call_function[target=torch.ops.aten.isneginf.default](args = (%div,), kwargs = {})J.
 pkg.torch.onnx.name_scopes['', 'isneginf']J÷
-pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 512, in forward
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 518, in forward
     z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
 Æ
 tmp
@@ -70,7 +70,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchy]['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.isneginf.default']Jˆ
 pkg.torch.onnx.fx_noden%isneginf : [num_users=1] = call_function[target=torch.ops.aten.isneginf.default](args = (%div,), kwargs = {})J.
 pkg.torch.onnx.name_scopes['', 'isneginf']J÷
-pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 512, in forward
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 518, in forward
     z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
 
 isneginf
@@ -80,7 +80,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchyW['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.where.self']J¨
 pkg.torch.onnx.fx_node%where_1 : [num_users=1] = call_function[target=torch.ops.aten.where.self](args = (%isneginf, %scalar_tensor_default_1, %where), kwargs = {})J-
 pkg.torch.onnx.name_scopes['', 'where_1']J÷
-pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 512, in forward
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 518, in forward
     z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
 Ó
 self_0
@@ -89,7 +89,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchy]['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.isposinf.default']Jˆ
 pkg.torch.onnx.fx_noden%isposinf : [num_users=1] = call_function[target=torch.ops.aten.isposinf.default](args = (%div,), kwargs = {})J.
 pkg.torch.onnx.name_scopes['', 'isposinf']J÷
-pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 512, in forward
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 518, in forward
     z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
 Ê
 tmp_2
@@ -98,7 +98,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchy]['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.isposinf.default']Jˆ
 pkg.torch.onnx.fx_noden%isposinf : [num_users=1] = call_function[target=torch.ops.aten.isposinf.default](args = (%div,), kwargs = {})J.
 pkg.torch.onnx.name_scopes['', 'isposinf']J÷
-pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 512, in forward
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 518, in forward
     z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
 …
 isposinf
@@ -108,7 +108,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchyW['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.where.self']Jª
 pkg.torch.onnx.fx_node%where_2 : [num_users=1] = call_function[target=torch.ops.aten.where.self](args = (%isposinf, %scalar_tensor_default_2, %where_1), kwargs = {})J-
 pkg.torch.onnx.name_scopes['', 'where_2']J÷
-pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 512, in forward
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 518, in forward
     z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
 ×
 where_2
@@ -119,7 +119,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchyY['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.clamp.Tensor']J¹
 pkg.torch.onnx.fx_node%clamp : [num_users=1] = call_function[target=torch.ops.aten.clamp.Tensor](args = (%where_2, %scalar_tensor_default_3, %scalar_tensor_default_4), kwargs = {})J+
 pkg.torch.onnx.name_scopes['', 'clamp']J÷
-pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 512, in forward
+pkg.torch.onnx.stack_traceØFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 518, in forward
     z = torch.clamp(torch.nan_to_num((x - self.center) / self.scale, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
 Ù
 clamp
@@ -133,7 +133,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchy}['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J 
 pkg.torch.onnx.fx_node…%linear : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%clamp, %p_l1_weight, %p_l1_bias), kwargs = {})J2
 pkg.torch.onnx.name_scopes['', 'l1', 'linear']JÖ
-pkg.torch.onnx.stack_trace·File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 513, in forward
+pkg.torch.onnx.stack_trace·File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 519, in forward
     z = torch.relu(self.l1(z))
   File "/Users/moon/IdeaProjects/evergreen/.venv/lib/python3.14/site-packages/torch/nn/modules/linear.py", line 134, in forward
     return F.linear(input, self.weight, self.bias)
@@ -143,7 +143,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchyY['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.relu.default']Jƒ
 pkg.torch.onnx.fx_nodei%relu : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%linear,), kwargs = {})J*
 pkg.torch.onnx.name_scopes['', 'relu']J£
-pkg.torch.onnx.stack_trace„File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 513, in forward
+pkg.torch.onnx.stack_trace„File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 519, in forward
     z = torch.relu(self.l1(z))
 á
 relu
@@ -157,7 +157,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchy}['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J¡
 pkg.torch.onnx.fx_node†%linear_1 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%relu, %p_l2_weight, %p_l2_bias), kwargs = {})J4
 pkg.torch.onnx.name_scopes['', 'l2', 'linear_1']JÖ
-pkg.torch.onnx.stack_trace·File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 514, in forward
+pkg.torch.onnx.stack_trace·File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 520, in forward
     z = torch.relu(self.l2(z))
   File "/Users/moon/IdeaProjects/evergreen/.venv/lib/python3.14/site-packages/torch/nn/modules/linear.py", line 134, in forward
     return F.linear(input, self.weight, self.bias)
@@ -167,7 +167,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchyY['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.relu.default']J‡
 pkg.torch.onnx.fx_nodem%relu_1 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%linear_1,), kwargs = {})J,
 pkg.torch.onnx.name_scopes['', 'relu_1']J£
-pkg.torch.onnx.stack_trace„File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 514, in forward
+pkg.torch.onnx.stack_trace„File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 520, in forward
     z = torch.relu(self.l2(z))
 ÷
 relu_1
@@ -181,7 +181,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchy}['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J£
 pkg.torch.onnx.fx_nodeˆ%linear_2 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%relu_1, %p_l3_weight, %p_l3_bias), kwargs = {})J4
 pkg.torch.onnx.name_scopes['', 'l3', 'linear_2']Jè
-pkg.torch.onnx.stack_traceÉFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 515, in forward
+pkg.torch.onnx.stack_traceÉFile "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 521, in forward
     return torch.sigmoid(self.l3(z)).reshape(-1)
   File "/Users/moon/IdeaProjects/evergreen/.venv/lib/python3.14/site-packages/torch/nn/modules/linear.py", line 134, in forward
     return F.linear(input, self.weight, self.bias)
@@ -191,7 +191,7 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchy\['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.sigmoid.default']J‹
 pkg.torch.onnx.fx_nodeq%sigmoid : [num_users=1] = call_function[target=torch.ops.aten.sigmoid.default](args = (%linear_2,), kwargs = {})J-
 pkg.torch.onnx.name_scopes['', 'sigmoid']Jµ
-pkg.torch.onnx.stack_trace–File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 515, in forward
+pkg.torch.onnx.stack_trace–File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 521, in forward
     return torch.sigmoid(self.l3(z)).reshape(-1)
 ™
 sigmoid
@@ -201,32 +201,39 @@ node_where"WhereJf
 pkg.torch.onnx.class_hierarchyY['evergreen_lab.strategies.v6_trend2._export_onnx.<locals>._StdMLP', 'aten.view.default']J‰
 pkg.torch.onnx.fx_nodeo%view : [num_users=1] = call_function[target=torch.ops.aten.view.default](args = (%sigmoid, [-1]), kwargs = {})J*
 pkg.torch.onnx.name_scopes['', 'view']Jµ
-pkg.torch.onnx.stack_trace–File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 515, in forward
+pkg.torch.onnx.stack_trace–File "/Users/moon/IdeaProjects/evergreen/evergreen_lab/strategies/v6_trend2.py", line 521, in forward
     return torch.sigmoid(self.l3(z)).reshape(-1)
-main_graph*– B	l1.weightJ€¬á¶ÚZ ?@0?¹¿¼r?å{.Dy“?±qĞIQ ?3KaÿğŸ“?Øg'ø„èc?…¬X&èt¿µ_şI$?]Oæ¹Š<¿9€]!™NU?0)OŠy„¿ø/«½e`¿ÓĞWöV^¿¤‡$â_¿–¦v”½’?İQ£Óa?$Í¾Z„³…?Æ¬L´M’?mú±z…?¿ğ“Z?ºKh‹»f¿mŒzèµ0?Ñµ]×Ò?ÌædïˆŒ)?UØœı5v¿ÈãU{Q¿y¯<»4"Y¿¢_ìµº"V¿ÓZÌ]˜¤¿ôúá.KŠ?÷Å:LŒl¿ÀîD¡ã£¤¿î¤¾%µ ¿¥_Æmñp¿¿mœkBQ¿8¡„¥)ªf?]+Z2/ĞY?	ZìJ`¿Dº|{WX”?ÍRlsV^?Y!ÉŸÇq?ÅƒÉÎ¢q?}Áôw^w¿!Œ«;W?şê˜§Æ2¿l
-Ş¶œw¿o¢Š×ÿu¿2ğ8¼ÒE¿Ü¬Š-Q¿´Ø÷W¥­F?Ç%Y
-A?@¥¥¤ÕP¿+‡´*i?Eì[…A6??˜Öqd›?,Ş£xçR?_ó k5â¢?Ë÷º”0Pt?GÊcS š•?-’ ôbı¢?#ÉsÀ•?*×og?@:¨şæv¿Iö1)95?¤İ™ŒT¿è³å2P?+øÈÀkˆ¿Ä}mä«g¿ô¼ôòm¿›ø/”Ïl¿§ŠTÆVœµ?ˆ%!…\„?¸£!$¿æ¨?Aj(1^µ?¯Dhµ·'©?}!TkîK€?~ï òy`¿r¬59éU?y8ÇkP¿dng\½Bc?šğjœay”¿p#ãØ¹N|¿ÿ¤Ix¿Ñ~}]æw¿œ‡¯Ã¼ ¿r‘3ğ‚?1Tİs±d¿†Ààèª¿ ¿=ZN0İ›¿‹è÷]íp¿˜[ö@Ø `¿€¡*®Ã¦d?ñlNbU?}vêÁL[¿
-Yşâ‘?f€<|ì{@?'„~ßïk?p:ÈN6m?æ}éê“¿Áêäw]Ïw?ŞT>Ò®ûX¿3Ô û5•¿h‚.ar0¿`ºî;ßl¿ôÜŒS/R¿ßÂXÛv'U?±hğÔD?š¢øO¿Jxş¼óÀ?‡ıVj+Ğ@?ß‹³òš`?’ñN}h‰`?:ıw
-—‘˜?[Hı› tb?idú™uÛ?âş€H˜?è)©[ø?ÔN²AJd?fîÎ{4r¿¥:Ñù1Q?HÃOÏ&?‚ö’ÕpT?èê;ÑÑt¿æ¥ù¥T¿Ä9.bö&O¿%B_O¿^¬T€Œ°?C‡X…*Áy?®7¾¤?ƒ¦Úzˆ°?€'›o¤?/Á}·u?1™öš‰¿ë·×úğ6?å"‚Œ(¿]NN«2]?‡;ÕˆàO‘¿eÓ?	9ür¿=6FS5Ìs¿)a%Ö¼j¿¾ÄÙT’¿å3‚f¿q?gŠà1™Q¿¯&qØğk‘¿P¸T‹¿ßgb¿´]®T¿3oJO½Z?á\;IÊD?øÀŸ·P¿·ßnwâ€?-åÎ}7m7?öÈŒƒç\?›0÷ÔlÚX?åÚ‚Š™»«¿Æ$Õå¦»Œ?q¨Â„ôe¿5’›ß"«¿?ë¾ÄÄ§¦¿S‘´û#án¿ÛÔqX(?m1â2ù s?Ÿ·Œh•¶c?y e¢E]¿>¡Ã›?TğÊÁP¼i?ş)Y‰;’x?—a_û-õx?âW:Â#¾Z¿šú6èa??8”æ•°I¿¿Du°Ÿ_¿všª´ÿV¿ÌH<êû=¿jDßê 1¿«;'[C?UÇGÏc?öÆÙÓ‹ä.¿:<k|şQJ?é@ÛØ_°%¿©DU·{h8?Ì8E‹*?'f,6£g¿lbT{ôz7?¦áG_¸"?ÊolTãh¿ÂrM"P"e¿ma‹«ëX¿f›½nŠS¿Â@e¬0?ªÒáB!—>¿â›4ãÌ+¿NˆU—Z?®©¦Şõ¥9¿Öè»aÃ	?±\¥Ä·%?ö]vuÑy¿ÄØh›{4]?Ú÷ÍÜëC¿$¯9aVz¿Ò23`+x¿½_A×sG¿5° ıM 5¿–×<n4>?æåº jl(?£vllñH¿‰æLu_j?òZgOB?ŞCÛÒÒD?q×.C?m"k	š¿?9)”t?"=ë«Z¿¬v)c¿¨§À3»‹¿®?ÂÇS]¿¬6˜ÏR¿İõÎZ¡¶L?ñ§XŞñ½I?ÈßíİKôW¿u%~¸Ó3?:$QüH?r^¬Û4Z?w¹»å¹‹f?¤÷±‰¿8!5#eSp?Jºó–R¿¸0Ì3Êù‰¿Ì8b?†¿O
-’c¿Ÿ®^W//_¿Ë·†&—&R?ãÊ3ô²ç;?)Ü]ğT¿¼n™ğvz?{IÓ¨)¿˜U$¶P?xÑÍíuU?ÜÔ_‰h	P? {»úí?;–—†ÃB?ĞV©ŞœõK?Hğ=¢!öB?X6€"õ% ?SÔ˜ƒÇ3*¿`öâp4A?†¯íÊâ^(¿ôzE¾N?ãa¯ÜĞÇ¾Ä½Nâ]d'¿íyrWZ¿!Œ©ytñ¾Ì‘ëN’?]m„™¨S?7ël	NÅ†?	£-Û‰f‘?¿z¦¿~‡?µçèBnT?ğ€;!äk¿ø“ú á\3?ÌØv^;#¿M"¿bÙ3?ÃâêO)o¿ÒO)J¿fiÃ:Q¿›J?ûÛÅM¿dVV>d?G¢åŸc²/¿Ÿ¤óš`9X?QË|a?æˆö`tV?ñMn&¶0?÷;ÒÇw=?şe‹€FdN¿	‡PK K¿î"°‹Á¿‰'üÑ‰„H¿™¯¥.¿’àšÊ‘D¿#–ĞïwLí¾!E|·èŞ™¿@¯o¶*~?*1¡K4d¿õ[ú1Â™¿»µØ"—¿Œb=nl¿3ò@/êb¿¯Û&"áa?]'Óó B?‚ )ÔJ[¿âü³B³€‰?±¡UŠ_4K?ÔéDûEúb?‹¦:Ÿób?ßd\‘f¿õ;×h³Mk?(.^ÊŞS¿’U}ö%U‹¿]Ñ»vÛ…¿-ÜÛBQ¿À¡àk¿4¿Q¿
-§ßT?5k¶Ş» >?‚È6›@¿ÛÎ1h­x?oğ§`-R?­íÑt…ì]?Qu*C˜ñX?,\.ª?ü„ƒEv?úi+?É#ïÿ©?ÇjØšD“Ÿ?£^Fz#Nq?ŒÍÂV)¹¿.>\‡F?NÔ)'ĞX¿®-æm²_?PUT…‹¿*Ñ%<Xp¿¢Å¦n^q¿Rªº±8n¿	ºxƒ7Ì~¿ôêïÂZ?™¤¼_q
-!?t!?yƒõ¿{ıó7Òğ~¿«ê˜˜›K]¿¹>«årxP¿!É±#=?Aµ7p	–B¿¦Òğ	X¿Ï|WYQo?aäh˜î?«Æ2˜<ÄB?¤\N«=N?ŸğkÍm?Ø©"[0X?wßP5!ès?_Ö'ÉN?ßâ®»Ät?Ğ¸˜Í°şQ?ŞÿÃu®©Y¿§œ9Şw63¿öjIÛU
-å¾Ü	4!‘6?Û²èF×¼c¿´tªÿIRD¿8›ùSÓ6¿Fšbş6ÊB¿{¤Y¿cw¿·ı	Pb\?ô¡]>%@¿´ï“skkv¿Ï
-õtk¡s¿4û¾Ïä O¿6'i`ïÖ:¿
-¬[ÁC?+vqÙ	¿ŠîRÙdú#¿pÁ˜f+f?³Ñ\¤$?ÈA_JBdE?† ³™ÎD?‡«Bqüq¿ø^ÑgY?è},(­ëF¿ËAÅh'r¿×"œÑÇ2p¿äœ¯§0D¿5ø¡).ÿ&¿q5ı3ñÀ&?ÖWaŸ$?Jg’†>¿îô G‚…a?ÍÏ)¸,'?½×ÌºÔ4?åÍñO<cM?™FÅş–Œ’¿æBtß‡p?!tduˆ?¿Ía%ve“¿¸@}‹3‘¿‰lÑ©&Ìl¿ÊIñt¿b¿ËeşiK?±£ _ÉO?¯e×
-ÍX¿E›ü“„?á°;•if@¿$-ü¢XR?Iö[&¦yV?·ñÚ^£¿7²ííÔ^†?[ê•¾Z¼p¿ìÑÓÜ¦£¿)luÌ ¿Ä(QÒ°t¿ı±õ}Òf¿ıj5ƒ‹e?DÙ][P?H³µk©d¿‡;©¶ñ”?•I:Ä½J?İ»}	:[q?t?ütuk?'á(Ÿh¿¸2?Y£O?_Só}«ç0¿Ü‰‡1$¦j¿•ıJdJ½b¿?N^$!"¿+ğíQÒ"??8úƒŒ8?‰»Ñ·:2¿´rCnY‹:¿#F´%ÕûY?zå‘GA??e­],ÁŸ:?yÄXå6ã6?.ü.?ÆZ
-ÿA~b?Ç|˜ß¹”‚?%q«­¯?¨«€ysU„?Ò+ñîÚY?ÁY‰…ì¥c¿ªÂ¥Ï%¿È†é{û@¿÷–~ì!?¦OŠQğ°k¿ägÑËÄV¿{a6?F¿ÓòàoÏV¿ÈBvcØb^?ÔzÈ–+?ãÎš€„R?Å>IÖ†s]?l>tW§¢S?€T'G*?ĞïXôB¿ÙÛh¾ó>úJ#!O?ëÛ¬Ñ¾#¿mâ§ûV:¿u6ñô®—=?!E+­ Ò"¿$À<ÿ,¿p * Bl1.biasJ€Ğ‰Å•‹¡?ÇœÙ²”? Äç­n¤?'#3½U;u?°œÄdñ·¤?bœô RÙ¶?Ç2ò!C ?¦÷S¡ì’?'I(Æ÷™?×÷ÖpP±?ÆÖ|sìÏ?põâI¶÷©?øfFÂéÙW?ª>>sàa?P³.²fz?
-*éÌl?¹bFBãˆ?-É *H?OœU“?! @ô0e?^Ô¿˜?ş'¦Yøgˆ?ŒÓÔ©å«?!ÔôEö{?¹uSı¬Î‚?d†Xzáu?z"Îä°q?e‹ìÔí<’?/
-bß,£?şOÂ!1e?Øg8æi‘?üÒ‰p‹\?*– B	l2.weightJ€  ª ÷2x¿4Ôİãá¢j¿î¿, -?†ô‡eã`?†UF/pÌ{¿jáÆßˆß¿ŒV¤_ãˆ?ëÒÎ²Ğ{?>9“pn´r¿á“Ì?ˆ¿Nâuİ÷Sy?z¥R“?hÃï*E?’¹ğ3S?"ïİmc?L”ákéx?sÇ@LŸr?£çÆcg&¿LÿX»õ|j¿ßğ¯Šm =¿PvšF±‚?óú9¥±Œr?kûi[QÏ‚¿‚Pjòçg?ÇÇ×±¹­V¿—Á{¼Äk^?9Då€i[?Ê|Ÿ¼s{?ç=êúy9Œ?ôb€Z½òQ?£•„Ôtf¿IRÏø×+7¿Ù{”É&›?Ø:f8åî?ÅÅ³Á' ¿oNëÅq¿tá–g`Ÿ?¯ ½´Ş±?rÕBŸ`½™¿T]¢©Ç¿ìbkAK”?Vçu~„«?Ğ†â>„‹¿L2ùP?¥¿wÍ<9øæX¿çz‡4:e¿Í®2·Eu¿<ôıÖhŠ¿€–@+øJ„¿nµ&àH?ƒÿzÃ{X?r
->²B\?üáKW|”¿uÒdíÌ„¿Æ?bTg¥?Şáu7Ìy¿}Ğé½Ùá|?–_%éq¿›`o¿“¦3ÿø¿F›s*Æ¿‘%Ï‡*d¿7'Ÿ‹‹?À¦Û]/Y?¶“¥? ×”ïŠ˜?ã\ó®#¼©¿Ò¦ÏÊç|¿  °/Ù©?¶šà`¼?ÕxÃ"ú¤¿×Jy7”Â˜¿{Ó3´º8 ?qe;¶ùÖµ?‡Á°Â»*•¿Ü—ëeá°¿krô1Æb¿{ãvo¿Ê•®¤b¦€¿´ósq€•¿%2x6ŠN‘¿›¥îÁT?cæGY˜?‹WHG6j? Ù6“¶´Ÿ¿×TAQJ¿6ÂŸ"•±?‘WwÌ„¿Éóg”‡?0šAv¶{¿JQÑÉ¹
-w¿æ$ÕÚ|
-˜¿âj¶âåU¨¿·}c€ëm¿zíP€?Z•? ù	e?Eây¿L¾IK¨q¿§EÓU“?õI`—·İg?;JDóÒÙ‚¿XqOY”¿‹ÀS2?"‘¬G#ƒ?CY¦9&x¿;Ï˜&p¿ÕlúÒ?']Dqq™?rb‘YìyN?Õw|„H`Y?‚¥Ì" Îi?6Ö®Oë€?hŒ ”Dy?u” wâ0¿Ô°†…q¿Ôá	¬]E¿˜äp½B‰?=›â#Ûw?d…<3û^ˆ¿^şìÎªÕm?:è’‹üˆ`¿7C¨îaf?dÄÜ8·a?ÿéxƒlÍ?p³1fx£’?kF­ª×|W?â„q™tsp¿ †àÕŞ8¿¤ËÌA*¡?	cê‹–„“?,t{­“¤¿&ş$]yşy¿¨äŸQä£?>IFöx¶?;Ğ×i ¿ş–¡—ÖÒ’¿½ólh•™?[Ó’…±?ÂŞÌí=‘¿<ß½¹Îöª¿f¤×{Û^¿ƒW7:ïg¿Ñ¤Ú¶çy¿5%¤¥EÑ¿Ù˜"5Ù~‰¿ğÓ1{Ì9R?w]))@“?S( —¥Ÿh?–ß€WBmš¿šş%Fş‰¿~„ÈfË«?Sôÿ?Lÿ¿ÉÅö£‚?"•^ƒåv¿Àa["\÷q¿¿Olv'•¿”Ş
-#ì?£¿Ñ‚2ı\-i¿–°æ¼é?p¸¯=€\?¬âÎ÷8E¿Õ'`Ò¬H9¿¾afüS?İšt0 1?¤í,4¿ïtƒ(€'V¿áF[õAP?Ô½yD°Ö<?Ÿ$0²a*¿jC°Z>P¿mXüD?«SthûV?c21 ‰?”±1Ğªÿ>ØàÈ3?1¥JnkåA?±=O1k-D?9u,(¿@è>Úö-¿.ÓT<–?_5®ÍºO?1‰½N?9?•ùõ:I¿ŸÀŸiÆ?ºEÜD--¿ùÑè²B%?	ˆ-v?Ò?e—r‚ÆR@?‡¢)·ëQ?9~Ä°›"?jäí“H%¿áîQo¬:1??Aş?¦z÷›? =††Ì’¿	è&ö*Ôh¿é¾óEh’?iTšXºÑ¤?]U`TÙ¿éI!ÏŸƒ¿:Î,ˆs‡?cBÀß_k ?½í—2µ€¿¾[øS¡İ˜¿ó+Qe“-O¿Æo¹¨ñµX¿PÅ'€;’h¿¦ï¼~¿‡jõœºx¿á­ñ±;?D"ìÿ?’§uGèÑR?]Üiè—ˆ¿Qİ°š;Lw¿µsoÉÁ+›?ÊÉ´WWzl¿®¥¼0F)p?Ïı€5Ã€f¿& VÈ¨`¿×75[’M‚¿Ê­¤€’¿ùó€#âW¿Ù¹J…æı?«úrûŸtO?LOc&q¿™Æ?¦c¿®ªm÷%†…?­lbñkñ]?9‡9`u¿4´æ
-Ÿ0†¿&OÚy´Ö‚?è=Wà½u?j1¾‡í•j¿t%\L0Gƒ¿Ùeb½™s?dïĞ¢ËŒ?$ßÊ
-kV??İ$Çšœ'Q?bŞBùb[?À¥´ ©„q?ÂLa{ n?”#©M,¿%NKg¦¿d¿Àà¥HúÊ"¿\ì1ğ8í|?ş?ÉhÃo?‡uiö¼|¿Ãã©_áÏb?C}9ÁlQ¿‚­ÂI-™Z?ü¼3ûÓR?9,D^ùu?ùLƒÔ´w…?¬M´)8O?}à™ô%8a¿F·°mš¿ÀgÎPq¿’¨ºÿsc¿3BÇK„?æÒI:X?0€(í~¥s¿,Œ´@²¤…¿¼i4?,Š1üt?É‚	­ai¿_PGH­"¿œ5!ÿ#>s?.¡ÎÒ;$Œ?à´<Ë#$C?ú©·}G?_÷„îÔŒY?±ßí {q?pË†’k?®+Ôg_·¿›^$àNc¿­·°Yø1¿ğ{Qz?v|4+l?¤óØ¹{¿^Òb?²ÒÚúIS¿kâÇbƒX?¬çògÛ;Q?—‡ˆğ,s?UÉ°é+øƒ?™â_“§D?b	G<£`¿lHùÇ™*¿¥‡’ù,kY¿Â8C<%H¿„ÖMö¦(n?Âx€Àõ,F?tú~µ•[Q¿:Àê8'p¿j•Uà®V?¶IÛâO?è\!(T¿0´%g[¿¹wš©H?÷dòWØBa?ú­™ı}?ÆhŸ5?{ğC:?vÇèİD?»“Ó)XuK?`	Îo_Üğ¾>´ÁîFG¿êÂQõ93¿×’Hv™mR?2›0åB?»N¨¦b¿åØäYO?:Y§%@ú%¿J°É±ÿeA?l¶}HnF&?J½Ä–Ì‚\?Óóá'l?êVxtü-?İË…Ü]39¿
-%ÑS? ÷÷¬¸p¾l¨s›6¿—–}vó>DÉp½’'¿
-cù<d?Áü¨Ö2¿ôu7nJÁ?Æ5mo*¿¹LÃ–íV?ì‡±—Y¿2û¥5È¿ô;Ş\¢Íö>Z •~æ?ì6 ¯Š>6¿ø(ë/¿t‘
-÷È¿9†Ö¡¥ù¾¢Å¨õŸ°?oÔ8#Ö$U?:Qó8ºx?dß€ÊˆÌ$¿ƒkšJa¿.„c}›£$¿úSÎT®ü>*7q`b?Ç­qY[+?ÉÃÇ§zŒ!¿<êNŞS%?DYîe“?lÕ»•j/?k.¶i8Ş#?ĞyMy§÷>V5<ê,’?Î„?ìb7s?»Ö'½wÜƒ¿.B8/¿\¿¶f¼H„?kHÒ–?ŠÎÓ2•€¿ı0©5’s¿ƒ9Tæl¦z?b0ÖNuæ‘?…’ò¥K›q¿$·ÕºŒ‹¿ù¨¦†ó9¿ãO^Ñ€ÉL¿™JFD÷øX¿Æ¡ZO(o¿ÿ­1Ÿg¿ÕèX6*y=?1¦jEV}s?Ê¡¼QX£E?`áåîïy¿Ï1ôl¿“âáí‰‹?GÁ7ì[¿Íİ™ì½æc?¸êMçU¿C–†?³T¿\×¬]fgr¿™Ä˜ıK‚¿ã”˜|H¿áÓ[q?Š¸Œ|1VC?p *oBl2.biasJ`åJ û&şŒ?×´¬¤0¨?Ì¡ÍüI´?êlS:8Æ’?(Ù¥Xá°?Z`XKS?âÁ6¡JJœ?Ác"Š±†…?ßlOj„?Aº<`l?4§F"{c^¿vP>Lø?*sB	l3.weightJ`û;àE§?^,qÂ¸Â¿ô•ÕB­Í¿è´‘½Ç®?61‡eÇ¿6QgvCtn?†½ƒ!Òµ¿8\!èdå¡?4hıß8O ?®q¯dÂy‚?Ê6èYS–?½4e4¬§¿*Bl3.biasJûw’7¢©?*~BcenterJp @7°G!?ÀfŠûÁ‰‡?€ÖLh5‚? pšªÑU'? àC=ëÀ-? ¨Õn{1? Ì{¨£Ğ@? x9Û*®L?™mİ×V? 4‹³ÄS?täõT¢zU? Ô˜/HH?ÈÖrxt?ClÙn[Ñ©?*}BscaleJp@B^ú ì€?AN8_0‡?&úôz!î? D0f÷€?`;#×—4ˆ? lÌştŠ?(tÜ•?p{e ?ÃyõÚK¡?€ùÉFL¤?u¥Eš??İ6Ë˜?d*SÔ½?¼)Ï­ò?*#Bscalar_tensor_defaultJ        *Bint64_0_castJ    *%Bscalar_tensor_default_1J       À*%Bscalar_tensor_default_2J       @*Bval_6JÿÿÿÿÿÿÿÿZÅ
+main_graph*– B	l1.weightJ€øú;ÑYA³?5Tb9ÓM¥?·¾
+ƒa¡¿R³fvwÅ³?\ãÎŞÌ¢?Òªş*cÁ?DÁ3±X€¾?6ŒÌ[¼ƒ½?”X¯Œ”?äĞ8ø@¹?+-8È:4¼¿§»öuJÂ?Ì)«!#?ÊÎ¹BÍ™?ØfŞ»E¢?ã yı3¢Œ¿Ğ÷D¿Æ@”?Ñƒ‹¨~?÷j]<~ ¿à¸fÚl¹¿æC§º¿Ç®“aı?Å¿‘gjÕ–B?¶î³®µ¿Jâô§£Ë?:IÈdpùÀ¿Ÿø·¢Üp?Y±Bz9Vˆ?‚åU±í¸„¿ˆ$ìœ%°?±ÆB	@_¯?Û("¼M}¿[œoŠ¿ŸL`È ‹e?¹SiEk|?@ÙÿI-€?Jjø “¿’o76T5p¿? Æk8§¿Dìg‰'`‚?b¡¼&Şx‘¿TdÁVn‘¿V ªÿq1ƒ¿›†	-=°?ZKjü‚ru¿ËSÛ¼ı]¿«Ñ
+ãép?ü)`—‡ìœ?nXêô[Ÿ?÷a» € ?:ìo¤ ˆ?XcÖ£›˜?§0½!déƒ¿Å`ƒ ¡?–Ù½í˜‹?Jñ™¢ƒ?RÀ¶4¹½²?İú¡¾Á¿†k¤¬¦?¨B_‰…²?Û­Ì9>°?õ¤«+Ç?2\½ÇõÀ?|àÓ>wÃ?§¾6A¡?ám’üp¼?©Tl×€¡¸¿Ïç› ¤ÍÄ?ğg
+HÂ¦?ïpòFG„¦?)vÌuè©¿z$BÅéñ°?>1írp?Ì;Ç½I: ¿]RX¨rb‰?X(ö)Ö±?5ç@1´Õ°?ëw¿>¶»?Ğ¤!ÏBr§¿¬·A·Òˆ£?¾‰ÕœË¿aJmá¸?š¸Xyp¦¿õ*f±Ó¥¿r@jn+6u¿™ddAy¼Œ¿=ßJm&¼†¿°–ÍÑLX‚¿÷!Eã®d?€]¡w†¿$É#ä„¿²aĞqÎ„¿Ï–m3 s?í-%ËŸs¿óG&—?§iÁş7Ù†¿G
+èUs?	gšnfs?ì¥ÂèU´³¿§ÜßÃù²¿Òÿƒÿ\¢? @ÉÈ%Ø¡¿¢!\õ¨?ŒbŸ«í»?VêrIŞ·?”ßá©àÄ?£ê®Ö{¸¿rÔËMf¤?ØtqÉôíÖ¿×/È0NMÁ?ÊzeÑÈ<¸¿‹vÀ>¸¿+€…ş‡?¸İK-uÈ¿`8~¨_?ì@Ì3Ñ¥?#ûhYh³?æt98^Á?“[+á»?c¯ëOÁ?µçş /Ÿ¿åšî 0>´?Åî‘Ñ¨Î¿˜1³Ã?òåh&^B—¿tø´ñ3J—¿;„)×E€¿¥ş»hâÄ³?õ)V >¬ƒ¿®hÿ.Ÿv¿?J°.™u?"ÉdÅ£?ÊÆun¤?«#:ÿh£?Ùs±hÑu‹?á6*	ñ½?â³}æ–‰¿u÷<Ò¦?}&aQi‘?ÂÄ”>X’?…iù´ir¿Ì[e¨N¿Wmš a¿‰t¾NÑi¿ÊÍBÃÑl¿+PZ¬e¿ 8Èß7f¿Ao~x,Œp¿@ç¼bÁR¿Í}ógèÄf¿ù¬­|Ûq?{ş…l¿*äFwèG¿ TÊö¸|S¿s0·Iš©¿dEZM­?ßÓ3ˆ«?Zƒ;/™°¿fj2áC‹¿.áxÜ!Ş»?tn[/\+Â?±üô„?È?¸çmVş§?£MX	üÙ¾?'¶xÆ§¿*‘¦ÑzÆ?ğ¸c·ÑL±?é¯r—²?+<eLj=¿9­ş½3?koÀKU?/AuG÷*¿¨/
++ZG4¿’ªº2–9¿½U«	/¿#í[‡Y >¿ç(@û2e¿øW—6-„9¿³ÊtJ"$?•—ÕM­2¿ÄtËı­ù¿ĞGÚ¬È,¿gú…Âgˆ?f,ºA³Æ¿yÂBÕÙ•p¿_EvÕë©?çšä|²?2ı¥fÖNÂ?XßŞ¸˜U¹?JWğlÆéÅ?Ã¸±SH‰ ¿}C•íë³?ÃŠQÛFÏ¿-ÉöõTÂ?Š’vˆ–¿·YB_¨=•¿Ô¿<İı³†¿”Ò:Â¨æ3?€Hf©"4?ßA¾¿8¿
+™#å‹?ùL)Î›?ä°'.7å™?¤ûeNM¤?ì A yuš¿N,­…?ï$…álA¹¿åÀÁl?¸ ?íhÉesš¿Cqk×˜Şš¿¸èfM¿¾;Tcu±?ì&—2	_¯?èÚˆ‰¨¿"ô·è²¿İ2«[úJÀ¿}”î{Ã¿¡9ƒ~?È¿û’Í”Ÿ{¤¿¡bğÈV@À¿è¨n>ÍİÂ?³$§×'¿¿–ãĞL•ù‘¿«„1_6€«¿ôlÆ¿©¿-–µÚË·Æ?òßm{Ô ?³à˜¿Ò:c›å«š?CQp¤C®¼?¼¥-·á·»?çÜ5TÀ?=¢Áäì¼¨?IuşUÖ¹?‡è%áoT¢¿Õ¸"¥o+Á?Öü–¬‡®?P©±7®?°÷‡+ğj?{-…HW?ò't~s@…? G‰£/9b?e`Y`¿AXVÇs¿¿¾—‡§|¿Ó@´è€¿@–bl@n¿Æìek{¿ÂtF6Ëi?è]Oü¿¢š)äÖu¿îôÌl¿;8T¤U®º?Ö‘3tÌ°?r¶~—+²¿BÁ¥õ‚¹?Ša1³b¬?yXËÙøTË?›;-È?¨OÛXğÄÃ?¤…Àü|¶¤?Œt–h—€Â?É	sÁvÁ¿q9iÕéêË?¿cèPÒ¬?ô<@×7©?ÍdìÄ›ù¨?¡r¿sñ–›?º¨	‰Ë“¿{1m!®©?´wm`Û?ü3ezH6¹?/>zRÜÍ²?©$©#]²?°Êæ#Ÿ‹?
+†·ZøÕ¯?ó’wbØ±¿;jş¦wlµ?Ig*©|ª’?Bz~Ò’?²´»GÆâ±¿€Oˆ>ıø¨?ePÉ“±r›¿|¼°‰º¿ß†ƒÓÈ¿ a.RÇ¿ú-¥ş/ŞÃ¿E”L¾¤Â¿Ä²M·¿ ço5ÕÑÈ¿=N–ç`ˆ?+ü4W…Ç¿üG ÷@½¿‘·¬Aø®¿ßuos¬X¡¿Ï†x ?HÄIå8«½?BfzØA¿j q(î³¿l²ì†º¿ƒ]½2.¡Á¿ÜHÜÄeŠÆ¿‹¬²Ô©¿·JÃù¾¿–Ö´Ú³?>„)ôÌ«Ä¿ÉÈa#ˆL¡¿RÍœÃ}°¿°–¨Äw ?yNµ„rÇ¿¶zq £¸?õxóÙø­?gÛ¹§ı¾?<Í'M¼kÅ?·]–¿¡I³?¿3Ã!½ÊÂ?IY²û…?zMà¶ ¿?ÜÉ|	Ã¿ŠD¡Ç!LÈ?Vôäùo“?½ò˜sÀ@?rö¸J€y¿
+#;WK‹¦?øÈjPi
+k¿ï¢õÔ_¿Ijš˜¡ `?äÓ~|(q“?ÙÇHà–?ãUûu–É—?€D8Cö”?ù©­‘?½Qdø€™}¿ÒnJN[›?DYŞ	Sˆ?C¸è°‡?µ3ÈĞ¿vó÷O­…?'D„œü~?ÂK™ˆñ—¿¨kÁi#ë›¿-° ‹‹¤¿”Üd¥¿«f‰ç¨¿rÿ-Q¤’¿íìéË¾£¿õÂL7´—?:`í©¿†¬ÈB™•¿êˆÇÁĞt”¿Ïb[Ø¿Cfa¨”Ñ¯?¦N‹£?,(b¹ø¿“·%@Ğ¨®¿µj½¿øT—’è÷À¿ÂÉE€$Å¿à ´µÄG¡¿XD/h×4¼¿‚uŞR¿?Û†Û±Ö‘Â¿±@wó ¦¿ÃæÚ¶£¦¿])3…²¨¥?+üÌ']ü˜?ßª&G·?;£%ù›?i_*úaÚ”¿nI8®©¿˜wÄ4ê‡±¿Yˆ·`÷¸¿=M
+wèÜ¢¿<˜ŞnEœ°¿Û5ù'×ò¢?+Áû_äô¶¿£)Puv¢¿Ón-ŞV£¿a:l€ß¸¿”ó¥,Nø·?m±øáe0¬?û&‚Z±¿IÛ­.W’¿±°¢[éš½?Ö<; dÀ?:¸Ó`.­Ì?ÆbÇŠ¤¿A Î­/á¸?«æ·
+Ó¿(öGÍJ¡È?ª)dY'Ï¤¿>åy·‰o¤¿é)rq¿2*Ñ@wát¿GÙŸÁG¿å±ç‚¿ÈÕçôg?oa@İ!€¿ ‡Y*+®|¿é9v°ØF?ÛİÂ½œ7?ò‹ÊR?¨€~¤¦xY?A^À DZQ?pó Ö&­I?,‰råDVM?¬5€Áöª?˜Ò© ß?AõôõËÊĞ?yç›Óóœ?ÛÂ^íÒCŸ¿‰´Oãkh½¿@3øæ%¼¿Ø2ä:¬Ç¿øÏ.¿QŠ¶¿óîòrjÁ¿6û›¢¸·Ÿ?²eõÁÎHÅ¿ìËG[G¸¿6ÏİiRµ¿ë­ëš‹ ¿¼%	QS4ª?³‚í‡_Á?ÑD$»bg§¿–¼fã( ¿ÌÂEeV²¿y<9Q"jÄ¿gÀlU?È¿â¦L,Â±¿4ÚÒ
+bM­¿$jªŠ?¬?<(»¥)ÌÅ¿Èªß0
+$·¿ş0ÍšM²¿ñóà»½?ïéËBÜ©?2N¤Ë Ò?tUß°Ãå³?NÇƒ6"£¿Åß2Ş¶k¾¿ÕWEx?Å¿GÀAµ•Ï¿Û¯¿i_¸¿oópÓ'Å¿·‘|³wµ?V.ÈóÏ‡Ì¿¡«˜Hr¸¿u¤`~¿v¸¿p * Bl1.biasJ€>ê[}ar¿?SŸÈ?öÅU…üÂ?í
+›è}R?ôU\§*ş±?m9m 5„Ã?Œ\]®N"s?º´ĞaolÆ?ÖìgùÖÀ?Ô¦¡³.–?74ÑP?Ô3ºxsÇ?W'ÀŸÁmQ?>¼otÅDÁ?ËöN4­?7³@6IÊ?Ô¼Èùœi³?[¿Z×Ê¯F¿šÿhúÑ„?¢;d¡…c¿ët(ZË?Í¹]"Â?å\Ş§ÎÇ?‹ƒk2E¿‡?òïNI‘º?H,ÀÆääÌ?¸«*N¿§%ƒıGÀÒ?ØUÓã‚¿ñğrxx‘¿M§Ó½?:ş=”Kƒ?*– B	l2.weightJ€·ÉÃÂ9¿‘Éµ+l?!û}JC??‚?°_<)¿ix‹˜Ö4¿¸ÿntÀS¿)|e½4?ÂÛ%_¿¼"{”X¿üáè`6¿•)!Ş'ãĞ¾qXK%¯r6¿“?¹È†¿V<÷Ï!ST¿¢ÀjB¿ÇõM¥’¹b?²~ÏıötG¿¹Õğm7ˆ ?ÖÙ6á)%¿¼wÒh¾3¿ãB+Cš§_?;å2VØ5l?ctFS¿î¯›W«Ò2¿lioEÅU?ÜÍ†]l?P.ğWzãY?¾&ê<W¿)v=áå&?¢Á ¯ôØi?u|,Hôk?èĞML;x?aÇK»
+œ¿š™µ
+'HÊ?B@½±?šÌâ¥{qŠ¿
+C ²}j‰¿ÙúàT`ü±¿¸™\ç‰?D.q±p±»¿½(kÄ5´¿Ğ«B„Ÿu¿„Ó´ÖWŞg?„ÑÔ9zX¦¿º_åoB?ˆÂ^áóµ¿—EâÂ‹#¿¡£~|£4Ğ?ÏöÊ¯¦¿,Ê(6÷ƒ?XÇAË/¢¿Æ™%÷†)–¿šV‚DÉDÑ?İÖÜø‡Ì?(‹JRŠ§¿këe²„¿l»N<±?k•>¯øİÊ?ºÆ¹Òg8º?Büèuç¸¿íX,ÔAe¿²Gt¢áiÄ?–`x~
+Í?‘¼è¦¾8Ğ?	z²¦‚¿Â¹<üª%¼?ˆø|¾œ?#3"ÕrÅz¿z£­e¿×RµsO ¿ø[ñXÔ¼…?§ZEİÍí°¿`°çã6¢¿q„Ï—q“?<æa€H'l?ş­©‰kÉ‡¿
+0”–  .?'ï¦áY¢¿#»÷3y‘¿=Ì	éc*Â?ø–J¯Ë–¿¾B•Ó{z?$K7Õu¿ñğ©œnãq¿áŸ¼ÓœïÃ?€q™ÜÍwÁ?ùµ].‚¿°3ëø²zn¿Ò€«(Ù¨?€Ì˜DÜ7¿?óó$8³?çÓÈ¤¿Át­Q+S?P«zçwÄ?”nááÁ?0 ©˜n+È?t’Íjïâ¸?ôF	7±¿.!cBƒ¨?"'7:Ÿ?Ìç5µ»?u°üÛ°%»?`F¥J“k‚¿’ôMÒèÃ?ˆí¬DÂ?YÜıæı¦?ğ\¯ØÒÕ/¿¦ş.’36Á?üwÜâ$d%?J°!9MÃ?áé„Y5¦?å­2¼2L¿ÂJ¾Ÿò…¼?ç½h¿œ§îy**Å?¼º'ÔÉï°?¾À«•ÂX?¤&™|‹¿\Ö¥´ÕÃ?‰¡—ˆ ‘—?0T2WÕO¿œ ;æ"—¿g”5•ÃÀ ¿Lğ}N©ÉÇ?ğ¥(©ĞÆ¾ı×ÉoUà¡¿J_ûv,~h¿Æç@çIÛ´¿*g>7m˜¿êÊÚÂ¬ĞÏ?¶ÈÁ‘¶?xRÖ`8Œ¿Ş5+l¹¿‹iñ§0£²¿øã(W‘?çúŞ×MÀ¿*t}ßzA·¿Ãód= ¿Ş¼°‘±
+†?qY}ò¥¿İ‹•ùƒ&J? ¥æ§Ã¹¿îJ…
+¡¿æÄÃ[»¬É?Ã
+K7d£¿|2àˆ?3±µ¢¿n;[†˜¿ŸlõùØÒ?–¢»¼©Í?ùàB½ü~«¿ÒD{ À‡¿¸úDrÂxº?ªéWÅú\Ğ?'Ë¹O"¡¾?ºª¹}pü¶¿È].œ›Q¿Îíı{?€Ï?Ík@i‡Í?„„šŠJÕ?’şsuá>VX§Õ*?çup?9¿[—Å?DA¿«Î†6¿&?¢L2í¡k¿DhÈáŒø>Q`!+õ¾LÓÀ>¸¼!¿°6º	?áñA%¿VëjŠ2Ù¾fôYg~'ô>ÿr:¯D^ü>K³¼÷³ö*¿´ä÷é£Â­>hwqŸéí'?VåoM[U¿@¹E ‘g&?3ÂôÅ‘(?QâÏÁğB?0dv[ù>,æeî„?W¡{Z»ù ¿„†½k†!¿°ñH*k¿öNHA­F%¿%UşgÆğ>êw“Z?¿8'ásØï ?¸>i§Ô(¿²Ne(	?Ç“=¬˜†—¿FñG1½Á?ôë¼øº§?8 ˆïà…‡¿t‰9Âô*Š¿™mmÃQ°¿k¶ñò‹?‹w¡¬u¹¿ğ—Àô¢²¿LÄºÛŒ¿ÙM‹âzHh?3"ê1¨ ¿Yy‰µá‚F?²ƒ×|AT³¿Öh)W½Iš¿˜‡_ÖÔÏ?âÙåù¢¿0CĞ #‚?RNo„’¿éÃõ|ëJ’¿•yLæèÿÑ?¯FBâÑË?¬ú²fĞ¥¿³¾~ÚMƒ¿Ë™oW¯?#î¿‹Ì?*ı#Ä"¸?Øbr›™¶¿ø?>ñ?ÄP{Û2Ò?g­·G[ÃË?ù¹—â)Î?˜Ó!Ï¿À?lQpñQû±¿b+tZgJ¬?¼zbI‡¢?#4¦“}È?Ë0dlÀ?ÉmÊ¹¥e‡¿öL—Ì‹È?€+¥áÎ.Ç?51¦#½X°?T“cQbE:¿yS|hıÆ?2oğÔE`S?­nSYƒUÈ?Œ‚v6€»ª?fæ\_¯ ¿°ë÷JÁ? =Û Ëøm¿a—ÁYqË?G|¿l·?¹ñ¹êÁfœ?¼`%G
+‡¿¶1¹ğ¢¡É?Pš³:›?|xÜÜ‹Bb?sDµI­æ”¿¥lÆ8šŸ¿æKØµšÉ?ÕÀ¦šœêT¿%!‹‚Òë©¿µE9W!m¿jLYIÁ¸¿ªwƒŠäÂ?=÷åYx·¿×îƒàg±?Šd%Iõ¯?œùt¸ºãÅ?Áã²çÑ]Å?˜A%«(ˆ¿ƒk"ƒ!"Î?íWÿtÊ?3âğñwV°?×ílHø@¿ãGArÈ?ŠR8?×dz¦¤
+Ë?yƒo]»°?
+kò'{ª¥¿ş7ñû“ Æ?E£…qúp¿Ğ
+L³RÊ?tğ‰9	Û¸?,¼™e¯Í˜?œ3Ûÿï¿Fß@à!ôÍ?d±füè£?:µ~şTe¿Q®Ö5Kê¿r©C¸¦¿†‚-^ÜÑ?ÿ§ï¥Z¿^Ö$¼_±¿ô‡û›àw¿Ë3[–4+¿¿²Xş£AÅ?!Ìµü³¿-†1éç/²?Dù®{´¦?‰mšµÓÃĞ?Æø‘8éÃ?LE5óŞÄ„¿±·1	DĞ?ÚBÌÅÔÎ??ÒO±Á{¦?(™j«2.¿æ×ánŸÊ?c›®X2<?­öUøÛÎ?Îì,¡É~¯??ŸÒ°¢©¿!—nüVÅ?\#IºmVs¿tÊG¡èÏ?Şyk¥ÉAº?ù•{ds¨—?c#F-•¿6ä‰Â¼òĞ?«¹Póë?¡üb!¨‘?QïGn
+¼r¿í&µ@¦¿âÙÁ™€}Ñ?êÊùà±&X¿ÚßŞw©¿1ñpªÛEd?ÆixÀ¿ëÑ+¿[!Ä?uSáf¿«µ¿dª£UÌ³?
+H[Ã?¥?Úß â˜Ğ? Ã›Ã?’sGàÖ‡¿Çc”y€Ì?(ä²cşdÇ?>7€0¶h§?Øøëê5J¿=²¹VuÉ?Ñ´hå÷¦8?Ê[û>×Á?Ğ¹Æ·¬?Hz€|f©¿ªùF<¸@Ä?^ö¤Bÿfq¿˜ìh“ñÑ?/ŞLáÑ½?Ğ¤ZP ˜?bÆD¬‰¿QxpÁ+‰Î?üÑĞBu­?†(}’f_?¨_FvïÙ‘¿Kª`Àk¤¿¬á~°Ñ?-¯äo:ƒ¿,ğÚVğç²¿ä´ËnoG¿ü1qŸ»¿¸Û»ò_±ì>Õoy¢?€‹úZ•¿êQĞˆê>vñõ¤]!!?6_‹'a¿vXóC.?ÆÅ–]Üÿ¿Lj–æ?$?â>&Cu^ú>ôQÄ¿$äà˜²¿dïûdÀCÕ>‡êe!¿ØÙdÌî ¿2ÀgğÑ6?ˆ;(“Àt-¿…{Ïû@´%?dvì•é$¿RYs:¹°?Â”øqÇù?ùqaÏ7ê¿ú¼×:1'¿ÂnÂ7æ…1?ö;£Xd!?Åg¢âÅ"?Cñ5ß«û¾2š]Ú8y.?bœJ>ıà¾V,l-ï‚$?)ß¢ëÖå3?`ğbqe„/?p *oBl2.biasJ`ÕzmO’n?6VÃúÿÎ?#XÆâKµ?8¿!Ö6šÁ?Ç‚P%ì™Ğ?ÖíŸÇeÿ6¿@oI¶ÕÊ?D\)c}»?¼æí¿ÜÆ?r5!ñäÀ?Ğœ«âÄÂ?©CŞ/!¿*sB	l3.weightJ`×¾¡Øx„¿ÏÖğÊÙ¿VğàÒcÕ¿£J ¶£Ù?¢èşıÁâà¿x}ë%Ñ°(?H¡ÀhØ¿A&¾tõŞ?
+«jRnä?à›Á.`;ã?Nû$…é&â?y;ÿj¨A¿*Bl3.biasJšZÄQ·ñ±?*~BcenterJp ìkzƒ`?Ş|x„0ˆ?€÷½h
+ Œ¿ 2”]/a? ¦i$v?@ Q¥ Û€? i'×Ù‰?@	ø	Kœ?ı#0ØY–?ÀnŸiÏ3 ?        à«a¼úŸ?GèYi¸µ?/õ,£­ëÈ?*}BscaleJpÀ_]/xm?–öÙ–Ü‚?¤Áõ•ñò?c_	[?ğa9¹c ?x2˜ü«%©?ÌOVä{„µ?(fZ)Å?,HO”Ë?ŒÚÊÀóÌ?d:=æò½Ç?8eUßZ¾?ÛÔpç? B¬l~ú?*#Bscalar_tensor_defaultJ        *Bint64_0_castJ    *%Bscalar_tensor_default_1J       À*%Bscalar_tensor_default_2J       @*Bval_6JÿÿÿÿÿÿÿÿZÅ
 features
 
 batch

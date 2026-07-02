@@ -23,10 +23,10 @@ public class V6StrategyEngine implements TradingStrategyEngine<V6StrategyOverrid
     private static final double FULL_POSITION_RATIO = 1.0;
     private static final double POSITION_EPSILON = 1e-12;
 
-    private final V6DeepLearningProfile deepLearningProfile;
+    private final V6DeepLearningModel deepLearningModel;
 
-    public V6StrategyEngine(V6DeepLearningProfile deepLearningProfile) {
-        this.deepLearningProfile = deepLearningProfile == null ? V6DeepLearningProfile.disabled() : deepLearningProfile;
+    public V6StrategyEngine(V6DeepLearningModel deepLearningModel) {
+        this.deepLearningModel = deepLearningModel == null ? V6DeepLearningModel.disabled() : deepLearningModel;
     }
 
     @Override
@@ -66,8 +66,8 @@ public class V6StrategyEngine implements TradingStrategyEngine<V6StrategyOverrid
                 ? Math.abs(trend2) / ruleScale
                 : Double.NaN;
 
-        V6DeepLearningProfile.V6DeepLearningScore dlScore =
-                deepLearningProfile.score(deepLearningFeatureRow(candles, close, trend, ruleScale, signalIndex), trend2);
+        V6DeepLearningScore dlScore =
+                deepLearningModel.score(deepLearningFeatureRow(candles, close, trend, ruleScale, signalIndex), trend2);
         double scoreModifier = Double.isFinite(dlScore.scoreModifier()) ? dlScore.scoreModifier() : 1.0;
         double effectiveScore = Double.isFinite(ruleScore) ? ruleScore * scoreModifier : Double.NaN;
 

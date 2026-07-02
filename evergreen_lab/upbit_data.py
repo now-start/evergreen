@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# 예전 evergreen_research 패키지에서 포팅: Upbit 캔들 fetch + CSV 캐시.
+# Upbit 캔들 fetch + CSV 캐시 (인과적 데이터 로딩 — 미래 정보 노출 없음).
 import csv
 import time
 from datetime import datetime, timezone
