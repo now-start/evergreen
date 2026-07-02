@@ -8,13 +8,23 @@
   },
   "provenance": {
     "source": "synthetic",
-    "generator": "build_synthetic_bars(400)",
     "bars": 400,
     "numpy": "2.5.0",
     "python": "3.14.2",
     "closeSha256_16": "31271ec69c71d0e7",
     "trainSeed": 5005,
-    "ruleScale": 0.43579090448064045
+    "ruleScale": 0.43579090448064045,
+    "dlHyperparams": {
+      "hidden1": 32,
+      "hidden2": 12,
+      "lr": 0.005,
+      "weightDecay": 0.01,
+      "dropout": 0.03,
+      "valFraction": 0.15,
+      "patience": 15,
+      "maxEpochs": 130,
+      "minTrainRows": 200
+    }
   },
   "candles": [
     {
@@ -3228,8 +3238,8 @@
       "currentOpen": 0.0,
       "ruleScore": 0.0,
       "effectiveScore": 0.0,
-      "dlProbability": 0.5515727171136341,
-      "dlScoreModifier": 0.9448478354086817,
+      "dlProbability": 0.49174305651956807,
+      "dlScoreModifier": 0.9407761526871605,
       "trend2": 0.0
     },
     {
@@ -3241,8 +3251,8 @@
       "currentOpen": 0.0,
       "ruleScore": 0.0,
       "effectiveScore": 0.0,
-      "dlProbability": 0.6848127971325945,
-      "dlScoreModifier": 0.9573724029304638,
+      "dlProbability": 0.5554660192455135,
+      "dlScoreModifier": 0.9452138058090782,
       "trend2": 0.0
     },
     {
@@ -3254,8 +3264,8 @@
       "currentOpen": 0.0,
       "ruleScore": 0.0,
       "effectiveScore": 0.0,
-      "dlProbability": 0.49806066285127265,
-      "dlScoreModifier": 0.9401822976919803,
+      "dlProbability": 0.6904893121241173,
+      "dlScoreModifier": 0.957905995339667,
       "trend2": 0.0
     },
     {
@@ -3267,8 +3277,8 @@
       "currentOpen": 0.0,
       "ruleScore": 0.0,
       "effectiveScore": 0.0,
-      "dlProbability": 0.6809710850864115,
-      "dlScoreModifier": 0.9570112819981227,
+      "dlProbability": 0.5666366232491421,
+      "dlScoreModifier": 0.9462638425854192,
       "trend2": 0.0
     },
     {
@@ -3280,8 +3290,8 @@
       "currentOpen": 0.0,
       "ruleScore": 0.0,
       "effectiveScore": 0.0,
-      "dlProbability": 0.6163103986858014,
-      "dlScoreModifier": 0.9509331774764653,
+      "dlProbability": 0.7130239235820249,
+      "dlScoreModifier": 0.9600242488167103,
       "trend2": 0.0
     },
     {
@@ -3292,9 +3302,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.019047619213939396,
-      "effectiveScore": 0.019372947171606068,
-      "dlProbability": 0.6707971762836336,
-      "dlScoreModifier": 1.0170797176283632,
+      "effectiveScore": 0.019190608026729977,
+      "dlProbability": 0.5750691260595653,
+      "dlScoreModifier": 1.0075069126059566,
       "trend2": 0.008300779205445474
     },
     {
@@ -3305,9 +3315,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.02578337245694436,
-      "effectiveScore": 0.02619547862132839,
-      "dlProbability": 0.6598340810815969,
-      "dlScoreModifier": 1.0159834081081598,
+      "effectiveScore": 0.026307107976485358,
+      "dlProbability": 0.7031291757568112,
+      "dlScoreModifier": 1.020312917575681,
       "trend2": 0.011236159203573015
     },
     {
@@ -3318,9 +3328,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.021698824379950476,
-      "effectiveScore": 0.02212204056855055,
-      "dlProbability": 0.6950410682115677,
-      "dlScoreModifier": 1.0195041068211568,
+      "effectiveScore": 0.021994827931228512,
+      "dlProbability": 0.63641455688795,
+      "dlScoreModifier": 1.013641455688795,
       "trend2": 0.00945615030270519
     },
     {
@@ -3331,9 +3341,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.036878761030087456,
-      "effectiveScore": 0.03776983286288658,
-      "dlProbability": 0.7416219547267728,
-      "dlScoreModifier": 1.0241621954726772,
+      "effectiveScore": 0.03812451552592803,
+      "dlProbability": 0.8377972743781249,
+      "dlScoreModifier": 1.0337797274378124,
       "trend2": 0.01607142862542721
     },
     {
@@ -3344,9 +3354,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 0.0,
       "ruleScore": 0.10538286813426428,
-      "effectiveScore": 0.10889112520562923,
-      "dlProbability": 0.832905825536575,
-      "dlScoreModifier": 1.0332905825536576,
+      "effectiveScore": 0.10822090076276998,
+      "dlProbability": 0.7693068312479278,
+      "dlScoreModifier": 1.0269306831247929,
       "trend2": 0.04592489542099509
     },
     {
@@ -3357,9 +3367,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.19469233005103478,
-      "effectiveScore": 0.2027440479589698,
-      "dlProbability": 0.9135611251775765,
-      "dlScoreModifier": 1.0413561125177577,
+      "effectiveScore": 0.20103544531494563,
+      "dlProbability": 0.8258020109086023,
+      "dlScoreModifier": 1.0325802010908602,
       "trend2": 0.08484514660838383
     },
     {
@@ -3370,9 +3380,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.28912732773019206,
-      "effectiveScore": 0.3015312773831467,
-      "dlProbability": 0.9290133952515819,
-      "dlScoreModifier": 1.0429013395251583,
+      "effectiveScore": 0.2983187403323496,
+      "dlProbability": 0.8179018972130767,
+      "dlScoreModifier": 1.0317901897213078,
       "trend2": 0.12599905966161096
     },
     {
@@ -3383,9 +3393,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.30764532780743614,
-      "effectiveScore": 0.32106447811946176,
-      "dlProbability": 0.9361889844927231,
-      "dlScoreModifier": 1.0436188984492722,
+      "effectiveScore": 0.3176362679126978,
+      "dlProbability": 0.8247551385378173,
+      "dlScoreModifier": 1.0324755138537818,
       "trend2": 0.13406903566444572
     },
     {
@@ -3396,9 +3406,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.31145197555476584,
-      "effectiveScore": 0.32489030948232306,
-      "dlProbability": 0.931473709666492,
-      "dlScoreModifier": 1.0431473709666492,
+      "effectiveScore": 0.3207763254987235,
+      "dlProbability": 0.7993832332368053,
+      "dlScoreModifier": 1.0299383233236805,
       "trend2": 0.13572793812929373
     },
     {
@@ -3409,9 +3419,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.3190864281167551,
-      "effectiveScore": 0.3330491184967065,
-      "dlProbability": 0.9375833363505643,
-      "dlScoreModifier": 1.0437583336350564,
+      "effectiveScore": 0.3290048931955225,
+      "dlProbability": 0.8108394530380406,
+      "dlScoreModifier": 1.031083945303804,
       "trend2": 0.13905496311649757
     },
     {
@@ -3422,9 +3432,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.29505859459469197,
-      "effectiveScore": 0.30708421103634576,
-      "dlProbability": 0.9075670616601706,
-      "dlScoreModifier": 1.040756706166017,
+      "effectiveScore": 0.30274815516864767,
+      "dlProbability": 0.7606113061888088,
+      "dlScoreModifier": 1.026061130618881,
       "trend2": 0.12858385181320742
     },
     {
@@ -3435,9 +3445,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.31340924351906474,
-      "effectiveScore": 0.32662411790442897,
-      "dlProbability": 0.921649158684127,
-      "dlScoreModifier": 1.0421649158684128,
+      "effectiveScore": 0.3237051298168315,
+      "dlProbability": 0.828512528289247,
+      "dlScoreModifier": 1.0328512528289246,
       "trend2": 0.13658089770576654
     },
     {
@@ -3448,9 +3458,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.3278480112445559,
-      "effectiveScore": 0.33685094323746473,
-      "dlProbability": 0.7746068813634829,
-      "dlScoreModifier": 1.0274606881363484,
+      "effectiveScore": 0.3385179948832572,
+      "dlProbability": 0.8254551887686178,
+      "dlScoreModifier": 1.0325455188768617,
       "trend2": 0.1428731813524442
     },
     {
@@ -3461,9 +3471,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.2901948806219015,
-      "effectiveScore": 0.302202581197735,
-      "dlProbability": 0.9137805791094726,
-      "dlScoreModifier": 1.0413780579109473,
+      "effectiveScore": 0.2979214680097304,
+      "dlProbability": 0.7662551238419649,
+      "dlScoreModifier": 1.0266255123841965,
       "trend2": 0.12646428950186994
     },
     {
@@ -3474,9 +3484,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.43213764438225194,
-      "effectiveScore": 0.4497915515146657,
-      "dlProbability": 0.908525092916871,
-      "dlScoreModifier": 1.0408525092916872,
+      "effectiveScore": 0.44492284013354905,
+      "dlProbability": 0.7958593382803714,
+      "dlScoreModifier": 1.029585933828037,
       "trend2": 0.18832165490547492
     },
     {
@@ -3487,9 +3497,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.40848158265507467,
-      "effectiveScore": 0.42471155060590376,
-      "dlProbability": 0.8973243504722158,
-      "dlScoreModifier": 1.0397324350472217,
+      "effectiveScore": 0.41965266554843794,
+      "dlProbability": 0.7734782513510832,
+      "dlScoreModifier": 1.0273478251351083,
       "trend2": 0.17801255836893848
     },
     {
@@ -3500,9 +3510,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.4384376145049717,
-      "effectiveScore": 0.4567238220714438,
-      "dlProbability": 0.917076613901355,
-      "dlScoreModifier": 1.0417076613901355,
+      "effectiveScore": 0.45323579569335115,
+      "dlProbability": 0.8375207942659685,
+      "dlScoreModifier": 1.0337520794265969,
       "trend2": 0.19106712458345598
     },
     {
@@ -3513,9 +3523,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.44067901457753017,
-      "effectiveScore": 0.45922605835322045,
-      "dlProbability": 0.9208742227825623,
-      "dlScoreModifier": 1.0420874222782561,
+      "effectiveScore": 0.45502771658504226,
+      "dlProbability": 0.8256043862507925,
+      "dlScoreModifier": 1.0325604386250793,
       "trend2": 0.1920439063483792
     },
     {
@@ -3526,9 +3536,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5020660014735829,
-      "effectiveScore": 0.5245881960880461,
-      "dlProbability": 0.948590315782381,
-      "dlScoreModifier": 1.044859031578238,
+      "effectiveScore": 0.5214535324355782,
+      "dlProbability": 0.8861550255363281,
+      "dlScoreModifier": 1.0386155025536328,
       "trend2": 0.21879579689115125
     },
     {
@@ -3539,9 +3549,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.4835148804808059,
-      "effectiveScore": 0.5050676298078696,
-      "dlProbability": 0.9457515207315172,
-      "dlScoreModifier": 1.0445751520731517,
+      "effectiveScore": 0.4992112246748738,
+      "dlProbability": 0.8246300130093098,
+      "dlScoreModifier": 1.032463001300931,
       "trend2": 0.21071138709457915
     },
     {
@@ -3552,9 +3562,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8196108375357007,
-      "effectiveScore": 0.8565469310602561,
-      "dlProbability": 0.9506540401004228,
-      "dlScoreModifier": 1.0450654040100422,
+      "effectiveScore": 0.8565389118615291,
+      "dlProbability": 0.9505561985595378,
+      "dlScoreModifier": 1.0450556198559537,
       "trend2": 0.3571789482118183
     },
     {
@@ -3565,9 +3575,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8169840033559654,
-      "effectiveScore": 0.8477882658174397,
-      "dlProbability": 0.8770485387099141,
-      "dlScoreModifier": 1.0377048538709914,
+      "effectiveScore": 0.8484841349557473,
+      "dlProbability": 0.8855660755949589,
+      "dlScoreModifier": 1.0385566075594959,
       "trend2": 0.35603419776871076
     },
     {
@@ -3578,9 +3588,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9064346091690725,
-      "effectiveScore": 0.9488025889614312,
-      "dlProbability": 0.9674135272835324,
-      "dlScoreModifier": 1.0467413527283533,
+      "effectiveScore": 0.9466481140608333,
+      "dlProbability": 0.9436448529764814,
+      "dlScoreModifier": 1.0443644852976481,
       "trend2": 0.3950159581823459
     },
     {
@@ -3591,9 +3601,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.986225109446162,
-      "effectiveScore": 1.0329601507224957,
-      "dlProbability": 0.9738780307731048,
-      "dlScoreModifier": 1.0473878030773105,
+      "effectiveScore": 1.0303630063774836,
+      "dlProbability": 0.9475438366815468,
+      "dlScoreModifier": 1.0447543836681548,
       "trend2": 0.4297879324670616
     },
     {
@@ -3604,9 +3614,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.031644039935581,
-      "effectiveScore": 1.081373608094818,
-      "dlProbability": 0.9820419275852365,
-      "dlScoreModifier": 1.0482041927585237,
+      "effectiveScore": 1.0761187745531757,
+      "dlProbability": 0.9311054287714572,
+      "dlScoreModifier": 1.0431105428771457,
       "trend2": 0.4495810892655888
     },
     {
@@ -3617,9 +3627,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9875772144528469,
-      "effectiveScore": 1.0341490942361768,
-      "dlProbability": 0.9715770990031647,
-      "dlScoreModifier": 1.0471577099003164,
+      "effectiveScore": 1.0263375487267072,
+      "dlProbability": 0.8924790255041981,
+      "dlScoreModifier": 1.0392479025504198,
       "trend2": 0.43037716753087757
     },
     {
@@ -3630,9 +3640,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9128053397276839,
-      "effectiveScore": 0.9535938639748992,
-      "dlProbability": 0.9468480022190017,
-      "dlScoreModifier": 1.0446848002219002,
+      "effectiveScore": 0.9453092519394778,
+      "dlProbability": 0.856088103313361,
+      "dlScoreModifier": 1.0356088103313361,
       "trend2": 0.39779226461468564
     },
     {
@@ -3643,9 +3653,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9082930236009941,
-      "effectiveScore": 0.9494224562580974,
-      "dlProbability": 0.9528211886296634,
-      "dlScoreModifier": 1.0452821188629664,
+      "effectiveScore": 0.9429484576704947,
+      "dlProbability": 0.8815446465955094,
+      "dlScoreModifier": 1.0381544646595509,
       "trend2": 0.3958258382885329
     },
     {
@@ -3656,9 +3666,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.033532919690723,
-      "effectiveScore": 1.078569203422215,
-      "dlProbability": 0.93575083941176,
-      "dlScoreModifier": 1.043575083941176,
+      "effectiveScore": 1.0769521733037013,
+      "dlProbability": 0.9201051827741592,
+      "dlScoreModifier": 1.042010518277416,
       "trend2": 0.4504042458825373
     },
     {
@@ -3669,9 +3679,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0807799602458423,
-      "effectiveScore": 1.1307393754822563,
-      "dlProbability": 0.9622533454918055,
-      "dlScoreModifier": 1.0462253345491805,
+      "effectiveScore": 1.1275376168027866,
+      "dlProbability": 0.9326288261887135,
+      "dlScoreModifier": 1.0432628826188712,
       "trend2": 0.4709940764200863
     },
     {
@@ -3682,9 +3692,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1504216776931466,
-      "effectiveScore": 1.2037902366746427,
-      "dlProbability": 0.9639043232261767,
-      "dlScoreModifier": 1.0463904323226176,
+      "effectiveScore": 1.2029939554382751,
+      "dlProbability": 0.9569826765655841,
+      "dlScoreModifier": 1.0456982676565585,
       "trend2": 0.5013433034560322
     },
     {
@@ -3695,9 +3705,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.190792947768973,
-      "effectiveScore": 1.2477414755598886,
-      "dlProbability": 0.9782403850947602,
-      "dlScoreModifier": 1.047824038509476,
+      "effectiveScore": 1.243113612254247,
+      "dlProbability": 0.9393766740330464,
+      "dlScoreModifier": 1.0439376674033047,
       "trend2": 0.5189367357574087
     },
     {
@@ -3708,9 +3718,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1157712946408231,
-      "effectiveScore": 1.166234691393875,
-      "dlProbability": 0.9522736603409078,
-      "dlScoreModifier": 1.0452273660340907,
+      "effectiveScore": 1.1586684726476033,
+      "dlProbability": 0.8844621044905895,
+      "dlScoreModifier": 1.038446210449059,
       "trend2": 0.4862429816850595
     },
     {
@@ -3721,9 +3731,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0401407855887093,
-      "effectiveScore": 1.0835227692232963,
-      "dlProbability": 0.9170779978600031,
-      "dlScoreModifier": 1.0417077997860003,
+      "effectiveScore": 1.0769852754904221,
+      "dlProbability": 0.8542259895217865,
+      "dlScoreModifier": 1.0354225989521786,
       "trend2": 0.45328389373890754
     },
     {
@@ -3734,9 +3744,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9558522532083198,
-      "effectiveScore": 0.9887292254250754,
-      "dlProbability": 0.8439545401122809,
-      "dlScoreModifier": 1.0343954540112281,
+      "effectiveScore": 0.9867466023647212,
+      "dlProbability": 0.8232125995696982,
+      "dlScoreModifier": 1.0323212599569698,
       "trend2": 0.4165517179755118
     },
     {
@@ -3747,9 +3757,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9859162988716753,
-      "effectiveScore": 1.0235748191387124,
-      "dlProbability": 0.8819646790517122,
-      "dlScoreModifier": 1.0381964679051712,
+      "effectiveScore": 1.0255019892018713,
+      "dlProbability": 0.9015116737140838,
+      "dlScoreModifier": 1.0401511673714083,
       "trend2": 0.4296533556274928
     },
     {
@@ -3760,9 +3770,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9373478678015705,
-      "effectiveScore": 0.9732414793009633,
-      "dlProbability": 0.8829273286082854,
-      "dlScoreModifier": 1.0382927328608285,
+      "effectiveScore": 0.969110735020542,
+      "dlProbability": 0.8388589051092338,
+      "dlScoreModifier": 1.0338858905109234,
       "trend2": 0.4084876751222462
     },
     {
@@ -3773,9 +3783,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9750802918414534,
-      "effectiveScore": 1.014727454836352,
-      "dlProbability": 0.9066040850853869,
-      "dlScoreModifier": 1.0406604085085387,
+      "effectiveScore": 1.0147944942896374,
+      "dlProbability": 0.9072916126033389,
+      "dlScoreModifier": 1.040729161260334,
       "trend2": 0.4249311223228338
     },
     {
@@ -3786,9 +3796,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8952048527259855,
-      "effectiveScore": 0.9265656231035367,
-      "dlProbability": 0.8503194858925835,
-      "dlScoreModifier": 1.0350319485892583,
+      "effectiveScore": 0.9232038503045261,
+      "dlProbability": 0.812766374012395,
+      "dlScoreModifier": 1.0312766374012394,
       "trend2": 0.3901221324649157
     },
     {
@@ -3799,9 +3809,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8785378979700692,
-      "effectiveScore": 0.9108559293216997,
-      "dlProbability": 0.8678615507231253,
-      "dlScoreModifier": 1.0367861550723125,
+      "effectiveScore": 0.9077489976183635,
+      "dlProbability": 0.8324967507467671,
+      "dlScoreModifier": 1.0332496750746767,
       "trend2": 0.38285882517689707
     },
     {
@@ -3812,9 +3822,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8891535720642817,
-      "effectiveScore": 0.9088394020348193,
-      "dlProbability": 0.7213996613074878,
-      "dlScoreModifier": 1.0221399661307489,
+      "effectiveScore": 0.9231741634433556,
+      "dlProbability": 0.8826177214819132,
+      "dlScoreModifier": 1.0382617721481913,
       "trend2": 0.3874850393920856
     },
     {
@@ -3825,9 +3835,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.7922860472023701,
-      "effectiveScore": 0.8133935230831134,
-      "dlProbability": 0.7664123135233257,
-      "dlScoreModifier": 1.0266412313523325,
+      "effectiveScore": 0.8137806814215622,
+      "dlProbability": 0.7712989114864702,
+      "dlScoreModifier": 1.027129891148647,
       "trend2": 0.3452710531177122
     },
     {
@@ -3838,9 +3848,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8144660054177527,
-      "effectiveScore": 0.7702559345416984,
-      "dlProbability": 0.43916011830402374,
-      "dlScoreModifier": 0.9457189488794217,
+      "effectiveScore": 0.8436385323767549,
+      "dlProbability": 0.8581797983580551,
+      "dlScoreModifier": 1.0358179798358056,
       "trend2": 0.35493687716973665
     },
     {
@@ -3851,9 +3861,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.7272292697623971,
-      "effectiveScore": 0.7411738517277661,
-      "dlProbability": 0.6917494598357556,
-      "dlScoreModifier": 1.0191749459835755,
+      "effectiveScore": 0.7445834125828108,
+      "dlProbability": 0.7386337231184854,
+      "dlScoreModifier": 1.0238633723118484,
       "trend2": 0.3169199012345507
     },
     {
@@ -3864,9 +3874,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.7324818247227634,
-      "effectiveScore": 0.7510915941191515,
-      "dlProbability": 0.7540645892945091,
-      "dlScoreModifier": 1.025406458929451,
+      "effectiveScore": 0.7550684661719173,
+      "dlProbability": 0.8083577050898516,
+      "dlScoreModifier": 1.0308357705089852,
       "trend2": 0.319208916911563
     },
     {
@@ -3877,9 +3887,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.71620149935719,
-      "effectiveScore": 0.7222863836878138,
-      "dlProbability": 0.5849605081263454,
-      "dlScoreModifier": 1.0084960508126346,
+      "effectiveScore": 0.7373432996289847,
+      "dlProbability": 0.7951934656764894,
+      "dlScoreModifier": 1.0295193465676489,
       "trend2": 0.3121140991952607
     },
     {
@@ -3890,9 +3900,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.62233514321668,
-      "effectiveScore": 0.6296208398840732,
-      "dlProbability": 0.6170703076438121,
-      "dlScoreModifier": 1.0117070307643812,
+      "effectiveScore": 0.6351028429377433,
+      "dlProbability": 0.7051579419903964,
+      "dlScoreModifier": 1.0205157941990397,
       "trend2": 0.27120799495248593
     },
     {
@@ -3903,9 +3913,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.6048750076643025,
-      "effectiveScore": 0.6115096036046417,
-      "dlProbability": 0.6096854036994909,
-      "dlScoreModifier": 1.010968540369949,
+      "effectiveScore": 0.6202859611463881,
+      "dlProbability": 0.7547791409268884,
+      "dlScoreModifier": 1.0254779140926888,
       "trend2": 0.2635990266877607
     },
     {
@@ -3916,9 +3926,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.594932550980654,
-      "effectiveScore": 0.6040877654464557,
-      "dlProbability": 0.653886595223454,
-      "dlScoreModifier": 1.0153886595223454,
+      "effectiveScore": 0.6089868914430742,
+      "dlProbability": 0.7362341821649165,
+      "dlScoreModifier": 1.0236234182164916,
       "trend2": 0.25926619449683397
     },
     {
@@ -3929,9 +3939,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5177221686242447,
-      "effectiveScore": 0.48936249362838896,
-      "dlProbability": 0.44444454908299613,
-      "dlScoreModifier": 0.9452222123861983,
+      "effectiveScore": 0.5244180257238704,
+      "dlProbability": 0.6293330188548574,
+      "dlScoreModifier": 1.0129333018854858,
       "trend2": 0.22561861213443826
     },
     {
@@ -3942,9 +3952,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5465960474127884,
-      "effectiveScore": 0.5488491223572263,
-      "dlProbability": 0.5412201104472385,
-      "dlScoreModifier": 1.0041220110447238,
+      "effectiveScore": 0.5639578355294448,
+      "dlProbability": 0.817634717609746,
+      "dlScoreModifier": 1.0317634717609745,
       "trend2": 0.2382015858875621
     },
     {
@@ -3955,9 +3965,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5959961421922215,
-      "effectiveScore": 0.6083137758387716,
-      "dlProbability": 0.706673043238884,
-      "dlScoreModifier": 1.0206673043238883,
+      "effectiveScore": 0.6164420057947455,
+      "dlProbability": 0.8430536232553302,
+      "dlScoreModifier": 1.034305362325533,
       "trend2": 0.2597296978729206
     },
     {
@@ -3968,9 +3978,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.588952333260049,
-      "effectiveScore": 0.5984113587220687,
-      "dlProbability": 0.660607657493448,
-      "dlScoreModifier": 1.0160607657493448,
+      "effectiveScore": 0.606054291316619,
+      "dlProbability": 0.7903793242808792,
+      "dlScoreModifier": 1.0290379324280878,
       "trend2": 0.25666007000738034
     },
     {
@@ -3981,9 +3991,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5642742038719325,
-      "effectiveScore": 0.5767150103574726,
-      "dlProbability": 0.7204744856343581,
-      "dlScoreModifier": 1.0220474485634359,
+      "effectiveScore": 0.5770418549261097,
+      "dlProbability": 0.7262667860158818,
+      "dlScoreModifier": 1.022626678601588,
       "trend2": 0.24590556568044275
     },
     {
@@ -3994,9 +4004,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.6014413883834522,
-      "effectiveScore": 0.614762010655351,
-      "dlProbability": 0.7214783107577927,
-      "dlScoreModifier": 1.0221478310757792,
+      "effectiveScore": 0.6224242413851058,
+      "dlProbability": 0.8488761067483406,
+      "dlScoreModifier": 1.0348876106748341,
       "trend2": 0.2621026866357168
     },
     {
@@ -4007,9 +4017,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.42240620504302645,
-      "effectiveScore": 0.42269595041335667,
-      "dlProbability": 0.5068594013741052,
-      "dlScoreModifier": 1.0006859401374104,
+      "effectiveScore": 0.42472274491096235,
+      "dlProbability": 0.5548415207986813,
+      "dlScoreModifier": 1.005484152079868,
       "trend2": 0.18408078215393536
     },
     {
@@ -4020,9 +4030,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.41082869443264947,
-      "effectiveScore": 0.3903328068734354,
-      "dlProbability": 0.3924375898308056,
-      "dlScoreModifier": 0.9501108665559043,
+      "effectiveScore": 0.4173594903990705,
+      "dlProbability": 0.6589664026618206,
+      "dlScoreModifier": 1.015896640266182,
       "trend2": 0.17903540833340498
     },
     {
@@ -4033,9 +4043,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.29673545447286503,
-      "effectiveScore": 0.28311545018234413,
-      "dlProbability": 0.3499945122770844,
-      "dlScoreModifier": 0.954100515845954,
+      "effectiveScore": 0.297142391821436,
+      "dlProbability": 0.5137138094702524,
+      "dlScoreModifier": 1.0013713809470253,
       "trend2": 0.12931461209620376
     },
     {
@@ -4046,9 +4056,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.3076696607734954,
-      "effectiveScore": 0.2974789995807087,
-      "dlProbability": 0.2140647526009262,
-      "dlScoreModifier": 0.9668779132555129,
+      "effectiveScore": 0.3130987614658444,
+      "dlProbability": 0.6764587603048025,
+      "dlScoreModifier": 1.0176458760304803,
       "trend2": 0.1340796397497334
     },
     {
@@ -4059,9 +4069,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.2032193553527619,
-      "effectiveScore": 0.19448276909032358,
-      "dlProbability": 0.319052299280187,
-      "dlScoreModifier": 0.9570090838676624,
+      "effectiveScore": 0.19117920073003036,
+      "dlProbability": 0.4919902765581519,
+      "dlScoreModifier": 0.9407529140035337,
       "trend2": 0.08856114667715279
     },
     {
@@ -4072,9 +4082,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.14807919425667138,
-      "effectiveScore": 0.14285184065595502,
-      "dlProbability": 0.23724539670303468,
-      "dlScoreModifier": 0.9646989327099148,
+      "effectiveScore": 0.1482114114634321,
+      "dlProbability": 0.5089288172740568,
+      "dlScoreModifier": 1.0008928817274056,
       "trend2": 0.06453156599987928
     },
     {
@@ -4085,9 +4095,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.00367527809229714,
-      "effectiveScore": 0.003787301687144562,
-      "dlProbability": 0.19519695643655632,
-      "dlScoreModifier": 1.0304803043563444,
+      "effectiveScore": 0.003727712033000022,
+      "dlProbability": 0.3573334061093871,
+      "dlScoreModifier": 1.0142666593890612,
       "trend2": -0.0016016527640600534
     },
     {
@@ -4098,9 +4108,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.1426292273765716,
-      "effectiveScore": 0.14874438362506223,
-      "dlProbability": 0.07125503930934685,
-      "dlScoreModifier": 1.0428744960690652,
+      "effectiveScore": 0.14501516092155825,
+      "dlProbability": 0.33271776837946015,
+      "dlScoreModifier": 1.016728223162054,
       "trend2": -0.06215652000381107
     },
     {
@@ -4111,9 +4121,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.22622210849622235,
-      "effectiveScore": 0.2349618519729072,
-      "dlProbability": 0.11366536919043739,
-      "dlScoreModifier": 1.0386334630809562,
+      "effectiveScore": 0.22932436808853338,
+      "dlProbability": 0.3628666484928094,
+      "dlScoreModifier": 1.013713335150719,
       "trend2": -0.09858553727508632
     },
     {
@@ -4124,9 +4134,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.2309721165745507,
-      "effectiveScore": 0.2410980756589654,
-      "dlProbability": 0.06159387398840465,
-      "dlScoreModifier": 1.0438406126011595,
+      "effectiveScore": 0.23256354736837492,
+      "dlProbability": 0.43109857512560046,
+      "dlScoreModifier": 1.00689014248744,
       "trend2": -0.10065554759183137
     },
     {
@@ -4137,9 +4147,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 1.0,
       "ruleScore": 0.38361415134694604,
-      "effectiveScore": 0.3999983742011142,
-      "dlProbability": 0.07289837205848813,
-      "dlScoreModifier": 1.042710162794151,
+      "effectiveScore": 0.392753076397446,
+      "dlProbability": 0.26176778102655146,
+      "dlScoreModifier": 1.0238232218973449,
       "trend2": -0.1671755579870589
     },
     {
@@ -4150,9 +4160,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.3681778589950968,
-      "effectiveScore": 0.3826390185773312,
-      "dlProbability": 0.10722354077171815,
-      "dlScoreModifier": 1.0392776459228281,
+      "effectiveScore": 0.3723757933232955,
+      "dlProbability": 0.38598080450419936,
+      "dlScoreModifier": 1.01140191954958,
       "trend2": -0.16044856218121895
     },
     {
@@ -4163,9 +4173,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.4375844677546812,
-      "effectiveScore": 0.45655711992248427,
-      "dlProbability": 0.06642308934878545,
-      "dlScoreModifier": 1.0433576910651214,
+      "effectiveScore": 0.4448642874629991,
+      "dlProbability": 0.3336362406629316,
+      "dlScoreModifier": 1.016636375933707,
       "trend2": -0.19069533098949215
     },
     {
@@ -4176,9 +4186,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5010999277745068,
-      "effectiveScore": 0.5215536555312733,
-      "dlProbability": 0.09182337447930028,
-      "dlScoreModifier": 1.04081766255207,
+      "effectiveScore": 0.509175325188788,
+      "dlProbability": 0.33884656599042484,
+      "dlScoreModifier": 1.0161153434009575,
       "trend2": -0.21837479076003594
     },
     {
@@ -4189,9 +4199,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.6431576998713991,
-      "effectiveScore": 0.6728278782815749,
-      "dlProbability": 0.03867957398149186,
-      "dlScoreModifier": 1.0461320426018508,
+      "effectiveScore": 0.6599503396359981,
+      "dlProbability": 0.23890323060803437,
+      "dlScoreModifier": 1.0261096769391966,
       "trend2": -0.28028227575064535
     },
     {
@@ -4202,9 +4212,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.6934995964727605,
-      "effectiveScore": 0.7262104957390033,
-      "dlProbability": 0.02832129344248737,
-      "dlScoreModifier": 1.0471678706557512,
+      "effectiveScore": 0.7064760064911667,
+      "dlProbability": 0.3128851107570059,
+      "dlScoreModifier": 1.0187114889242994,
       "trend2": -0.3022208164038235
     },
     {
@@ -4215,9 +4225,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.8284789502771521,
-      "effectiveScore": 0.8667135760444811,
-      "dlProbability": 0.03849611079993921,
-      "dlScoreModifier": 1.0461503889200061,
+      "effectiveScore": 0.8530246293049157,
+      "dlProbability": 0.20372597855923386,
+      "dlScoreModifier": 1.0296274021440766,
       "trend2": -0.36104359108445166
     },
     {
@@ -4228,9 +4238,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.8211181787536059,
-      "effectiveScore": 0.8608466894859131,
-      "dlProbability": 0.016165738863410547,
-      "dlScoreModifier": 1.0483834261136589,
+      "effectiveScore": 0.8347154637403581,
+      "dlProbability": 0.33440526176887436,
+      "dlScoreModifier": 1.0165594738231125,
       "trend2": -0.35783583380453016
     },
     {
@@ -4241,9 +4251,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9141533719364571,
-      "effectiveScore": 0.9559895973396371,
-      "dlProbability": 0.042350040075243976,
-      "dlScoreModifier": 1.0457649959924755,
+      "effectiveScore": 0.9389938996257677,
+      "dlProbability": 0.2282673952545754,
+      "dlScoreModifier": 1.0271732604745425,
       "trend2": -0.39837972479021594
     },
     {
@@ -4254,9 +4264,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0151136839294477,
-      "effectiveScore": 1.0638270101787033,
-      "dlProbability": 0.020119499712690676,
-      "dlScoreModifier": 1.0479880500287309,
+      "effectiveScore": 1.043739542754957,
+      "dlProbability": 0.21800341894022918,
+      "dlScoreModifier": 1.0281996581059771,
       "trend2": -0.44237731047028894
     },
     {
@@ -4267,9 +4277,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0771854024453233,
-      "effectiveScore": 1.127460740849054,
-      "dlProbability": 0.03327126147828949,
-      "dlScoreModifier": 1.0466728738521711,
+      "effectiveScore": 1.1074754875960204,
+      "dlProbability": 0.21880341970903783,
+      "dlScoreModifier": 1.0281196580290963,
       "trend2": -0.4694276008249902
     },
     {
@@ -4280,9 +4290,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0687947123279875,
-      "effectiveScore": 1.118551380123353,
-      "dlProbability": 0.03446001162385453,
-      "dlScoreModifier": 1.0465539988376145,
+      "effectiveScore": 1.0926296686034767,
+      "dlProbability": 0.2769921950345996,
+      "dlScoreModifier": 1.02230078049654,
       "trend2": -0.46577101438953955
     },
     {
@@ -4293,9 +4303,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0928551344364532,
-      "effectiveScore": 1.1455216696145767,
-      "dlProbability": 0.018083106181480502,
-      "dlScoreModifier": 1.048191689381852,
+      "effectiveScore": 1.1159219098630382,
+      "dlProbability": 0.2889310787885913,
+      "dlScoreModifier": 1.0211068921211408,
       "trend2": -0.4762563275023739
     },
     {
@@ -4306,9 +4316,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1838209191104982,
-      "effectiveScore": 1.2391796475836514,
-      "dlProbability": 0.032372442660089526,
-      "dlScoreModifier": 1.0467627557339911,
+      "effectiveScore": 1.2203347393628179,
+      "dlProbability": 0.19155959602610018,
+      "dlScoreModifier": 1.03084404039739,
       "trend2": -0.5158983890822672
     },
     {
@@ -4319,9 +4329,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.2019582027215343,
-      "effectiveScore": 1.2595839841398455,
-      "dlProbability": 0.020567509853236472,
-      "dlScoreModifier": 1.0479432490146763,
+      "effectiveScore": 1.2316791504494053,
+      "dlProbability": 0.2527289413177979,
+      "dlScoreModifier": 1.0247271058682201,
       "trend2": -0.5238024523119424
     },
     {
@@ -4332,9 +4342,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1313630272472615,
-      "effectiveScore": 1.1832726221992205,
-      "dlProbability": 0.04117649506134978,
-      "dlScoreModifier": 1.045882350493865,
+      "effectiveScore": 1.1543502029497352,
+      "dlProbability": 0.29681874739707387,
+      "dlScoreModifier": 1.0203181252602926,
       "trend2": -0.49303771694003956
     },
     {
@@ -4345,9 +4355,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0817971182289585,
-      "effectiveScore": 1.1296879213324473,
-      "dlProbability": 0.057303284539228484,
-      "dlScoreModifier": 1.044269671546077,
+      "effectiveScore": 1.1028087845593786,
+      "dlProbability": 0.3057707311624305,
+      "dlScoreModifier": 1.019422926883757,
       "trend2": -0.4714373446175482
     },
     {
@@ -4358,9 +4368,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1861335798572832,
-      "effectiveScore": 1.2390527831480054,
-      "dlProbability": 0.05385123404828165,
-      "dlScoreModifier": 1.044614876595172,
+      "effectiveScore": 1.2218225072810103,
+      "dlProbability": 0.19911544509159534,
+      "dlScoreModifier": 1.0300884554908405,
       "trend2": -0.5169062256008654
     },
     {
@@ -4371,9 +4381,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1335596265824226,
-      "effectiveScore": 1.1832823680529805,
-      "dlProbability": 0.061357512171925074,
-      "dlScoreModifier": 1.0438642487828076,
+      "effectiveScore": 1.1575884396590252,
+      "dlProbability": 0.28802338656813825,
+      "dlScoreModifier": 1.0211976613431861,
       "trend2": -0.49399497495109096
     },
     {
@@ -4384,9 +4394,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1091702978479674,
-      "effectiveScore": 1.1546657387298571,
-      "dlProbability": 0.08982456553190264,
-      "dlScoreModifier": 1.0410175434468096,
+      "effectiveScore": 1.1333733540060402,
+      "dlProbability": 0.28179134254647825,
+      "dlScoreModifier": 1.0218208657453522,
       "trend2": -0.48336632732222706
     },
     {
@@ -4397,9 +4407,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.2042053147730016,
-      "effectiveScore": 1.2622546750754462,
-      "dlProbability": 0.017944659516910853,
-      "dlScoreModifier": 1.048205534048309,
+      "effectiveScore": 1.2368791056539172,
+      "dlProbability": 0.22866926860329514,
+      "dlScoreModifier": 1.0271330731396704,
       "trend2": -0.5247817233053207
     },
     {
@@ -4410,9 +4420,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.173974470867415,
-      "effectiveScore": 1.2251720362081846,
-      "dlProbability": 0.06389541160174232,
-      "dlScoreModifier": 1.0436104588398258,
+      "effectiveScore": 1.1996404298846328,
+      "dlProbability": 0.28137549278857843,
+      "dlScoreModifier": 1.0218624507211422,
       "trend2": -0.511607396496492
     },
     {
@@ -4423,9 +4433,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.087080115922109,
-      "effectiveScore": 1.135535051944139,
-      "dlProbability": 0.054265271599341164,
-      "dlScoreModifier": 1.044573472840066,
+      "effectiveScore": 1.1055903946182255,
+      "dlProbability": 0.3297247974183095,
+      "dlScoreModifier": 1.0170275202581691,
       "trend2": -0.47373962696061533
     },
     {
@@ -4436,9 +4446,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1719447124183902,
-      "effectiveScore": 1.218802341268197,
-      "dlProbability": 0.10017201875408506,
-      "dlScoreModifier": 1.0399827981245915,
+      "effectiveScore": 1.2058188518691175,
+      "dlProbability": 0.21095787120515364,
+      "dlScoreModifier": 1.0289042128794845,
       "trend2": -0.5107228462261143
     },
     {
@@ -4449,9 +4459,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1031891259384785,
-      "effectiveScore": 1.153219894342902,
-      "dlProbability": 0.04648965233533711,
-      "dlScoreModifier": 1.0453510347664663,
+      "effectiveScore": 1.1215317456460734,
+      "dlProbability": 0.3337309598479678,
+      "dlScoreModifier": 1.0166269040152032,
       "trend2": -0.4807597870059367
     },
     {
@@ -4462,9 +4472,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1549536380612193,
-      "effectiveScore": 1.2029259063200535,
-      "dlProbability": 0.08463901339482703,
-      "dlScoreModifier": 1.0415360986605173,
+      "effectiveScore": 1.1850962474167464,
+      "dlProbability": 0.23901455121500398,
+      "dlScoreModifier": 1.0260985448784996,
       "trend2": -0.503318290563905
     },
     {
@@ -4475,9 +4485,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0911879155186086,
-      "effectiveScore": 1.1342217064693643,
-      "dlProbability": 0.1056243811103517,
-      "dlScoreModifier": 1.0394375618889649,
+      "effectiveScore": 1.1105917589354046,
+      "dlProbability": 0.3221768850182521,
+      "dlScoreModifier": 1.0177823114981748,
       "trend2": -0.4755297686621991
     },
     {
@@ -4488,9 +4498,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.162726676198269,
-      "effectiveScore": 1.210765394674023,
-      "dlProbability": 0.08684427338654761,
-      "dlScoreModifier": 1.0413155726613452,
+      "effectiveScore": 1.1952329367611403,
+      "dlProbability": 0.22043076650519453,
+      "dlScoreModifier": 1.0279569233494805,
       "trend2": -0.5067057098842125
     },
     {
@@ -4501,9 +4511,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1720764178265761,
-      "effectiveScore": 1.2212523213092477,
-      "dlProbability": 0.08043773652693814,
-      "dlScoreModifier": 1.0419562263473061,
+      "effectiveScore": 1.1991120450567327,
+      "dlProbability": 0.26933562676493694,
+      "dlScoreModifier": 1.0230664373235063,
       "trend2": -0.5107802422450727
     },
     {
@@ -4514,9 +4524,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0821898486797086,
-      "effectiveScore": 1.1261182036855022,
-      "dlProbability": 0.09407903281122967,
-      "dlScoreModifier": 1.040592096718877,
+      "effectiveScore": 1.1003330103284543,
+      "dlProbability": 0.3323477006286754,
+      "dlScoreModifier": 1.0167652299371324,
       "trend2": -0.47160849297589763
     },
     {
@@ -4527,9 +4537,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0756545430863653,
-      "effectiveScore": 1.1124275410394635,
-      "dlProbability": 0.1581337550289551,
-      "dlScoreModifier": 1.0341866244971045,
+      "effectiveScore": 1.0979499209370878,
+      "dlProbability": 0.2927273398878539,
+      "dlScoreModifier": 1.0207272660112146,
       "trend2": -0.46876046624031714
     },
     {
@@ -4540,9 +4550,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.036129146267998,
-      "effectiveScore": 1.0694288279977893,
-      "dlProbability": 0.17861456412328197,
-      "dlScoreModifier": 1.0321385435876718,
+      "effectiveScore": 1.0536829232947929,
+      "dlProbability": 0.3305831170754994,
+      "dlScoreModifier": 1.01694168829245,
       "trend2": -0.45153565781088467
     },
     {
@@ -4553,9 +4563,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.043077997325466,
-      "effectiveScore": 1.0827900045346521,
-      "dlProbability": 0.1192805589705586,
-      "dlScoreModifier": 1.0380719441029442,
+      "effectiveScore": 1.0641091496643462,
+      "dlProbability": 0.29837411590690543,
+      "dlScoreModifier": 1.0201625884093095,
       "trend2": -0.4545639038983199
     },
     {
@@ -4566,9 +4576,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9992204730374807,
-      "effectiveScore": 1.036157041116379,
-      "dlProbability": 0.13034616407911714,
-      "dlScoreModifier": 1.0369653835920882,
+      "effectiveScore": 1.0144266411271297,
+      "dlProbability": 0.3478196904490519,
+      "dlScoreModifier": 1.0152180309550949,
       "trend2": -0.4354511937205771
     },
     {
@@ -4579,9 +4589,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0302597378268814,
-      "effectiveScore": 1.0663543165196891,
-      "dlProbability": 0.14965554444608498,
-      "dlScoreModifier": 1.0350344455553915,
+      "effectiveScore": 1.0524598841273616,
+      "dlProbability": 0.2845189374544834,
+      "dlScoreModifier": 1.0215481062545517,
       "trend2": -0.4489778229975641
     },
     {
@@ -4592,9 +4602,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0034823695449613,
-      "effectiveScore": 1.0370099234087233,
-      "dlProbability": 0.1658879629448264,
-      "dlScoreModifier": 1.0334112037055174,
+      "effectiveScore": 1.021438801195624,
+      "dlProbability": 0.32105882279919873,
+      "dlScoreModifier": 1.0178941177200802,
       "trend2": -0.43730848945437495
     },
     {
@@ -4605,9 +4615,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9489704775225569,
-      "effectiveScore": 0.9769084614978731,
-      "dlProbability": 0.2055969112100001,
-      "dlScoreModifier": 1.029440308879,
+      "effectiveScore": 0.9626359833447043,
+      "dlProbability": 0.3559965125804194,
+      "dlScoreModifier": 1.0144003487419582,
       "trend2": -0.41355270272498035
     },
     {
@@ -4618,9 +4628,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9926692522150543,
-      "effectiveScore": 1.0312500157371802,
-      "dlProbability": 0.11134321994928033,
-      "dlScoreModifier": 1.038865678005072,
+      "effectiveScore": 1.0156576747585002,
+      "dlProbability": 0.2684181061098733,
+      "dlScoreModifier": 1.0231581893890127,
       "trend2": -0.4325962312729195
     },
     {
@@ -4631,9 +4641,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9929284213548688,
-      "effectiveScore": 1.0287753573094884,
-      "dlProbability": 0.13897764245980723,
-      "dlScoreModifier": 1.0361022357540193,
+      "effectiveScore": 1.0124110125667727,
+      "dlProbability": 0.3037865490312031,
+      "dlScoreModifier": 1.0196213450968796,
       "trend2": -0.43270917482677274
     },
     {
@@ -4644,9 +4654,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9824521038394359,
-      "effectiveScore": 1.014739538503637,
-      "dlProbability": 0.17135868977203547,
-      "dlScoreModifier": 1.0328641310227964,
+      "effectiveScore": 1.001292313192034,
+      "dlProbability": 0.3082327954821399,
+      "dlScoreModifier": 1.019176720451786,
       "trend2": -0.4281436909410959
     },
     {
@@ -4657,9 +4667,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9596283978751622,
-      "effectiveScore": 0.9918576341097345,
-      "dlProbability": 0.16414878607245054,
-      "dlScoreModifier": 1.033585121392755,
+      "effectiveScore": 0.9762923365428595,
+      "dlProbability": 0.32635008817376526,
+      "dlScoreModifier": 1.0173649911826235,
       "trend2": -0.41819732747532484
     },
     {
@@ -4670,9 +4680,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9174082775886857,
-      "effectiveScore": 0.9510607589552001,
-      "dlProbability": 0.13317879085453155,
-      "dlScoreModifier": 1.036682120914547,
+      "effectiveScore": 0.9287438561541692,
+      "dlProbability": 0.3764391074028906,
+      "dlScoreModifier": 1.012356089259711,
       "trend2": -0.3997981830683998
     },
     {
@@ -4683,9 +4693,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.8679072349837664,
-      "effectiveScore": 0.889515846639356,
-      "dlProbability": 0.25102625275391527,
-      "dlScoreModifier": 1.0248973747246084,
+      "effectiveScore": 0.8801344174014433,
+      "dlProbability": 0.35911878683779547,
+      "dlScoreModifier": 1.0140881213162205,
       "trend2": -0.37822607893886734
     },
     {
@@ -4696,9 +4706,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.8940766334887766,
-      "effectiveScore": 0.9232192649491274,
-      "dlProbability": 0.17404772288217318,
-      "dlScoreModifier": 1.0325952277117827,
+      "effectiveScore": 0.9125104305012668,
+      "dlProbability": 0.2938230759866786,
+      "dlScoreModifier": 1.0206176924013322,
       "trend2": -0.38963046478308005
     },
     {
@@ -4709,9 +4719,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.8558131471923981,
-      "effectiveScore": 0.8789852921731084,
-      "dlProbability": 0.229238268227948,
-      "dlScoreModifier": 1.0270761731772051,
+      "effectiveScore": 0.8688448140506906,
+      "dlProbability": 0.347727662270152,
+      "dlScoreModifier": 1.0152272337729848,
       "trend2": -0.3729555854813986
     },
     {
@@ -4722,9 +4732,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.7387727447259392,
-      "effectiveScore": 0.7489378488474601,
-      "dlProbability": 0.36240553412278614,
-      "dlScoreModifier": 1.0137594465877213,
+      "effectiveScore": 0.7455172092515657,
+      "dlProbability": 0.4087071826380333,
+      "dlScoreModifier": 1.0091292817361968,
       "trend2": -0.32195044262976236
     },
     {
@@ -4735,9 +4745,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.7594406534612007,
-      "effectiveScore": 0.7893339075865534,
-      "dlProbability": 0.1063780100642202,
-      "dlScoreModifier": 1.039362198993578,
+      "effectiveScore": 0.7705553116492525,
+      "dlProbability": 0.35364678415099376,
+      "dlScoreModifier": 1.0146353215849007,
       "trend2": -0.3309573292712253
     },
     {
@@ -4748,9 +4758,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.6889078207820595,
-      "effectiveScore": 0.6972556400971323,
-      "dlProbability": 0.3788253077807098,
-      "dlScoreModifier": 1.012117469221929,
+      "effectiveScore": 0.694512072822012,
+      "dlProbability": 0.4186501898963726,
+      "dlScoreModifier": 1.0081349810103628,
       "trend2": -0.30021976232240066
     },
     {
@@ -4761,9 +4771,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.6399284530130093,
-      "effectiveScore": 0.6439371840612973,
-      "dlProbability": 0.4373565743261848,
-      "dlScoreModifier": 1.0062643425673816,
+      "effectiveScore": 0.6467996214023151,
+      "dlProbability": 0.39262599034385975,
+      "dlScoreModifier": 1.010737400965614,
       "trend2": -0.27887499934143634
     },
     {
@@ -4774,9 +4784,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.46893147192033496,
-      "effectiveScore": 0.473414786120633,
-      "dlProbability": 0.40439297703909094,
-      "dlScoreModifier": 1.0095607022960909,
+      "effectiveScore": 0.4485986434956999,
+      "dlProbability": 0.6770221885338878,
+      "dlScoreModifier": 0.9566400857221855,
       "trend2": -0.20435607028760083
     },
     {
@@ -4787,9 +4797,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.47685103461531586,
-      "effectiveScore": 0.44955180953667767,
-      "dlProbability": 0.5292663992203078,
-      "dlScoreModifier": 0.9427510415267087,
+      "effectiveScore": 0.48151902319904516,
+      "dlProbability": 0.40210803280535873,
+      "dlScoreModifier": 1.009789196719464,
       "trend2": -0.2078073436775377
     },
     {
@@ -4800,9 +4810,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.3229681073715637,
-      "effectiveScore": 0.3096648128690128,
-      "dlProbability": 0.7000985381913551,
-      "dlScoreModifier": 0.9588092625899873,
+      "effectiveScore": 0.30992578939471244,
+      "dlProbability": 0.7086948854922566,
+      "dlScoreModifier": 0.9596173192362721,
       "trend2": -0.14074656362985433
     },
     {
@@ -4813,9 +4823,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.24311999140809448,
-      "effectiveScore": 0.23465100732472033,
-      "dlProbability": 0.7677171774611944,
-      "dlScoreModifier": 0.9651654146813523,
+      "effectiveScore": 0.23123155098689127,
+      "dlProbability": 0.6180906705145648,
+      "dlScoreModifier": 0.9511005230283691,
       "trend2": -0.10594948095305903
     },
     {
@@ -4826,9 +4836,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.22169831511913018,
-      "effectiveScore": 0.21433528258388626,
-      "dlProbability": 0.7849792947429026,
-      "dlScoreModifier": 0.9667880537058328,
+      "effectiveScore": 0.2094305695146026,
+      "dlProbability": 0.5496243323862279,
+      "dlScoreModifier": 0.9446646872443054,
       "trend2": -0.0966141092675998
     },
     {
@@ -4839,9 +4849,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.21985057631613644,
-      "effectiveScore": 0.20873085975508127,
-      "dlProbability": 0.600228520807781,
-      "dlScoreModifier": 0.9494214809559314,
+      "effectiveScore": 0.20698126929710636,
+      "dlProbability": 0.5155679992916695,
+      "dlScoreModifier": 0.941463391933417,
       "trend2": -0.09580888150339917
     },
     {
@@ -4852,9 +4862,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.1994486893097477,
-      "effectiveScore": 0.19100766954257759,
-      "dlProbability": 0.6880663719969398,
-      "dlScoreModifier": 0.9576782389677123,
+      "effectiveScore": 0.18795262638110813,
+      "dlProbability": 0.5251148917087187,
+      "dlScoreModifier": 0.9423607998206196,
       "trend2": -0.0869179247117732
     },
     {
@@ -4865,9 +4875,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.004680168907624557,
-      "effectiveScore": 0.004512416765297579,
-      "dlProbability": 0.7569874337598185,
-      "dlScoreModifier": 0.964156818773423,
+      "effectiveScore": 0.004567787200443795,
+      "dlProbability": 0.8828476738564779,
+      "dlScoreModifier": 0.975987681342509,
       "trend2": -0.0020395750413758768
     },
     {
@@ -4878,9 +4888,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.0006488933211628119,
-      "effectiveScore": 0.0006325668317589201,
-      "dlProbability": 0.8706328312255524,
-      "dlScoreModifier": 0.9748394861352019,
+      "effectiveScore": 0.00061934826659818,
+      "dlProbability": 0.6539207322739091,
+      "dlScoreModifier": 0.9544685488337474,
       "trend2": -0.0002827818073409885
     },
     {
@@ -4891,9 +4901,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 0.0,
       "ruleScore": 0.12966814576754707,
-      "effectiveScore": 0.13517911600322763,
-      "dlProbability": 0.9250057100037481,
-      "dlScoreModifier": 1.0425005710003747,
+      "effectiveScore": 0.13394230939142052,
+      "dlProbability": 0.8296232546993966,
+      "dlScoreModifier": 1.0329623254699396,
       "trend2": 0.05650819852636686
     },
     {
@@ -4904,9 +4914,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.13950819250555258,
-      "effectiveScore": 0.14495654928709364,
-      "dlProbability": 0.8905402746382952,
-      "dlScoreModifier": 1.0390540274638296,
+      "effectiveScore": 0.14246499815178013,
+      "dlProbability": 0.7119449469686069,
+      "dlScoreModifier": 1.0211944946968607,
       "trend2": 0.06079640139445407
     },
     {
@@ -4917,9 +4927,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.34396833593896414,
-      "effectiveScore": 0.35945693497900116,
-      "dlProbability": 0.9502914199284157,
-      "dlScoreModifier": 1.0450291419928415,
+      "effectiveScore": 0.35896538880918083,
+      "dlProbability": 0.9360009716963551,
+      "dlScoreModifier": 1.0436000971696355,
       "trend2": 0.14989827223154198
     },
     {
@@ -4930,9 +4940,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.42633308320142216,
-      "effectiveScore": 0.445922700253634,
-      "dlProbability": 0.9594908962989552,
-      "dlScoreModifier": 1.0459490896298955,
+      "effectiveScore": 0.44269480026069424,
+      "dlProbability": 0.8837777949674624,
+      "dlScoreModifier": 1.0383777794967461,
       "trend2": 0.1857920799383679
     },
     {
@@ -4943,9 +4953,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.4348789825428579,
-      "effectiveScore": 0.4549165278359462,
-      "dlProbability": 0.9607614094367877,
-      "dlScoreModifier": 1.0460761409436787,
+      "effectiveScore": 0.44819501477478896,
+      "dlProbability": 0.8062008688961835,
+      "dlScoreModifier": 1.0306200868896183,
       "trend2": 0.18951630514197268
     },
     {
@@ -4956,9 +4966,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5883571339612911,
-      "effectiveScore": 0.6155333884428181,
-      "dlProbability": 0.9619006537501252,
-      "dlScoreModifier": 1.0461900653750125,
+      "effectiveScore": 0.6141348523816934,
+      "dlProbability": 0.938130464176514,
+      "dlScoreModifier": 1.0438130464176514,
       "trend2": 0.25640068756662837
     },
     {
@@ -4969,9 +4979,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.7316948562257805,
-      "effectiveScore": 0.7669235904342309,
-      "dlProbability": 0.9814675668237829,
-      "dlScoreModifier": 1.0481467566823783,
+      "effectiveScore": 0.7643424656527894,
+      "dlProbability": 0.9461915940671156,
+      "dlScoreModifier": 1.0446191594067116,
       "trend2": 0.31886596319846505
     },
     {
@@ -4982,9 +4992,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.7684884380765419,
-      "effectiveScore": 0.8054547718405958,
-      "dlProbability": 0.9810265442194211,
-      "dlScoreModifier": 1.048102654421942,
+      "effectiveScore": 0.7992860341081763,
+      "dlProbability": 0.9007554896820327,
+      "dlScoreModifier": 1.0400755489682032,
       "trend2": 0.33490027151229085
     },
     {
@@ -4995,9 +5005,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8179261302979907,
-      "effectiveScore": 0.8568539742578909,
-      "dlProbability": 0.9759334922545846,
-      "dlScoreModifier": 1.0475933492254585,
+      "effectiveScore": 0.8518219073780685,
+      "dlProbability": 0.9144112264481484,
+      "dlScoreModifier": 1.0414411226448148,
       "trend2": 0.3564447681209115
     },
     {
@@ -5008,9 +5018,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8485366627831251,
-      "effectiveScore": 0.8889003099386942,
-      "dlProbability": 0.9756853642973996,
-      "dlScoreModifier": 1.04756853642974,
+      "effectiveScore": 0.881918860508267,
+      "dlProbability": 0.8934090203675017,
+      "dlScoreModifier": 1.0393409020367501,
       "trend2": 0.3697845597592423
     },
     {
@@ -5021,9 +5031,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9638519872352179,
-      "effectiveScore": 1.010196168255934,
-      "dlProbability": 0.9808225913778823,
-      "dlScoreModifier": 1.0480822591377883,
+      "effectiveScore": 1.0084974972597476,
+      "dlProbability": 0.9631988169946512,
+      "dlScoreModifier": 1.0463198816994652,
       "trend2": 0.42003792930269834
     },
     {
@@ -5034,9 +5044,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9986835942135387,
-      "effectiveScore": 1.0469730732682865,
-      "dlProbability": 0.9835313139671203,
-      "dlScoreModifier": 1.048353131396712,
+      "effectiveScore": 1.040865221652894,
+      "dlProbability": 0.9223722877171456,
+      "dlScoreModifier": 1.0422372287717145,
       "trend2": 0.4352172268122949
     },
     {
@@ -5047,9 +5057,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0262452327663276,
-      "effectiveScore": 1.075555963340313,
-      "dlProbability": 0.9804965616362876,
-      "dlScoreModifier": 1.0480496561636288,
+      "effectiveScore": 1.0700232205134927,
+      "dlProbability": 0.9265840790232753,
+      "dlScoreModifier": 1.0426584079023276,
       "trend2": 0.44722833820618335
     },
     {
@@ -5060,9 +5070,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.134832492884961,
-      "effectiveScore": 1.1893807951001854,
-      "dlProbability": 0.9806727209277563,
-      "dlScoreModifier": 1.0480672720927757,
+      "effectiveScore": 1.1881170932268033,
+      "dlProbability": 0.9695371402909239,
+      "dlScoreModifier": 1.0469537140290923,
       "trend2": 0.4945496785083571
     },
     {
@@ -5073,9 +5083,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0836309590031408,
-      "effectiveScore": 1.1351898284738409,
-      "dlProbability": 0.9757973094283888,
-      "dlScoreModifier": 1.047579730942839,
+      "effectiveScore": 1.126952472944108,
+      "dlProbability": 0.8997810655097933,
+      "dlScoreModifier": 1.0399781065509792,
       "trend2": 0.47223651574720255
     },
     {
@@ -5086,9 +5096,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1511219995530204,
-      "effectiveScore": 1.2060581145947393,
-      "dlProbability": 0.9772397283958653,
-      "dlScoreModifier": 1.0477239728395866,
+      "effectiveScore": 1.2040843004456263,
+      "dlProbability": 0.9600928564754309,
+      "dlScoreModifier": 1.0460092856475431,
       "trend2": 0.5016484973527742
     },
     {
@@ -5099,9 +5109,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1961965170415458,
-      "effectiveScore": 1.2533985309489475,
-      "dlProbability": 0.9781991344438514,
-      "dlScoreModifier": 1.047819913444385,
+      "effectiveScore": 1.2502680739415448,
+      "dlProbability": 0.9520290448072,
+      "dlScoreModifier": 1.04520290448072,
       "trend2": 0.5212915620981271
     },
     {
@@ -5112,9 +5122,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1129248169845793,
-      "effectiveScore": 1.164938225532443,
-      "dlProbability": 0.9673577923151332,
-      "dlScoreModifier": 1.0467357792315133,
+      "effectiveScore": 1.156449063487991,
+      "dlProbability": 0.891079845099858,
+      "dlScoreModifier": 1.0391079845099858,
       "trend2": 0.48500251261266103
     },
     {
@@ -5125,9 +5135,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.2160788633562096,
-      "effectiveScore": 1.2690597508275268,
-      "dlProbability": 0.9356698325065615,
-      "dlScoreModifier": 1.0435669832506562,
+      "effectiveScore": 1.273625438648427,
+      "dlProbability": 0.9732141724213235,
+      "dlScoreModifier": 1.0473214172421323,
       "trend2": 0.5299561077817918
     },
     {
@@ -5138,9 +5148,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1603322586058742,
-      "effectiveScore": 1.2144171840400053,
-      "dlProbability": 0.9661158477065328,
-      "dlScoreModifier": 1.0466115847706532,
+      "effectiveScore": 1.2069286930015164,
+      "dlProbability": 0.9015783759354193,
+      "dlScoreModifier": 1.0401578375935419,
       "trend2": 0.5056622444759183
     },
     {
@@ -5151,9 +5161,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.112854626893089,
-      "effectiveScore": 1.1637577446045086,
-      "dlProbability": 0.9574103075217734,
-      "dlScoreModifier": 1.0457410307521773,
+      "effectiveScore": 1.1570750198338653,
+      "dlProbability": 0.8973600133580132,
+      "dlScoreModifier": 1.0397360013358012,
       "trend2": 0.4849719244092049
     },
     {
@@ -5164,9 +5174,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0816216680610633,
-      "effectiveScore": 1.1294769184151636,
-      "dlProbability": 0.9424398268563411,
-      "dlScoreModifier": 1.044243982685634,
+      "effectiveScore": 1.1235011681708058,
+      "dlProbability": 0.8871917635009721,
+      "dlScoreModifier": 1.0387191763500971,
       "trend2": 0.4713608850301898
     },
     {
@@ -5177,9 +5187,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.047717996520066,
-      "effectiveScore": 1.0932937166472587,
-      "dlProbability": 0.9349998785796346,
-      "dlScoreModifier": 1.0434999878579634,
+      "effectiveScore": 1.0872031912282871,
+      "dlProbability": 0.8768685356113863,
+      "dlScoreModifier": 1.0376868535611385,
       "trend2": 0.4565859733441241
     },
     {
@@ -5190,9 +5200,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.958757376315741,
-      "effectiveScore": 0.9959296963665182,
-      "dlProbability": 0.8877135234528356,
-      "dlScoreModifier": 1.0387713523452835,
+      "effectiveScore": 0.9911060086953454,
+      "dlProbability": 0.8374016532098241,
+      "dlScoreModifier": 1.0337401653209823,
       "trend2": 0.41781774420212253
     },
     {
@@ -5203,9 +5213,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0785185647877398,
-      "effectiveScore": 1.1250854106235646,
-      "dlProbability": 0.9317667526195031,
-      "dlScoreModifier": 1.0431766752619502,
+      "effectiveScore": 1.1282605531674366,
+      "dlProbability": 0.961206603239939,
+      "dlScoreModifier": 1.0461206603239939,
       "trend2": 0.47000858084801134
     },
     {
@@ -5216,9 +5226,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0583297108257947,
-      "effectiveScore": 1.1051197279134548,
-      "dlProbability": 0.9421119109577928,
-      "dlScoreModifier": 1.0442111910957792,
+      "effectiveScore": 1.0999181676549095,
+      "dlProbability": 0.8929631418611899,
+      "dlScoreModifier": 1.039296314186119,
       "trend2": 0.46121046191950776
     },
     {
@@ -5229,9 +5239,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9601236279523577,
-      "effectiveScore": 0.9978728936456803,
-      "dlProbability": 0.8931708854393036,
-      "dlScoreModifier": 1.0393170885439305,
+      "effectiveScore": 0.9915274077438514,
+      "dlProbability": 0.8270805850124541,
+      "dlScoreModifier": 1.0327080585012454,
       "trend2": 0.4184131442385919
     },
     {
@@ -5242,9 +5252,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8882068675419645,
-      "effectiveScore": 0.9180313791947705,
-      "dlProbability": 0.8357833939670232,
-      "dlScoreModifier": 1.0335783393967024,
+      "effectiveScore": 0.9139014819308429,
+      "dlProbability": 0.7892863737924702,
+      "dlScoreModifier": 1.028928637379247,
       "trend2": 0.3870724741720291
     },
     {
@@ -5255,9 +5265,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9436901594312072,
-      "effectiveScore": 0.978072487489839,
-      "dlProbability": 0.8643391606346219,
-      "dlScoreModifier": 1.0364339160634621,
+      "effectiveScore": 0.9833003703668175,
+      "dlProbability": 0.9197374587384151,
+      "dlScoreModifier": 1.0419737458738414,
       "trend2": 0.41125158812800555
     },
     {
@@ -5268,9 +5278,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8465084941094088,
-      "effectiveScore": 0.8738500923827344,
-      "dlProbability": 0.8229926038969161,
-      "dlScoreModifier": 1.0322992603896917,
+      "effectiveScore": 0.8706406849046527,
+      "dlProbability": 0.7850791334425171,
+      "dlScoreModifier": 1.0285079133442516,
       "trend2": 0.36890070229848415
     },
     {
@@ -5281,9 +5291,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.7498133335096284,
-      "effectiveScore": 0.7636877553614521,
-      "dlProbability": 0.6850383453023171,
-      "dlScoreModifier": 1.0185038345302317,
+      "effectiveScore": 0.7687226341339791,
+      "dlProbability": 0.7521867747515564,
+      "dlScoreModifier": 1.0252186774751557,
       "trend2": 0.3267618308018051
     },
     {
@@ -5294,9 +5304,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.850244996746569,
-      "effectiveScore": 0.8734444811314431,
-      "dlProbability": 0.772856464591338,
-      "dlScoreModifier": 1.0272856464591338,
+      "effectiveScore": 0.8867735814449343,
+      "dlProbability": 0.9296242240547208,
+      "dlScoreModifier": 1.042962422405472,
       "trend2": 0.37052903616232646
     },
     {
@@ -5307,9 +5317,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8801344782048842,
-      "effectiveScore": 0.9147678532952941,
-      "dlProbability": 0.8935009472762373,
-      "dlScoreModifier": 1.0393500947276237,
+      "effectiveScore": 0.9142044746848398,
+      "dlProbability": 0.8870998957959758,
+      "dlScoreModifier": 1.0387099895795975,
       "trend2": 0.383554600321503
     },
     {
@@ -5320,9 +5330,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9024429639996809,
-      "effectiveScore": 0.9385891784248208,
-      "dlProbability": 0.9005373842678955,
-      "dlScoreModifier": 1.0400537384267896,
+      "effectiveScore": 0.9385012848115685,
+      "dlProbability": 0.8995634322647369,
+      "dlScoreModifier": 1.0399563432264738,
       "trend2": 0.393276435523611
     },
     {
@@ -5333,9 +5343,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8864264042567281,
-      "effectiveScore": 0.9212145445899305,
-      "dlProbability": 0.8924537916080263,
-      "dlScoreModifier": 1.0392453791608027,
+      "effectiveScore": 0.917599379976741,
+      "dlProbability": 0.8516702071409018,
+      "dlScoreModifier": 1.0351670207140902,
       "trend2": 0.3862965644665614
     },
     {
@@ -5346,9 +5356,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8849312060408805,
-      "effectiveScore": 0.9192060137012193,
-      "dlProbability": 0.8873160696149696,
-      "dlScoreModifier": 1.038731606961497,
+      "effectiveScore": 0.9158089322937161,
+      "dlProbability": 0.8489279849332045,
+      "dlScoreModifier": 1.0348927984933205,
       "trend2": 0.3856449706836993
     },
     {
@@ -5359,9 +5369,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.7387792403890558,
-      "effectiveScore": 0.7513147695562442,
-      "dlProbability": 0.6696789579602564,
-      "dlScoreModifier": 1.0169678957960255,
+      "effectiveScore": 0.7562291508379082,
+      "dlProbability": 0.7361992526977736,
+      "dlScoreModifier": 1.0236199252697773,
       "trend2": 0.32195327338066715
     },
     {
@@ -5372,9 +5382,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.6531886459844551,
-      "effectiveScore": 0.6590959362712866,
-      "dlProbability": 0.5904377368337163,
-      "dlScoreModifier": 1.0090437736833717,
+      "effectiveScore": 0.6650252014986715,
+      "dlProbability": 0.6812118993032529,
+      "dlScoreModifier": 1.0181211899303253,
       "trend2": 0.28465367083005055
     },
     {
@@ -5385,9 +5395,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5550970620776817,
-      "effectiveScore": 0.5240933722128852,
-      "dlProbability": 0.4558801740878023,
-      "dlScoreModifier": 0.9441472636357464,
+      "effectiveScore": 0.5621436478025721,
+      "dlProbability": 0.6269433078697176,
+      "dlScoreModifier": 1.0126943307869718,
       "trend2": 0.24190625075737915
     },
     {
@@ -5398,9 +5408,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.4864982581201039,
-      "effectiveScore": 0.46213022112089674,
-      "dlProbability": 0.3945600194092704,
-      "dlScoreModifier": 0.9499113581755285,
+      "effectiveScore": 0.4913782399904005,
+      "dlProbability": 0.6003083112600138,
+      "dlScoreModifier": 1.0100308311260013,
       "trend2": 0.21201151593441617
     },
     {
@@ -5411,9 +5421,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.4628657555792359,
-      "effectiveScore": 0.438612590163396,
-      "dlProbability": 0.4191259485641273,
-      "dlScoreModifier": 0.9476021608349721,
+      "effectiveScore": 0.46919496047937004,
+      "dlProbability": 0.6367395367629581,
+      "dlScoreModifier": 1.0136739536762958,
       "trend2": 0.20171268627699027
     },
     {
@@ -5424,9 +5434,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.4800966305532683,
-      "effectiveScore": 0.45287885563098274,
-      "dlProbability": 0.46481154067901137,
-      "dlScoreModifier": 0.943307715176173,
+      "effectiveScore": 0.49327916752201484,
+      "dlProbability": 0.7745809099629551,
+      "dlScoreModifier": 1.0274580909962956,
       "trend2": 0.20922174486691666
     },
     {
@@ -5437,9 +5447,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.39273650163127255,
-      "effectiveScore": 0.3713848925231729,
-      "dlProbability": 0.4400664426704551,
-      "dlScoreModifier": 0.9456337543889772,
+      "effectiveScore": 0.39671315455670847,
+      "dlProbability": 0.6012549867129362,
+      "dlScoreModifier": 1.0101254986712935,
       "trend2": 0.1711509952684548
     },
     {
@@ -5450,9 +5460,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.31777414591327985,
-      "effectiveScore": 0.30273161641418406,
-      "dlProbability": 0.36528906707194553,
-      "dlScoreModifier": 0.9526628276952371,
+      "effectiveScore": 0.31979199132114616,
+      "dlProbability": 0.5634993574466872,
+      "dlScoreModifier": 1.0063499357446688,
       "trend2": 0.13848308246811125
     },
     {
@@ -5463,9 +5473,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.36168447892228395,
-      "effectiveScore": 0.34858387416926156,
-      "dlProbability": 0.24703283382017013,
-      "dlScoreModifier": 0.963778913620904,
+      "effectiveScore": 0.371011118880048,
+      "dlProbability": 0.7578667457767269,
+      "dlScoreModifier": 1.0257866745776727,
       "trend2": 0.15761880620615126
     },
     {
@@ -5476,9 +5486,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.3269138973498803,
-      "effectiveScore": 0.3074725595299096,
-      "dlProbability": 0.49435416369184393,
-      "dlScoreModifier": 0.9405307086129667,
+      "effectiveScore": 0.33041233314720475,
+      "dlProbability": 0.607013982142834,
+      "dlScoreModifier": 1.0107013982142834,
       "trend2": 0.14246610301339557
     },
     {
@@ -5489,9 +5499,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.32933252103879684,
-      "effectiveScore": 0.31120330488803,
-      "dlProbability": 0.4473230101511099,
-      "dlScoreModifier": 0.9449516370457955,
+      "effectiveScore": 0.33515743733742664,
+      "dlProbability": 0.6768703643435082,
+      "dlScoreModifier": 1.0176870364343509,
       "trend2": 0.14352011721838684
     },
     {
@@ -5502,9 +5512,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.17469404363532792,
-      "effectiveScore": 0.1665658530162682,
-      "dlProbability": 0.35668244392740234,
-      "dlScoreModifier": 0.9534718502708242,
+      "effectiveScore": 0.1655538298721329,
+      "dlProbability": 0.41831135489066357,
+      "dlScoreModifier": 0.9476787326402776,
       "trend2": 0.07613007528322002
     },
     {
@@ -5515,9 +5525,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.1747632909861993,
-      "effectiveScore": 0.1710097258740249,
-      "dlProbability": 0.0901914375209304,
-      "dlScoreModifier": 0.9785220048730325,
+      "effectiveScore": 0.1761178657324702,
+      "dlProbability": 0.5775091118178746,
+      "dlScoreModifier": 1.0077509111817875,
       "trend2": 0.07616025264888915
     },
     {
@@ -5528,9 +5538,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.12171648945373466,
-      "effectiveScore": 0.11658295822888046,
-      "dlProbability": 0.3103844265991761,
-      "dlScoreModifier": 0.9578238638996773,
+      "effectiveScore": 0.12176360382608456,
+      "dlProbability": 0.5038708290521161,
+      "dlScoreModifier": 1.0003870829052115,
       "trend2": 0.05304293902925136
     },
     {
@@ -5541,9 +5551,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.08436007414861413,
-      "effectiveScore": 0.0814121634723101,
-      "dlProbability": 0.23345087482553314,
-      "dlScoreModifier": 0.9650556177663998,
+      "effectiveScore": 0.08453970225797637,
+      "dlProbability": 0.5212930241201309,
+      "dlScoreModifier": 1.002129302412013,
       "trend2": 0.036763353015278444
     },
     {
@@ -5554,9 +5564,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.07880139829604979,
-      "effectiveScore": 0.08199544605947982,
-      "dlProbability": 0.09467118192112828,
-      "dlScoreModifier": 1.0405328818078872,
+      "effectiveScore": 0.08002361858974673,
+      "dlProbability": 0.34489865406890696,
+      "dlScoreModifier": 1.0155101345931092,
       "trend2": -0.03434093263777474
     },
     {
@@ -5567,9 +5577,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.22129973091820448,
-      "effectiveScore": 0.2309533626350951,
-      "dlProbability": 0.06377571374188576,
-      "dlScoreModifier": 1.0436224286258113,
+      "effectiveScore": 0.22568783327874511,
+      "dlProbability": 0.3017122595525204,
+      "dlScoreModifier": 1.019828774044748,
       "trend2": -0.09644040989816668
     },
     {
@@ -5580,9 +5590,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 1.0,
       "ruleScore": 0.35447825108642966,
-      "effectiveScore": 0.369350158018188,
-      "dlProbability": 0.0804564345999273,
-      "dlScoreModifier": 1.0419543565400073,
+      "effectiveScore": 0.3623187657947812,
+      "dlProbability": 0.27881535230098453,
+      "dlScoreModifier": 1.0221184647699015,
       "trend2": -0.15447839765967075
     },
     {
@@ -5593,9 +5603,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5002852904893278,
-      "effectiveScore": 0.5233540052040986,
-      "dlProbability": 0.03888880698036656,
-      "dlScoreModifier": 1.0461111193019634,
+      "effectiveScore": 0.5124724090212623,
+      "dlProbability": 0.2563966248135264,
+      "dlScoreModifier": 1.0243603375186474,
       "trend2": -0.2180197792407041
     },
     {
@@ -5606,9 +5616,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5466178937294032,
-      "effectiveScore": 0.5703941016937015,
-      "dlProbability": 0.06503055906054041,
-      "dlScoreModifier": 1.0434969440939459,
+      "effectiveScore": 0.5559829287760808,
+      "dlProbability": 0.32867309771396425,
+      "dlScoreModifier": 1.0171326902286035,
       "trend2": -0.23821110631363923
     },
     {
@@ -5619,9 +5629,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.4951695592220947,
-      "effectiveScore": 0.5189779580413182,
-      "dlProbability": 0.019186945646937282,
-      "dlScoreModifier": 1.0480813054353062,
+      "effectiveScore": 0.49829943147406314,
+      "dlProbability": 0.43679190908089266,
+      "dlScoreModifier": 1.0063208090919107,
       "trend2": -0.2157903900846767
     },
     {
@@ -5632,9 +5642,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5392755593516535,
-      "effectiveScore": 0.561858913654394,
-      "dlProbability": 0.08122792863278569,
-      "dlScoreModifier": 1.0418772071367215,
+      "effectiveScore": 0.5483436427898847,
+      "dlProbability": 0.331846942050678,
+      "dlScoreModifier": 1.0168153057949323,
       "trend2": -0.23501138377416037
     },
     {
@@ -5645,9 +5655,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.6012834284174454,
-      "effectiveScore": 0.6267921486561573,
-      "dlProbability": 0.0757621275901483,
-      "dlScoreModifier": 1.0424237872409852,
+      "effectiveScore": 0.6123146525855291,
+      "dlProbability": 0.31653869628309145,
+      "dlScoreModifier": 1.0183461303716907,
       "trend2": -0.262033849119259
     },
     {
@@ -5658,9 +5668,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5773646438795399,
-      "effectiveScore": 0.6016321770175322,
-      "dlProbability": 0.07968446119372352,
-      "dlScoreModifier": 1.0420315538806277,
+      "effectiveScore": 0.5854347712101473,
+      "dlProbability": 0.3602247744790703,
+      "dlScoreModifier": 1.013977522552093,
       "trend2": -0.25161026037140755
     },
     {
@@ -5671,9 +5681,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5460183573825479,
-      "effectiveScore": 0.5681255869696231,
-      "dlProbability": 0.09511929794721977,
-      "dlScoreModifier": 1.0404880702052781,
+      "effectiveScore": 0.5527987548369034,
+      "dlProbability": 0.37582107153212374,
+      "dlScoreModifier": 1.0124178928467877,
       "trend2": -0.23794983382677412
     },
     {
@@ -5684,9 +5694,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.6740433239968081,
-      "effectiveScore": 0.7025846244258358,
-      "dlProbability": 0.07656578719912102,
-      "dlScoreModifier": 1.042343421280088,
+      "effectiveScore": 0.6910209251960068,
+      "dlProbability": 0.24812299751701036,
+      "dlScoreModifier": 1.025187700248299,
       "trend2": -0.2937419498237064
     },
     {
@@ -5697,9 +5707,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.8093455719965014,
-      "effectiveScore": 0.8478731788250883,
-      "dlProbability": 0.02396592800839606,
-      "dlScoreModifier": 1.0476034071991605,
+      "effectiveScore": 0.8322162916635277,
+      "dlProbability": 0.21741712738838284,
+      "dlScoreModifier": 1.0282582872611616,
       "trend2": -0.3527054388577566
     },
     {
@@ -5710,9 +5720,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.7652404780735058,
-      "effectiveScore": 0.7984370689950924,
-      "dlProbability": 0.06619400211082622,
-      "dlScoreModifier": 1.0433805997889174,
+      "effectiveScore": 0.7787933066398744,
+      "dlProbability": 0.32289451545365255,
+      "dlScoreModifier": 1.0177105484546347,
       "trend2": -0.3334848400848508
     },
     {
@@ -5723,9 +5733,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9028765269034719,
-      "effectiveScore": 0.9452135439434433,
-      "dlProbability": 0.031087410311003743,
-      "dlScoreModifier": 1.0468912589688997,
+      "effectiveScore": 0.9292418668517749,
+      "dlProbability": 0.20798509915053093,
+      "dlScoreModifier": 1.0292014900849469,
       "trend2": -0.3934653782936033
     },
     {
@@ -5736,9 +5746,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.003226845200048,
-      "effectiveScore": 1.049801530685276,
-      "dlProbability": 0.03575120414624804,
-      "dlScoreModifier": 1.0464248795853752,
+      "effectiveScore": 1.0310081210764601,
+      "dlProbability": 0.22308081657371695,
+      "dlScoreModifier": 1.0276919183426283,
       "trend2": -0.4371971342689883
     },
     {
@@ -5749,9 +5759,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.007945851414135,
-      "effectiveScore": 1.0549861898280084,
-      "dlProbability": 0.033304905735992256,
-      "dlScoreModifier": 1.0466695094264007,
+      "effectiveScore": 1.0299956901186313,
+      "dlProbability": 0.28123984861329027,
+      "dlScoreModifier": 1.021876015138671,
       "trend2": -0.43925363425527514
     },
     {
@@ -5762,9 +5772,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.060424156850118,
-      "effectiveScore": 1.1087964826555323,
-      "dlProbability": 0.04383983528723849,
-      "dlScoreModifier": 1.0456160164712762,
+      "effectiveScore": 1.0883716782740767,
+      "dlProbability": 0.23644959666918852,
+      "dlScoreModifier": 1.0263550403330812,
       "trend2": -0.46212320244683347
     },
     {
@@ -5775,9 +5785,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0253595266542528,
-      "effectiveScore": 1.0712764907383747,
-      "dlProbability": 0.05218669266233853,
-      "dlScoreModifier": 1.0447813307337661,
+      "effectiveScore": 1.0459364717155948,
+      "dlProbability": 0.29931970663515106,
+      "dlScoreModifier": 1.020068029336485,
       "trend2": -0.44684235553849816
     },
     {
@@ -5788,9 +5798,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0632843203834665,
-      "effectiveScore": 1.1103276191821367,
-      "dlProbability": 0.05756613826766076,
-      "dlScoreModifier": 1.0442433861732339,
+      "effectiveScore": 1.089267225327362,
+      "dlProbability": 0.25563539830508514,
+      "dlScoreModifier": 1.0244364601694915,
       "trend2": -0.46336963569999395
     },
     {
@@ -5801,9 +5811,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1805076456238612,
-      "effectiveScore": 1.2383801269068972,
-      "dlProbability": 0.00976614596636213,
-      "dlScoreModifier": 1.0490233854033637,
+      "effectiveScore": 1.215230561574181,
+      "dlProbability": 0.20586453989486989,
+      "dlScoreModifier": 1.029413546010513,
       "trend2": -0.5144544946327338
     },
     {
@@ -5814,9 +5824,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.2043541292416393,
-      "effectiveScore": 1.260252457489746,
-      "dlProbability": 0.035864685553037325,
-      "dlScoreModifier": 1.0464135314446963,
+      "effectiveScore": 1.235889242714924,
+      "dlProbability": 0.2381574679106912,
+      "dlScoreModifier": 1.026184253208931,
       "trend2": -0.5248465752972081
     },
     {
@@ -5827,9 +5837,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1661028583637505,
-      "effectiveScore": 1.2186050461934752,
-      "dlProbability": 0.04976366404422805,
-      "dlScoreModifier": 1.0450236335955772,
+      "effectiveScore": 1.1928727803977786,
+      "dlProbability": 0.27043258369513884,
+      "dlScoreModifier": 1.022956741630486,
       "trend2": -0.508177019363799
     },
     {
@@ -5840,9 +5850,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1872709286874572,
-      "effectiveScore": 1.2427474965159948,
-      "dlProbability": 0.03273876679632148,
-      "dlScoreModifier": 1.0467261233203677,
+      "effectiveScore": 1.2139140863854763,
+      "dlProbability": 0.2755932782126373,
+      "dlScoreModifier": 1.0224406721787362,
       "trend2": -0.517401871876277
     },
     {
@@ -5853,9 +5863,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.2590453738762197,
-      "effectiveScore": 1.3167402443188487,
-      "dlProbability": 0.04175701972515819,
-      "dlScoreModifier": 1.0458242980274841,
+      "effectiveScore": 1.2968287093533586,
+      "dlProbability": 0.19990489412772075,
+      "dlScoreModifier": 1.030009510587228,
       "trend2": -0.5486805222636839
     },
     {
@@ -5866,9 +5876,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.3169031921394092,
-      "effectiveScore": 1.3785496204417242,
-      "dlProbability": 0.031883371000371766,
-      "dlScoreModifier": 1.0468116628999629,
+      "effectiveScore": 1.356534171624364,
+      "dlProbability": 0.19905927997204373,
+      "dlScoreModifier": 1.0300940720027956,
       "trend2": -0.5738944332158757
     },
     {
@@ -5879,9 +5889,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.3878322320773837,
-      "effectiveScore": 1.4524632888370017,
-      "dlProbability": 0.03430209166655151,
-      "dlScoreModifier": 1.046569790833345,
+      "effectiveScore": 1.4318207071975926,
+      "dlProbability": 0.1830418396151198,
+      "dlScoreModifier": 1.031695816038488,
       "trend2": -0.6048046636843891
     },
     {
@@ -5892,9 +5902,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.4152393843411633,
-      "effectiveScore": 1.4829090047129188,
-      "dlProbability": 0.021850358882870718,
-      "dlScoreModifier": 1.047814964111713,
+      "effectiveScore": 1.4543928861952615,
+      "dlProbability": 0.22334361036507355,
+      "dlScoreModifier": 1.0276656389634926,
       "trend2": -0.6167484513586603
     },
     {
@@ -5905,9 +5915,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.3611937777458334,
-      "effectiveScore": 1.4261616900303142,
-      "dlProbability": 0.022713713898478236,
-      "dlScoreModifier": 1.0477286286101521,
+      "effectiveScore": 1.3904192084237865,
+      "dlProbability": 0.2852955901227294,
+      "dlScoreModifier": 1.021470440987727,
       "trend2": -0.5931958675772766
     },
     {
@@ -5918,9 +5928,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.3839685345311885,
-      "effectiveScore": 1.4472452908099762,
-      "dlProbability": 0.04278760896668626,
-      "dlScoreModifier": 1.0457212391033315,
+      "effectiveScore": 1.4223568524517485,
+      "dlProbability": 0.22262145444250303,
+      "dlScoreModifier": 1.0277378545557496,
       "trend2": -0.6031208994360931
     },
     {
@@ -5931,9 +5941,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.4176509189713538,
-      "effectiveScore": 1.481770876765976,
-      "dlProbability": 0.04770277409936844,
-      "dlScoreModifier": 1.045229722590063,
+      "effectiveScore": 1.4599951745879878,
+      "dlProbability": 0.20130689403172108,
+      "dlScoreModifier": 1.029869310596828,
       "trend2": -0.6177993762163374
     },
     {
@@ -5944,9 +5954,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.3928961800895663,
-      "effectiveScore": 1.4550408610568706,
-      "dlProbability": 0.05384556397226829,
-      "dlScoreModifier": 1.0446154436027733,
+      "effectiveScore": 1.4271381435993986,
+      "dlProbability": 0.2541671518717877,
+      "dlScoreModifier": 1.0245832848128211,
       "trend2": -0.6070114861688611
     },
     {
@@ -5957,9 +5967,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.4319314233961407,
-      "effectiveScore": 1.4965416916876844,
-      "dlProbability": 0.04878936773168746,
-      "dlScoreModifier": 1.0451210632268313,
+      "effectiveScore": 1.473965908121373,
+      "dlProbability": 0.20644903772320186,
+      "dlScoreModifier": 1.0293550962276798,
       "trend2": -0.624022690156055
     },
     {
@@ -5970,9 +5980,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.360952653205143,
-      "effectiveScore": 1.4239137549730525,
-      "dlProbability": 0.0373747821452016,
-      "dlScoreModifier": 1.0462625217854797,
+      "effectiveScore": 1.3885484172169613,
+      "dlProbability": 0.2972320054865387,
+      "dlScoreModifier": 1.0202767994513462,
       "trend2": -0.5930907876955966
     },
     {
@@ -5983,9 +5993,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.3767040751685244,
-      "effectiveScore": 1.4344559951343259,
-      "dlProbability": 0.08050592710904958,
-      "dlScoreModifier": 1.0419494072890951,
+      "effectiveScore": 1.4152134279490918,
+      "dlProbability": 0.22027864611461095,
+      "dlScoreModifier": 1.027972135388539,
       "trend2": -0.5999551141198749
     },
     {
@@ -5996,9 +6006,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.3170470055130035,
-      "effectiveScore": 1.376095817733844,
-      "dlProbability": 0.051657518876173925,
-      "dlScoreModifier": 1.0448342481123827,
+      "effectiveScore": 1.342654193762935,
+      "dlProbability": 0.3055711896178132,
+      "dlScoreModifier": 1.0194428810382188,
       "trend2": -0.5739571057760309
     },
     {
@@ -6009,9 +6019,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.3745818104493783,
-      "effectiveScore": 1.4324935212034806,
-      "dlProbability": 0.07869578722877167,
-      "dlScoreModifier": 1.0421304212771227,
+      "effectiveScore": 1.416499391645118,
+      "dlProbability": 0.19505211783621598,
+      "dlScoreModifier": 1.0304947882163784,
       "trend2": -0.5990302504583709
     },
     {
@@ -6022,9 +6032,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.2493180887628874,
-      "effectiveScore": 1.3007776277023415,
-      "dlProbability": 0.08809898453955009,
-      "dlScoreModifier": 1.041190101546045,
+      "effectiveScore": 1.2703672163968356,
+      "dlProbability": 0.3315150655123268,
+      "dlScoreModifier": 1.0168484934487674,
       "trend2": -0.5444414598860038
     },
     {
@@ -6035,9 +6045,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.2194628708052033,
-      "effectiveScore": 1.2597630242014222,
-      "dlProbability": 0.16952537579427326,
-      "dlScoreModifier": 1.0330474624205728,
+      "effectiveScore": 1.2435758335306646,
+      "dlProbability": 0.302265708101964,
+      "dlScoreModifier": 1.0197734291898035,
       "trend2": -0.5314308274487579
     },
     {
@@ -6048,9 +6058,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1605715772404013,
-      "effectiveScore": 1.201838333876396,
-      "dlProbability": 0.14442730250107788,
-      "dlScoreModifier": 1.0355572697498923,
+      "effectiveScore": 1.1793494735523078,
+      "dlProbability": 0.3382013080437799,
+      "dlScoreModifier": 1.016179869195622,
       "trend2": -0.5057665373601179
     },
     {
@@ -6061,9 +6071,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.08451996480518,
-      "effectiveScore": 1.1159249789391785,
-      "dlProbability": 0.2104247487076902,
-      "dlScoreModifier": 1.0289575251292309,
+      "effectiveScore": 1.1006730968814786,
+      "dlProbability": 0.3510573101418157,
+      "dlScoreModifier": 1.0148942689858185,
       "trend2": -0.4726239363897617
     },
     {
@@ -6074,9 +6084,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0899776161024728,
-      "effectiveScore": 1.1246151314786723,
-      "dlProbability": 0.18221810370697536,
-      "dlScoreModifier": 1.0317781896293026,
+      "effectiveScore": 1.1134263035257275,
+      "dlProbability": 0.284870009467696,
+      "dlScoreModifier": 1.0215129990532303,
       "trend2": -0.47500233118494894
     },
     {
@@ -6087,9 +6097,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9612258459049717,
-      "effectiveScore": 0.9790463105142646,
-      "dlProbability": 0.3146068930084241,
-      "dlScoreModifier": 1.0185393106991576,
+      "effectiveScore": 0.9743490797078707,
+      "dlProbability": 0.3634739810752419,
+      "dlScoreModifier": 1.0136526018924759,
       "trend2": -0.4188934807970964
     },
     {
@@ -6100,9 +6110,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.8445676191056113,
-      "effectiveScore": 0.8697014096834558,
-      "dlProbability": 0.20240641472306425,
-      "dlScoreModifier": 1.0297593585276936,
+      "effectiveScore": 0.8484865444458461,
+      "dlProbability": 0.4535984419532329,
+      "dlScoreModifier": 1.0046401558046767,
       "trend2": -0.3680548866250954
     },
     {
@@ -6113,9 +6123,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.7137966622505388,
-      "effectiveScore": 0.7146931719376826,
-      "dlProbability": 0.4874402650704895,
-      "dlScoreModifier": 1.0012559734929511,
+      "effectiveScore": 0.7145692297461459,
+      "dlProbability": 0.4891766446039239,
+      "dlScoreModifier": 1.0010823355396077,
       "trend2": -0.31106609305742455
     },
     {
@@ -6126,9 +6136,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.7104912108778088,
-      "effectiveScore": 0.6686327122178988,
-      "dlProbability": 0.511543916182523,
-      "dlScoreModifier": 0.9410851281211572,
+      "effectiveScore": 0.7192173296288553,
+      "dlProbability": 0.3771818902549765,
+      "dlScoreModifier": 1.0122818109745024,
       "trend2": -0.3096256074139857
     },
     {
@@ -6139,9 +6149,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5843844915097124,
-      "effectiveScore": 0.5563700126770096,
-      "dlProbability": 0.6283145054123607,
-      "dlScoreModifier": 0.9520615635087619,
+      "effectiveScore": 0.5852141577172746,
+      "dlProbability": 0.4858027339942084,
+      "dlScoreModifier": 1.001419726600579,
       "trend2": -0.25466944611947673
     },
     {
@@ -6152,9 +6162,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.619778493304198,
-      "effectiveScore": 0.5843607472445446,
-      "dlProbability": 0.5303636884019538,
-      "dlScoreModifier": 0.9428541867097835,
+      "effectiveScore": 0.6287829205827099,
+      "dlProbability": 0.3547153962941342,
+      "dlScoreModifier": 1.0145284603705866,
       "trend2": -0.270093830174685
     },
     {
@@ -6165,9 +6175,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5858742198710544,
-      "effectiveScore": 0.5887018799786539,
-      "dlProbability": 0.4517360550832602,
-      "dlScoreModifier": 1.004826394491674,
+      "effectiveScore": 0.5891093821820029,
+      "dlProbability": 0.444780599636888,
+      "dlScoreModifier": 1.0055219400363111,
       "trend2": -0.2553186561894964
     },
     {
@@ -6178,9 +6188,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.6119582617381664,
-      "effectiveScore": 0.6208502951964877,
-      "dlProbability": 0.35469542590919406,
-      "dlScoreModifier": 1.0145304574090805,
+      "effectiveScore": 0.6209848434803995,
+      "dlProbability": 0.35249677459056344,
+      "dlScoreModifier": 1.0147503225409436,
       "trend2": -0.26668584438727605
     },
     {
@@ -6191,9 +6201,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.607539830747335,
-      "effectiveScore": 0.614924722217837,
-      "dlProbability": 0.37844597017749676,
-      "dlScoreModifier": 1.0121554029822504,
+      "effectiveScore": 0.6152626684907467,
+      "dlProbability": 0.37288343327363566,
+      "dlScoreModifier": 1.0127116566726364,
       "trend2": -0.26476033234939633
     },
     {
@@ -6204,9 +6214,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5076440515253059,
-      "effectiveScore": 0.5117297870200525,
-      "dlProbability": 0.41951574173931133,
-      "dlScoreModifier": 1.008048425826069,
+      "effectiveScore": 0.5080596456389006,
+      "dlProbability": 0.4918132771900712,
+      "dlScoreModifier": 1.0008186722809929,
       "trend2": -0.22122666036842992
     },
     {
@@ -6217,9 +6227,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.40554307347179114,
-      "effectiveScore": 0.38727590935960615,
-      "dlProbability": 0.6591094807234543,
-      "dlScoreModifier": 0.9549562911880046,
+      "effectiveScore": 0.38435484204935816,
+      "dlProbability": 0.5824833806015993,
+      "dlScoreModifier": 0.9477534377765503,
       "trend2": -0.1767319827941307
     },
     {
@@ -6230,9 +6240,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.3445769660286027,
-      "effectiveScore": 0.33155169396561446,
-      "dlProbability": 0.7361621008424526,
-      "dlScoreModifier": 0.9621992374791905,
+      "effectiveScore": 0.32567801834375953,
+      "dlProbability": 0.5548211609909771,
+      "dlScoreModifier": 0.9451531891331517,
       "trend2": -0.15016350768879969
     },
     {
@@ -6243,9 +6253,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.25991058999056293,
-      "effectiveScore": 0.2515026570481175,
-      "dlProbability": 0.7941560844446508,
-      "dlScoreModifier": 0.9676506719377971,
+      "effectiveScore": 0.24707730421477858,
+      "dlProbability": 0.6130237126048789,
+      "dlScoreModifier": 0.9506242289848585,
       "trend2": -0.11326667109608432
     },
     {
@@ -6256,9 +6266,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.16223350722624144,
-      "effectiveScore": 0.15714847423204972,
-      "dlProbability": 0.8048519855579161,
-      "dlScoreModifier": 0.9686560866424442,
+      "effectiveScore": 0.15504920490774782,
+      "dlProbability": 0.6671945264545609,
+      "dlScoreModifier": 0.9557162854867287,
       "trend2": -0.07069988685119027
     },
     {
@@ -6269,9 +6279,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.08956888564375398,
-      "effectiveScore": 0.08729089440909864,
-      "dlProbability": 0.8677357331481319,
-      "dlScoreModifier": 0.9745671589159243,
+      "effectiveScore": 0.0858347904203815,
+      "dlProbability": 0.6947909895159867,
+      "dlScoreModifier": 0.9583103530145027,
       "trend2": -0.0390333056880146
     },
     {
@@ -6282,9 +6292,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.036943413791842926,
-      "effectiveScore": 0.03603878070318565,
-      "dlProbability": 0.8777979543703014,
-      "dlScoreModifier": 0.9755130077108082,
+      "effectiveScore": 0.035273950953717444,
+      "dlProbability": 0.6575560800726197,
+      "dlScoreModifier": 0.9548102715268263,
       "trend2": -0.016099603710949796
     },
     {
@@ -6295,9 +6305,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.025726816186724212,
-      "effectiveScore": 0.02665042009970605,
-      "dlProbability": 0.8590043580512873,
-      "dlScoreModifier": 1.0359004358051287,
+      "effectiveScore": 0.02620433962674865,
+      "dlProbability": 0.6856131114548291,
+      "dlScoreModifier": 1.018561311145483,
       "trend2": 0.011211512495419726
     },
     {
@@ -6308,9 +6318,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 0.0,
       "ruleScore": 0.14883618600032705,
-      "effectiveScore": 0.15499774889928625,
-      "dlProbability": 0.9139828535343975,
-      "dlScoreModifier": 1.0413982853534398,
+      "effectiveScore": 0.15380029829045977,
+      "dlProbability": 0.8335285876058279,
+      "dlScoreModifier": 1.0333528587605827,
       "trend2": 0.06486145611653137
     },
     {
@@ -6321,9 +6331,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.313392269664601,
-      "effectiveScore": 0.3276355311153169,
-      "dlProbability": 0.9544866874335909,
-      "dlScoreModifier": 1.045448668743359,
+      "effectiveScore": 0.32657752678216284,
+      "dlProbability": 0.9207269417230046,
+      "dlScoreModifier": 1.0420726941723004,
       "trend2": 0.13657350065437723
     },
     {
@@ -6334,9 +6344,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.3340519724139029,
-      "effectiveScore": 0.34942727477043534,
-      "dlProbability": 0.9602667736229339,
-      "dlScoreModifier": 1.0460266773622935,
+      "effectiveScore": 0.3438733264273176,
+      "dlProbability": 0.7940067661461297,
+      "dlScoreModifier": 1.0294006766146129,
       "trend2": 0.1455768112017967
     },
     {
@@ -6347,9 +6357,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.4188228429573815,
-      "effectiveScore": 0.43793526981592845,
-      "dlProbability": 0.9563367824827979,
-      "dlScoreModifier": 1.0456336782482798,
+      "effectiveScore": 0.43404714302567354,
+      "dlProbability": 0.8635021423566734,
+      "dlScoreModifier": 1.0363502142356673,
       "trend2": 0.18251918554955052
     },
     {
@@ -6360,9 +6370,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5726603976196016,
-      "effectiveScore": 0.5995752352074424,
-      "dlProbability": 0.969996488315213,
-      "dlScoreModifier": 1.0469996488315214,
+      "effectiveScore": 0.5979912041152521,
+      "dlProbability": 0.9423355727224008,
+      "dlScoreModifier": 1.04423355727224,
       "trend2": 0.2495601926388894
     },
     {
@@ -6373,9 +6383,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5740751708913164,
-      "effectiveScore": 0.6008802353126732,
-      "dlProbability": 0.9669260365282637,
-      "dlScoreModifier": 1.0466926036528263,
+      "effectiveScore": 0.5937106550245603,
+      "dlProbability": 0.842036812056469,
+      "dlScoreModifier": 1.034203681205647,
       "trend2": 0.25017673796260503
     },
     {
@@ -6386,9 +6396,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.6255932089234123,
-      "effectiveScore": 0.6546881086848453,
-      "dlProbability": 0.9650769756836503,
-      "dlScoreModifier": 1.046507697568365,
+      "effectiveScore": 0.6490645237241456,
+      "dlProbability": 0.8751849359286552,
+      "dlScoreModifier": 1.0375184935928656,
       "trend2": 0.2726278303536801
     },
     {
@@ -6399,9 +6409,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.733878013031044,
-      "effectiveScore": 0.7686473012811801,
-      "dlProbability": 0.9737747640991847,
-      "dlScoreModifier": 1.0473774764099184,
+      "effectiveScore": 0.7653335712230653,
+      "dlProbability": 0.9286210737136592,
+      "dlScoreModifier": 1.042862107371366,
       "trend2": 0.31981736307725395
     },
     {
@@ -6412,9 +6422,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.7531136984193726,
-      "effectiveScore": 0.7886354060018572,
-      "dlProbability": 0.9716646059822996,
-      "dlScoreModifier": 1.04716646059823,
+      "effectiveScore": 0.781573394306262,
+      "dlProbability": 0.877893748933533,
+      "dlScoreModifier": 1.0377893748933533,
       "trend2": 0.3282000998109387
     },
     {
@@ -6425,9 +6435,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8743051335089815,
-      "effectiveScore": 0.9159433396685799,
-      "dlProbability": 0.9762434139267308,
-      "dlScoreModifier": 1.0476243413926731,
+      "effectiveScore": 0.9143087751807171,
+      "dlProbability": 0.9575478301400654,
+      "dlScoreModifier": 1.0457547830140066,
       "trend2": 0.38101422492394615
     },
     {
@@ -6438,9 +6448,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9552362197159958,
-      "effectiveScore": 1.0012195578683063,
-      "dlProbability": 0.981381853024606,
-      "dlScoreModifier": 1.0481381853024605,
+      "effectiveScore": 0.997797312521158,
+      "dlProbability": 0.9455556848317183,
+      "dlScoreModifier": 1.0445555684831718,
       "trend2": 0.4162832561827016
     },
     {
@@ -6451,9 +6461,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8968055365402242,
-      "effectiveScore": 0.9389946488028126,
-      "dlProbability": 0.9704376873647474,
-      "dlScoreModifier": 1.0470437687364746,
+      "effectiveScore": 0.9304945369258447,
+      "dlProbability": 0.8756555798661656,
+      "dlScoreModifier": 1.0375655579866165,
       "trend2": 0.39081969591211035
     },
     {
@@ -6464,9 +6474,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0001948817406299,
-      "effectiveScore": 1.0479325775761346,
-      "dlProbability": 0.9772839444291801,
-      "dlScoreModifier": 1.047728394442918,
+      "effectiveScore": 1.0456910895574125,
+      "dlProbability": 0.9548734316417035,
+      "dlScoreModifier": 1.0454873431641702,
       "trend2": 0.4358758321706563
     },
     {
@@ -6477,9 +6487,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0881102898180146,
-      "effectiveScore": 1.140443974060226,
-      "dlProbability": 0.9809593727025961,
-      "dlScoreModifier": 1.0480959372702596,
+      "effectiveScore": 1.1379706705003128,
+      "dlProbability": 0.9582291073695961,
+      "dlScoreModifier": 1.0458229107369597,
       "trend2": 0.47418856737448445
     },
     {
@@ -6490,9 +6500,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0258933976874998,
-      "effectiveScore": 1.0745472208445053,
-      "dlProbability": 0.9742580785360125,
-      "dlScoreModifier": 1.0474258078536012,
+      "effectiveScore": 1.066487712934533,
+      "dlProbability": 0.8956972073174291,
+      "dlScoreModifier": 1.039569720731743,
       "trend2": 0.4470750116789529
     },
     {
@@ -6503,9 +6513,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.113519374295185,
-      "effectiveScore": 1.1661157315964825,
-      "dlProbability": 0.9723434411241304,
-      "dlScoreModifier": 1.047234344112413,
+      "effectiveScore": 1.1644064848203888,
+      "dlProbability": 0.9569934901888275,
+      "dlScoreModifier": 1.0456993490188828,
       "trend2": 0.4852616152808155
     },
     {
@@ -6516,9 +6526,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1956332945693207,
-      "effectiveScore": 1.2534290318344257,
-      "dlProbability": 0.9833901625826126,
-      "dlScoreModifier": 1.0483390162582613,
+      "effectiveScore": 1.2507107645478812,
+      "dlProbability": 0.9606552044738763,
+      "dlScoreModifier": 1.0460655204473877,
       "trend2": 0.5210461148675323
     },
     {
@@ -6529,9 +6539,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1289585626493195,
-      "effectiveScore": 1.1831265923284515,
-      "dlProbability": 0.9798052955284404,
-      "dlScoreModifier": 1.0479805295528442,
+      "effectiveScore": 1.174580616787334,
+      "dlProbability": 0.9041074282740158,
+      "dlScoreModifier": 1.0404107428274016,
       "trend2": 0.4919898731381107
     },
     {
@@ -6542,9 +6552,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0601461326778916,
-      "effectiveScore": 1.1084261619176174,
-      "dlProbability": 0.9554091907855399,
-      "dlScoreModifier": 1.045540919078554,
+      "effectiveScore": 1.1002475998494847,
+      "dlProbability": 0.8782635802320783,
+      "dlScoreModifier": 1.0378263580232079,
       "trend2": 0.4620020420413514
     },
     {
@@ -6555,9 +6565,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0081568371708374,
-      "effectiveScore": 1.0512969441020323,
-      "dlProbability": 0.927910671639722,
-      "dlScoreModifier": 1.0427910671639722,
+      "effectiveScore": 1.0453729039419366,
+      "dlProbability": 0.8691495747381704,
+      "dlScoreModifier": 1.036914957473817,
       "trend2": 0.43934557992902096
     },
     {
@@ -6568,9 +6578,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9756797714111004,
-      "effectiveScore": 1.0161463457382187,
-      "dlProbability": 0.9147526218422323,
-      "dlScoreModifier": 1.0414752621842231,
+      "effectiveScore": 1.01218215557008,
+      "dlProbability": 0.8741225884614496,
+      "dlScoreModifier": 1.037412258846145,
       "trend2": 0.42519237006670796
     },
     {
@@ -6581,9 +6591,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9027551901240132,
-      "effectiveScore": 0.9358567137335128,
-      "dlProbability": 0.8666722049524013,
-      "dlScoreModifier": 1.03666722049524,
+      "effectiveScore": 0.9331018045103102,
+      "dlProbability": 0.836155523870523,
+      "dlScoreModifier": 1.0336155523870523,
       "trend2": 0.39341250082873624
     },
     {
@@ -6594,9 +6604,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8879004398495273,
-      "effectiveScore": 0.9220763169487973,
-      "dlProbability": 0.8849066355351937,
-      "dlScoreModifier": 1.0384906635535194,
+      "effectiveScore": 0.9196673572998713,
+      "dlProbability": 0.8577756697105317,
+      "dlScoreModifier": 1.0357775669710532,
       "trend2": 0.386938935770784
     },
     {
@@ -6607,9 +6617,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.826347981900827,
-      "effectiveScore": 0.8511554161253079,
-      "dlProbability": 0.8002056611479453,
-      "dlScoreModifier": 1.0300205661147945,
+      "effectiveScore": 0.8522532625949969,
+      "dlProbability": 0.8134911836364704,
+      "dlScoreModifier": 1.031349118363647,
       "trend2": 0.36011493444831333
     },
     {
@@ -6620,9 +6630,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9582570014986739,
-      "effectiveScore": 0.9977453765080578,
-      "dlProbability": 0.9120854316496061,
-      "dlScoreModifier": 1.0412085431649607,
+      "effectiveScore": 1.002000883295104,
+      "dlProbability": 0.9564942570522971,
+      "dlScoreModifier": 1.0456494257052298,
       "trend2": 0.4175996854080135
     },
     {
@@ -6633,9 +6643,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8992649828218194,
-      "effectiveScore": 0.9359118489961993,
-      "dlProbability": 0.907520217893785,
-      "dlScoreModifier": 1.0407520217893784,
+      "effectiveScore": 0.9308792327313468,
+      "dlProbability": 0.8515565546689535,
+      "dlScoreModifier": 1.0351556554668953,
       "trend2": 0.3918915002316883
     },
     {
@@ -6646,9 +6656,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9476341486517389,
-      "effectiveScore": 0.9869773418074677,
-      "dlProbability": 0.9151728091659084,
-      "dlScoreModifier": 1.041517280916591,
+      "effectiveScore": 0.9866977278836873,
+      "dlProbability": 0.9122221564886265,
+      "dlScoreModifier": 1.0412222156488626,
       "trend2": 0.41297034275768296
     },
     {
@@ -6659,9 +6669,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0153219388970571,
-      "effectiveScore": 1.059488633770867,
-      "dlProbability": 0.935001876565261,
-      "dlScoreModifier": 1.0435001876565262,
+      "effectiveScore": 1.0591535168954094,
+      "dlProbability": 0.9317012793593966,
+      "dlScoreModifier": 1.0431701279359396,
       "trend2": 0.44246806609098605
     },
     {
@@ -6672,9 +6682,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9421419880401933,
-      "effectiveScore": 0.9816756803488053,
-      "dlProbability": 0.9196150135591374,
-      "dlScoreModifier": 1.0419615013559138,
+      "effectiveScore": 0.9739399309599063,
+      "dlProbability": 0.8375069079115963,
+      "dlScoreModifier": 1.0337506907911596,
       "trend2": 0.4105769091172246
     },
     {
@@ -6685,9 +6695,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9378024203847114,
-      "effectiveScore": 0.9748530962240685,
-      "dlProbability": 0.8950797634341565,
-      "dlScoreModifier": 1.0395079763434156,
+      "effectiveScore": 0.9720436292837791,
+      "dlProbability": 0.8651217799696135,
+      "dlScoreModifier": 1.0365121779969613,
       "trend2": 0.40868576500358716
     },
     {
@@ -6698,9 +6708,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9473809794312384,
-      "effectiveScore": 0.9855928350735046,
-      "dlProbability": 0.9033420183842704,
-      "dlScoreModifier": 1.040334201838427,
+      "effectiveScore": 0.9821428350388903,
+      "dlProbability": 0.8669258340875838,
+      "dlScoreModifier": 1.0366925834087584,
       "trend2": 0.41286001391409444
     },
     {
@@ -6711,9 +6721,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9844140961302206,
-      "effectiveScore": 1.0259086044256358,
-      "dlProbability": 0.9215147716650145,
-      "dlScoreModifier": 1.0421514771665015,
+      "effectiveScore": 1.0249532753594752,
+      "dlProbability": 0.9118102269016273,
+      "dlScoreModifier": 1.0411810226901628,
       "trend2": 0.428998709336081
     },
     {
@@ -6724,9 +6734,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8721546114504642,
-      "effectiveScore": 0.9022927849305459,
-      "dlProbability": 0.8455599854016643,
-      "dlScoreModifier": 1.0345559985401664,
+      "effectiveScore": 0.8987012104126005,
+      "dlProbability": 0.8043795058078871,
+      "dlScoreModifier": 1.0304379505807888,
       "trend2": 0.38007704697095934
     },
     {
@@ -6737,9 +6747,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8699283870862153,
-      "effectiveScore": 0.9023318764118374,
-      "dlProbability": 0.8724845608746739,
-      "dlScoreModifier": 1.0372484560874673,
+      "effectiveScore": 0.8986486570894668,
+      "dlProbability": 0.8301452214871231,
+      "dlScoreModifier": 1.0330145221487124,
       "trend2": 0.37910687864168646
     },
     {
@@ -6750,9 +6760,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8133481597821689,
-      "effectiveScore": 0.8384036897618975,
-      "dlProbability": 0.8080541792390478,
-      "dlScoreModifier": 1.0308054179239048,
+      "effectiveScore": 0.8376016463684011,
+      "dlProbability": 0.7981931697334606,
+      "dlScoreModifier": 1.029819316973346,
       "trend2": 0.35444973020913584
     },
     {
@@ -6763,9 +6773,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8820556826073294,
-      "effectiveScore": 0.9152712144031614,
-      "dlProbability": 0.8765695573509363,
-      "dlScoreModifier": 1.0376569557350936,
+      "effectiveScore": 0.9189816577645484,
+      "dlProbability": 0.9186354204767102,
+      "dlScoreModifier": 1.041863542047671,
       "trend2": 0.38439184372573676
     },
     {
@@ -6776,9 +6786,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.813598394732214,
-      "effectiveScore": 0.84075018764052,
-      "dlProbability": 0.8337247600794832,
-      "dlScoreModifier": 1.0333724760079483,
+      "effectiveScore": 0.8375556793800133,
+      "dlProbability": 0.7944608151013454,
+      "dlScoreModifier": 1.0294460815101345,
       "trend2": 0.3545587803243487
     },
     {
@@ -6789,9 +6799,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.7952397291686716,
-      "effectiveScore": 0.8205167853181562,
-      "dlProbability": 0.8178545440116378,
-      "dlScoreModifier": 1.0317854544011638,
+      "effectiveScore": 0.8188666579912974,
+      "dlProbability": 0.7971044825354116,
+      "dlScoreModifier": 1.029710448253541,
       "trend2": 0.34655824085335496
     },
     {
@@ -6802,9 +6812,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8371460438205769,
-      "effectiveScore": 0.8655504376191163,
-      "dlProbability": 0.8393003408211452,
-      "dlScoreModifier": 1.0339300340821145,
+      "effectiveScore": 0.8693092119047772,
+      "dlProbability": 0.8842002040338581,
+      "dlScoreModifier": 1.0384200204033858,
       "trend2": 0.36482063161895906
     },
     {
@@ -6815,9 +6825,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9050106593800461,
-      "effectiveScore": 0.9412946911145027,
-      "dlProbability": 0.900923805243488,
-      "dlScoreModifier": 1.0400923805243487,
+      "effectiveScore": 0.9439359908257866,
+      "dlProbability": 0.9301090936586913,
+      "dlScoreModifier": 1.043010909365869,
       "trend2": 0.3943954138158511
     },
     {
@@ -6828,9 +6838,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9352078249151496,
-      "effectiveScore": 0.974334808742884,
-      "dlProbability": 0.9183774214173674,
-      "dlScoreModifier": 1.0418377421417366,
+      "effectiveScore": 0.9744159237161443,
+      "dlProbability": 0.9192447684508194,
+      "dlScoreModifier": 1.041924476845082,
       "trend2": 0.4075550638971455
     },
     {
@@ -6841,9 +6851,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.959754262169047,
-      "effectiveScore": 0.999781198474239,
-      "dlProbability": 0.9170540093745545,
-      "dlScoreModifier": 1.0417054009374556,
+      "effectiveScore": 0.9992881859621568,
+      "dlProbability": 0.9119171474556743,
+      "dlScoreModifier": 1.0411917147455674,
       "trend2": 0.41825217798979875
     },
     {
@@ -6854,9 +6864,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9905718560684613,
-      "effectiveScore": 1.0335851298642391,
-      "dlProbability": 0.9342266896870636,
-      "dlScoreModifier": 1.0434226689687063,
+      "effectiveScore": 1.0314770776002262,
+      "dlProbability": 0.9129455251647873,
+      "dlScoreModifier": 1.0412945525164787,
       "trend2": 0.43168220510914157
     },
     {
@@ -6867,9 +6877,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9243631503690589,
-      "effectiveScore": 0.9620485513907929,
-      "dlProbability": 0.9076904299645425,
-      "dlScoreModifier": 1.0407690429964542,
+      "effectiveScore": 0.9526318176112187,
+      "dlProbability": 0.8058177647050644,
+      "dlScoreModifier": 1.0305817764705065,
       "trend2": 0.4028290533679064
     },
     {
@@ -6880,9 +6890,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.875750866911584,
-      "effectiveScore": 0.908977175671706,
-      "dlProbability": 0.8794036639358137,
-      "dlScoreModifier": 1.0379403663935813,
+      "effectiveScore": 0.902680870087598,
+      "dlProbability": 0.8075075822760536,
+      "dlScoreModifier": 1.0307507582276054,
       "trend2": 0.38164426239110416
     },
     {
@@ -6893,9 +6903,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8307525387925886,
-      "effectiveScore": 0.8565432830983588,
-      "dlProbability": 0.8104503820506452,
-      "dlScoreModifier": 1.0310450382050644,
+      "effectiveScore": 0.8568941036612843,
+      "dlProbability": 0.8146733070077606,
+      "dlScoreModifier": 1.031467330700776,
       "trend2": 0.36203440028001055
     },
     {
@@ -6906,9 +6916,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8047654484583575,
-      "effectiveScore": 0.8290818353204618,
-      "dlProbability": 0.8021549559400907,
-      "dlScoreModifier": 1.030215495594009,
+      "effectiveScore": 0.8305267488063758,
+      "dlProbability": 0.8201094231538857,
+      "dlScoreModifier": 1.0320109423153885,
       "trend2": 0.35070946267843583
     },
     {
@@ -6919,9 +6929,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.6611929987594641,
-      "effectiveScore": 0.666228646884079,
-      "dlProbability": 0.5761600339698526,
-      "dlScoreModifier": 1.0076160033969852,
+      "effectiveScore": 0.6715226701297312,
+      "dlProbability": 0.656227779024396,
+      "dlScoreModifier": 1.0156227779024396,
       "trend2": 0.28814189496565384
     },
     {
@@ -6932,9 +6942,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.47675512744698345,
-      "effectiveScore": 0.4539221445789054,
-      "dlProbability": 0.3711965391101805,
-      "dlScoreModifier": 0.952107525323643,
+      "effectiveScore": 0.4781375472044943,
+      "dlProbability": 0.5289964318771707,
+      "dlScoreModifier": 1.002899643187717,
       "trend2": 0.20776554820590393
     },
     {
@@ -6945,9 +6955,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.45113370203223135,
-      "effectiveScore": 0.4305357757845587,
-      "dlProbability": 0.3474270335757929,
-      "dlScoreModifier": 0.9543418588438755,
+      "effectiveScore": 0.4579551687953271,
+      "dlProbability": 0.6512072082481732,
+      "dlScoreModifier": 1.0151207208248174,
       "trend2": 0.19659996405032584
     },
     {
@@ -6958,9 +6968,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.4157065948428798,
-      "effectiveScore": 0.3947206011552116,
-      "dlProbability": 0.3987521883660947,
-      "dlScoreModifier": 0.949517294293587,
+      "effectiveScore": 0.4217312513149752,
+      "dlProbability": 0.6449256890998438,
+      "dlScoreModifier": 1.0144925689099844,
       "trend2": 0.18116115296514573
     },
     {
@@ -6971,9 +6981,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.33424336712752817,
-      "effectiveScore": 0.317690997375236,
-      "dlProbability": 0.38853095131373705,
-      "dlScoreModifier": 0.9504780905765087,
+      "effectiveScore": 0.3366774431158557,
+      "dlProbability": 0.5728234642095005,
+      "dlScoreModifier": 1.0072823464209502,
       "trend2": 0.14566021927716027
     },
     {
@@ -6984,9 +6994,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.2814066561328609,
-      "effectiveScore": 0.2744004819256261,
-      "dlProbability": 0.12656355342088607,
-      "dlScoreModifier": 0.9751030259784367,
+      "effectiveScore": 0.2831788541588729,
+      "dlProbability": 0.562976407536546,
+      "dlScoreModifier": 1.0062976407536546,
       "trend2": 0.12263446120301202
     },
     {
@@ -6997,9 +7007,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.21345782711277012,
-      "effectiveScore": 0.20457533970403757,
-      "dlProbability": 0.30438698105447054,
-      "dlScoreModifier": 0.9583876237808796,
+      "effectiveScore": 0.21366075208415097,
+      "dlProbability": 0.5095065603414801,
+      "dlScoreModifier": 1.000950656034148,
       "trend2": 0.09302297954594627
     },
     {
@@ -7010,9 +7020,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.074129609724484,
-      "effectiveScore": 0.07215860833657906,
-      "dlProbability": 0.14455940897079114,
-      "dlScoreModifier": 0.9734114155567455,
+      "effectiveScore": 0.07038144374091115,
+      "dlProbability": 0.3995992831473896,
+      "dlScoreModifier": 0.9494376673841454,
       "trend2": 0.03230500967062976
     },
     {
@@ -7023,9 +7033,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.06431989058517876,
-      "effectiveScore": 0.06690078937157298,
-      "dlProbability": 0.0987401777407645,
-      "dlScoreModifier": 1.0401259822259235,
+      "effectiveScore": 0.06531053461493189,
+      "dlProbability": 0.34598169854763416,
+      "dlScoreModifier": 1.0154018301452366,
       "trend2": -0.02803002329421088
     },
     {
@@ -7036,9 +7046,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.22746133790009962,
-      "effectiveScore": 0.2371053219869407,
-      "dlProbability": 0.07601655842380159,
-      "dlScoreModifier": 1.04239834415762,
+      "effectiveScore": 0.23254432764940608,
+      "dlProbability": 0.27653390258616706,
+      "dlScoreModifier": 1.0223466097413834,
       "trend2": -0.099125582177861
     },
     {
@@ -7049,9 +7059,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.22872106048814844,
-      "effectiveScore": 0.23927497007147797,
-      "dlProbability": 0.03856852706065664,
-      "dlScoreModifier": 1.0461431472939344,
+      "effectiveScore": 0.23013272067546772,
+      "dlProbability": 0.4382802709856955,
+      "dlScoreModifier": 1.0061719729014305,
       "trend2": -0.09967455782390149
     },
     {
@@ -7062,9 +7072,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 1.0,
       "ruleScore": 0.2814563992256154,
-      "effectiveScore": 0.29208009711711724,
-      "dlProbability": 0.12254551963531927,
-      "dlScoreModifier": 1.037745448036468,
+      "effectiveScore": 0.2851492341780984,
+      "dlProbability": 0.36879548794615197,
+      "dlScoreModifier": 1.0131204512053849,
       "trend2": -0.12265613879039516
     },
     {
@@ -7075,9 +7085,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.2668168529025964,
-      "effectiveScore": 0.27696841585899024,
-      "dlProbability": 0.11953066884797667,
-      "dlScoreModifier": 1.0380469331152022,
+      "effectiveScore": 0.26877120314375147,
+      "dlProbability": 0.42675311848204084,
+      "dlScoreModifier": 1.0073246881517959,
       "trend2": -0.11627635765710048
     },
     {
@@ -7088,9 +7098,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.34820723282903976,
-      "effectiveScore": 0.36336077235533804,
-      "dlProbability": 0.0648126145117086,
-      "dlScoreModifier": 1.0435187385488292,
+      "effectiveScore": 0.35314787581427043,
+      "dlProbability": 0.35811199425439877,
+      "dlScoreModifier": 1.01418880057456,
       "trend2": -0.15174554494126818
     },
     {
@@ -7101,9 +7111,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.35762806174661077,
-      "effectiveScore": 0.37159306111154417,
-      "dlProbability": 0.10951052619500602,
-      "dlScoreModifier": 1.0390489473804994,
+      "effectiveScore": 0.3617501440302402,
+      "dlProbability": 0.3847382874962981,
+      "dlScoreModifier": 1.0115261712503703,
       "trend2": -0.15585105649621384
     },
     {
@@ -7114,9 +7124,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.358883108634144,
-      "effectiveScore": 0.37278957625562176,
-      "dlProbability": 0.11250704513779732,
-      "dlScoreModifier": 1.0387492954862203,
+      "effectiveScore": 0.36286423707615306,
+      "dlProbability": 0.3890689378733756,
+      "dlScoreModifier": 1.0110931062126625,
       "trend2": -0.15639799451449757
     },
     {
@@ -7127,9 +7137,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.47076221016148195,
-      "effectiveScore": 0.49076768841719326,
-      "dlProbability": 0.07504069307413348,
-      "dlScoreModifier": 1.0424959306925867,
+      "effectiveScore": 0.4803401160610196,
+      "dlProbability": 0.29654471636004515,
+      "dlScoreModifier": 1.0203455283639955,
       "trend2": -0.20515388936157758
     },
     {
@@ -7140,9 +7150,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5718484092450911,
-      "effectiveScore": 0.5967196438923755,
-      "dlProbability": 0.06507294161895852,
-      "dlScoreModifier": 1.043492705838104,
+      "effectiveScore": 0.5843821983183611,
+      "dlProbability": 0.2808197265108036,
+      "dlScoreModifier": 1.0219180273489197,
       "trend2": -0.24920633549073365
     },
     {
@@ -7153,9 +7163,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5678823461056183,
-      "effectiveScore": 0.5922559032215401,
-      "dlProbability": 0.07079917551462761,
-      "dlScoreModifier": 1.0429200824485372,
+      "effectiveScore": 0.5767955222263459,
+      "dlProbability": 0.3430453740664457,
+      "dlScoreModifier": 1.0156954625933554,
       "trend2": -0.2474779612479555
     },
     {
@@ -7166,9 +7176,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5434199395750979,
-      "effectiveScore": 0.5664357241844096,
-      "dlProbability": 0.07646411305209444,
-      "dlScoreModifier": 1.0423535886947906,
+      "effectiveScore": 0.5505193666050231,
+      "dlProbability": 0.3693565231434777,
+      "dlScoreModifier": 1.0130643476856522,
       "trend2": -0.2368174669802469
     },
     {
@@ -7179,9 +7189,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5668187060648487,
-      "effectiveScore": 0.588942206230145,
-      "dlProbability": 0.10969001325151714,
-      "dlScoreModifier": 1.0390309986748483,
+      "effectiveScore": 0.5754217793987718,
+      "dlProbability": 0.34822178164072615,
+      "dlScoreModifier": 1.0151778218359273,
       "trend2": -0.2470144365925467
     },
     {
@@ -7192,9 +7202,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.6834558208746286,
-      "effectiveScore": 0.714517149400289,
-      "dlProbability": 0.045525437388027806,
-      "dlScoreModifier": 1.0454474562611973,
+      "effectiveScore": 0.6996103702692812,
+      "dlProbability": 0.26363432863912944,
+      "dlScoreModifier": 1.023636567136087,
       "trend2": -0.297843830351513
     },
     {
@@ -7205,9 +7215,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.8010574660941195,
-      "effectiveScore": 0.8368164714250111,
-      "dlProbability": 0.05360249614488796,
-      "dlScoreModifier": 1.0446397503855112,
+      "effectiveScore": 0.8226762119965559,
+      "dlProbability": 0.23012240922180888,
+      "dlScoreModifier": 1.0269877590778191,
       "trend2": -0.34909355769012634
     },
     {
@@ -7218,9 +7228,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.8073399856876755,
-      "effectiveScore": 0.84453526346391,
-      "dlProbability": 0.03928606986371057,
-      "dlScoreModifier": 1.046071393013629,
+      "effectiveScore": 0.8224352545730385,
+      "dlProbability": 0.3130246345657575,
+      "dlScoreModifier": 1.0186975365434243,
       "trend2": -0.3518314225862194
     },
     {
@@ -7231,9 +7241,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.7958805634031998,
-      "effectiveScore": 0.8301467135890032,
-      "dlProbability": 0.06945612493310957,
-      "dlScoreModifier": 1.043054387506689,
+      "effectiveScore": 0.8103516802474855,
+      "dlProbability": 0.31817476755046015,
+      "dlScoreModifier": 1.018182523244954,
       "trend2": -0.34683751058404216
     },
     {
@@ -7244,9 +7254,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9080947121145608,
-      "effectiveScore": 0.950139315227432,
-      "dlProbability": 0.03700200483529477,
-      "dlScoreModifier": 1.0462997995164705,
+      "effectiveScore": 0.9320492245228008,
+      "dlProbability": 0.2362112994528933,
+      "dlScoreModifier": 1.0263788700547107,
       "trend2": -0.39573941594649126
     },
     {
@@ -7257,9 +7267,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9623973185413333,
-      "effectiveScore": 1.0067624152461567,
-      "dlProbability": 0.039014751495092995,
-      "dlScoreModifier": 1.0460985248504908,
+      "effectiveScore": 0.9863432145444081,
+      "dlProbability": 0.251184925999496,
+      "dlScoreModifier": 1.0248815074000504,
       "trend2": -0.41940399791687066
     },
     {
@@ -7270,9 +7280,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9325667568042136,
-      "effectiveScore": 0.9740077224863642,
-      "dlProbability": 0.055624673732060925,
-      "dlScoreModifier": 1.0444375326267938,
+      "effectiveScore": 0.9512891885900581,
+      "dlProbability": 0.2992376240173539,
+      "dlScoreModifier": 1.0200762375982646,
       "trend2": -0.4064041104362857
     },
     {
@@ -7283,9 +7293,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9829814534653067,
-      "effectiveScore": 1.0269218972614083,
-      "dlProbability": 0.05298806868432454,
-      "dlScoreModifier": 1.0447011931315675,
+      "effectiveScore": 1.0051717156978917,
+      "dlProbability": 0.2742555349914534,
+      "dlScoreModifier": 1.0225744465008546,
       "trend2": -0.4283743766933406
     },
     {
@@ -7296,9 +7306,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0356813358737094,
-      "effectiveScore": 1.0820031542176087,
-      "dlProbability": 0.052740628420982136,
-      "dlScoreModifier": 1.0447259371579019,
+      "effectiveScore": 1.0601856552267903,
+      "dlProbability": 0.26339904462593333,
+      "dlScoreModifier": 1.0236600955374067,
       "trend2": -0.4513405061141218
     },
     {
@@ -7309,9 +7319,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1211718299992792,
-      "effectiveScore": 1.1733126694071834,
-      "dlProbability": 0.034943368957658816,
-      "dlScoreModifier": 1.0465056631042342,
+      "effectiveScore": 1.1538814410430878,
+      "dlProbability": 0.20825514726115063,
+      "dlScoreModifier": 1.0291744852738849,
       "trend2": -0.4885964858736007
     },
     {
@@ -7322,9 +7332,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0769816024105927,
-      "effectiveScore": 1.1267219393250334,
-      "dlProbability": 0.038150542190251116,
-      "dlScoreModifier": 1.0461849457809749,
+      "effectiveScore": 1.0988012697308018,
+      "dlProbability": 0.29739981378167946,
+      "dlScoreModifier": 1.020260018621832,
       "trend2": -0.4693387866235217
     },
     {
@@ -7335,9 +7345,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1014789078080967,
-      "effectiveScore": 1.1490842445333074,
-      "dlProbability": 0.06780528081156305,
-      "dlScoreModifier": 1.0432194719188437,
+      "effectiveScore": 1.1277435527448096,
+      "dlProbability": 0.26155108599420496,
+      "dlScoreModifier": 1.0238448914005795,
       "trend2": -0.48001448950003844
     },
     {
@@ -7348,9 +7358,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1211867782506266,
-      "effectiveScore": 1.1749224101058058,
-      "dlProbability": 0.020725423296356432,
-      "dlScoreModifier": 1.0479274576703643,
+      "effectiveScore": 1.143486173407538,
+      "dlProbability": 0.301109007085287,
+      "dlScoreModifier": 1.0198890992914713,
       "trend2": -0.4886030001855758
     },
     {
@@ -7361,9 +7371,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0769685140440222,
-      "effectiveScore": 1.1236146103452131,
-      "dlProbability": 0.06687595140516588,
-      "dlScoreModifier": 1.0433124048594835,
+      "effectiveScore": 1.0984373529551705,
+      "dlProbability": 0.3006549065159509,
+      "dlScoreModifier": 1.019934509348405,
       "trend2": -0.4693330828324157
     },
     {
@@ -7374,9 +7384,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1672230918984177,
-      "effectiveScore": 1.2200022382689593,
-      "dlProbability": 0.04782297628554147,
-      "dlScoreModifier": 1.045217702371446,
+      "effectiveScore": 1.2022121507551693,
+      "dlProbability": 0.20023674908758007,
+      "dlScoreModifier": 1.029976325091242,
       "trend2": -0.5086652069491011
     },
     {
@@ -7387,9 +7397,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.2283890236709059,
-      "effectiveScore": 1.283999099374877,
-      "dlProbability": 0.04729263586394774,
-      "dlScoreModifier": 1.0452707364136051,
+      "effectiveScore": 1.2631725536216467,
+      "dlProbability": 0.21683620351153762,
+      "dlScoreModifier": 1.0283163796488461,
       "trend2": -0.5353207636796349
     },
     {
@@ -7400,9 +7410,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.2735881059683174,
-      "effectiveScore": 1.332305699768595,
-      "dlProbability": 0.0389593109019014,
-      "dlScoreModifier": 1.0461040689098098,
+      "effectiveScore": 1.3093690391709647,
+      "dlProbability": 0.21905411934227453,
+      "dlScoreModifier": 1.0280945880657726,
       "trend2": -0.5550181126357188
     },
     {
@@ -7413,9 +7423,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.2604380185519017,
-      "effectiveScore": 1.3188850335255378,
-      "dlProbability": 0.036296000966512414,
-      "dlScoreModifier": 1.0463703999033487,
+      "effectiveScore": 1.2889734271073454,
+      "dlProbability": 0.2736072053092488,
+      "dlScoreModifier": 1.022639279469075,
       "trend2": -0.5492874241465195
     },
     {
@@ -7426,9 +7436,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.3400355459306523,
-      "effectiveScore": 1.4025546949767724,
-      "dlProbability": 0.03345156226657626,
-      "dlScoreModifier": 1.0466548437733423,
+      "effectiveScore": 1.3813958278221825,
+      "dlProbability": 0.1913493674318502,
+      "dlScoreModifier": 1.030865063256815,
       "trend2": -0.5839753025973278
     },
     {
@@ -7439,9 +7449,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.2508431453657933,
-      "effectiveScore": 1.3057153255292913,
-      "dlProbability": 0.06131845654035825,
-      "dlScoreModifier": 1.0438681543459642,
+      "effectiveScore": 1.2764607944868558,
+      "dlProbability": 0.29519695002548846,
+      "dlScoreModifier": 1.0204803049974511,
       "trend2": -0.5451060656823683
     },
     {
@@ -7452,9 +7462,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.2649817746997145,
-      "effectiveScore": 1.3199949484311613,
-      "dlProbability": 0.06510698547806462,
-      "dlScoreModifier": 1.0434893014521935,
+      "effectiveScore": 1.29659405471505,
+      "dlProbability": 0.25009695279728683,
+      "dlScoreModifier": 1.0249903047202713,
       "trend2": -0.5512675517479143
     },
     {
@@ -7465,9 +7475,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.304290368371569,
-      "effectiveScore": 1.3616620628182274,
-      "dlProbability": 0.06013096594212969,
-      "dlScoreModifier": 1.043986903405787,
+      "effectiveScore": 1.3404648586465373,
+      "dlProbability": 0.22265002370497508,
+      "dlScoreModifier": 1.0277349976295025,
       "trend2": -0.5683978793380338
     },
     {
@@ -7478,9 +7488,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.3339502754075288,
-      "effectiveScore": 1.3931367188448804,
-      "dlProbability": 0.05630697389173725,
-      "dlScoreModifier": 1.0443693026108263,
+      "effectiveScore": 1.371270456307245,
+      "dlProbability": 0.22022809554640344,
+      "dlScoreModifier": 1.0279771904453596,
       "trend2": -0.5813233970520464
     },
     {
@@ -7491,9 +7501,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.2199909610322623,
-      "effectiveScore": 1.2743895900294895,
-      "dlProbability": 0.05410629476140357,
-      "dlScoreModifier": 1.0445893705238596,
+      "effectiveScore": 1.2406663323074922,
+      "dlProbability": 0.33052848803292834,
+      "dlScoreModifier": 1.0169471511967072,
       "trend2": -0.5316609643664554
     },
     {
@@ -7504,9 +7514,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.2353689093482774,
-      "effectiveScore": 1.2855957314944566,
-      "dlProbability": 0.09342653221962159,
-      "dlScoreModifier": 1.0406573467780378,
+      "effectiveScore": 1.2661328891748316,
+      "dlProbability": 0.25097333603139016,
+      "dlScoreModifier": 1.024902666396861,
       "trend2": -0.5383625343721481
     },
     {
@@ -7517,9 +7527,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.1094043143829742,
-      "effectiveScore": 1.1495446234607,
-      "dlProbability": 0.13818142261281105,
-      "dlScoreModifier": 1.036181857738719,
+      "effectiveScore": 1.1264055118326501,
+      "dlProbability": 0.34675381888043677,
+      "dlScoreModifier": 1.0153246181119564,
       "trend2": -0.4834683095996811
     },
     {
@@ -7530,9 +7540,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.99023154542694,
-      "effectiveScore": 1.016406244976882,
-      "dlProbability": 0.23567091786944994,
-      "dlScoreModifier": 1.026432908213055,
+      "effectiveScore": 1.0030964394545026,
+      "dlProbability": 0.3700819612647685,
+      "dlScoreModifier": 1.012991803873523,
       "trend2": -0.4315339008268686
     },
     {
@@ -7543,9 +7553,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.004215275279853,
-      "effectiveScore": 1.0277027232061189,
-      "dlProbability": 0.2661114254638245,
-      "dlScoreModifier": 1.0233888574536176,
+      "effectiveScore": 1.0250318452158964,
+      "dlProbability": 0.2927080930904751,
+      "dlScoreModifier": 1.0207291906909526,
       "trend2": -0.4376278831074825
     },
     {
@@ -7556,9 +7566,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 1.0086354047127515,
-      "effectiveScore": 1.0469053386138465,
-      "dlProbability": 0.12057713101996587,
-      "dlScoreModifier": 1.0379422868980035,
+      "effectiveScore": 1.027407395662266,
+      "dlProbability": 0.3138872494282469,
+      "dlScoreModifier": 1.0186112750571754,
       "trend2": -0.4395541353109668
     },
     {
@@ -7569,9 +7579,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9118396177237761,
-      "effectiveScore": 0.9286745204974451,
-      "dlProbability": 0.31537429997071126,
-      "dlScoreModifier": 1.0184625700029288,
+      "effectiveScore": 0.92363807908017,
+      "dlProbability": 0.37060815161940036,
+      "dlScoreModifier": 1.01293918483806,
       "trend2": -0.3973714117491258
     },
     {
@@ -7582,9 +7592,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9497242414039027,
-      "effectiveScore": 0.9927951490344936,
-      "dlProbability": 0.04649038370419386,
-      "dlScoreModifier": 1.0453509616295806,
+      "effectiveScore": 0.9667025851826913,
+      "dlProbability": 0.3212286994623736,
+      "dlScoreModifier": 1.0178771300537626,
       "trend2": -0.41388118616859687
     },
     {
@@ -7595,9 +7605,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9486116960366887,
-      "effectiveScore": 0.9804330145894047,
-      "dlProbability": 0.1645485324957968,
-      "dlScoreModifier": 1.0335451467504204,
+      "effectiveScore": 0.9660014845628928,
+      "dlProbability": 0.31668169811885155,
+      "dlScoreModifier": 1.0183318301881148,
       "trend2": -0.41339634901674294
     },
     {
@@ -7608,9 +7618,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.9046326469891103,
-      "effectiveScore": 0.9262696622924976,
-      "dlProbability": 0.2608198711885782,
-      "dlScoreModifier": 1.0239180128811423,
+      "effectiveScore": 0.9189640901876011,
+      "dlProbability": 0.34157720544145576,
+      "dlScoreModifier": 1.0158422794558544,
       "trend2": -0.3942306794541003
     },
     {
@@ -7621,9 +7631,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.8229695636011084,
-      "effectiveScore": 0.8389452499927871,
-      "dlProbability": 0.30587755491499474,
-      "dlScoreModifier": 1.0194122445085005,
+      "effectiveScore": 0.8305172697151617,
+      "dlProbability": 0.40828693492592266,
+      "dlScoreModifier": 1.0091713065074077,
       "trend2": -0.35864265048176497
     },
     {
@@ -7634,9 +7644,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.7321304889273536,
-      "effectiveScore": 0.6890938718126597,
-      "dlProbability": 0.5129498514503887,
-      "dlScoreModifier": 0.9412172860363364,
+      "effectiveScore": 0.7382003779715733,
+      "dlProbability": 0.4170927978547543,
+      "dlScoreModifier": 1.0082907202145246,
       "trend2": -0.31905580796750493
     },
     {
@@ -7647,9 +7657,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.573775563335754,
-      "effectiveScore": 0.5839083265188668,
-      "dlProbability": 0.3234019740366058,
-      "dlScoreModifier": 1.0176598025963395,
+      "effectiveScore": 0.5464889190297176,
+      "dlProbability": 0.6323797597310327,
+      "dlScoreModifier": 0.9524436974147169,
       "trend2": -0.25004617171497723
     },
     {
@@ -7660,9 +7670,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5860866341230804,
-      "effectiveScore": 0.5869825312999338,
-      "dlProbability": 0.4847139121643001,
-      "dlScoreModifier": 1.00152860878357,
+      "effectiveScore": 0.593319533844827,
+      "dlProbability": 0.37658992202460373,
+      "dlScoreModifier": 1.0123410077975397,
       "trend2": -0.2554112243885114
     },
     {
@@ -7673,9 +7683,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5691908646470546,
-      "effectiveScore": 0.5731656148072843,
-      "dlProbability": 0.43016841261684075,
-      "dlScoreModifier": 1.006983158738316,
+      "effectiveScore": 0.575150229206544,
+      "dlProbability": 0.395301120772823,
+      "dlScoreModifier": 1.0104698879227176,
       "trend2": -0.24804820172665773
     },
     {
@@ -7686,9 +7696,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.5447006514406311,
-      "effectiveScore": 0.5466421850291168,
-      "dlProbability": 0.4643559525153745,
-      "dlScoreModifier": 1.0035644047484626,
+      "effectiveScore": 0.5501334800423939,
+      "dlProbability": 0.40026028815287734,
+      "dlScoreModifier": 1.0099739711847122,
       "trend2": -0.2373755895625067
     },
     {
@@ -7699,9 +7709,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.41293296603361007,
-      "effectiveScore": 0.4148770354764274,
-      "dlProbability": 0.452920459185157,
-      "dlScoreModifier": 1.0047079540814843,
+      "effectiveScore": 0.39324271573867065,
+      "dlProbability": 0.6310224425520107,
+      "dlScoreModifier": 0.952316109599889,
       "trend2": -0.17995243075766051
     },
     {
@@ -7712,9 +7722,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.42854011173627576,
-      "effectiveScore": 0.40404491759332584,
-      "dlProbability": 0.5302167042142661,
-      "dlScoreModifier": 0.9428403701961409,
+      "effectiveScore": 0.4328138658089146,
+      "dlProbability": 0.4002717842368763,
+      "dlScoreModifier": 1.0099728215763124,
       "trend2": -0.18675388289978634
     },
     {
@@ -7725,9 +7735,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.2815785349900248,
-      "effectiveScore": 0.2692291359870805,
-      "dlProbability": 0.6717261390143774,
-      "dlScoreModifier": 0.9561422570673513,
+      "effectiveScore": 0.2701373060065324,
+      "dlProbability": 0.7060376435685186,
+      "dlScoreModifier": 0.9593675384954408,
       "trend2": -0.12270936444563657
     },
     {
@@ -7738,9 +7748,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.26947277223847255,
-      "effectiveScore": 0.259190701196937,
-      "dlProbability": 0.732380296416946,
-      "dlScoreModifier": 0.9618437478631928,
+      "effectiveScore": 0.253576531757968,
+      "dlProbability": 0.5107430367360764,
+      "dlScoreModifier": 0.9410098454531911,
       "trend2": -0.11743378314670957
     },
     {
@@ -7751,9 +7761,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.2141133630043632,
-      "effectiveScore": 0.20718908354504165,
-      "dlProbability": 0.7942626080020206,
-      "dlScoreModifier": 0.9676606851521898,
+      "effectiveScore": 0.20287435539946708,
+      "dlProbability": 0.5798838200239073,
+      "dlScoreModifier": 0.9475090790822472,
       "trend2": -0.09330865612506314
     },
     {
@@ -7764,9 +7774,9 @@
       "targetPositionRatio": 0.0,
       "currentOpen": 0.0,
       "ruleScore": 0.07012894031913415,
-      "effectiveScore": 0.06808413596504476,
-      "dlProbability": 0.8281087020710651,
-      "dlScoreModifier": 0.9708422179946802,
+      "effectiveScore": 0.06810545445652204,
+      "dlProbability": 0.8313426374690945,
+      "dlScoreModifier": 0.9711462079220948,
       "trend2": -0.030561554331944324
     },
     {
@@ -7777,9 +7787,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 0.0,
       "ruleScore": 0.07753795645320317,
-      "effectiveScore": 0.08064802551199597,
-      "dlProbability": 0.901102789015317,
-      "dlScoreModifier": 1.0401102789015317,
+      "effectiveScore": 0.08036228832414935,
+      "dlProbability": 0.8642515227559235,
+      "dlScoreModifier": 1.0364251522755923,
       "trend2": 0.03379033617432192
     },
     {
@@ -7790,9 +7800,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.11924754437117208,
-      "effectiveScore": 0.12444793754285854,
-      "dlProbability": 0.9361006508863308,
-      "dlScoreModifier": 1.043610065088633,
+      "effectiveScore": 0.12206173128329922,
+      "dlProbability": 0.7359953764219808,
+      "dlScoreModifier": 1.023599537642198,
       "trend2": 0.05196699521860838
     },
     {
@@ -7803,9 +7813,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.2711790190388585,
-      "effectiveScore": 0.28329773940243397,
-      "dlProbability": 0.9468900435781473,
-      "dlScoreModifier": 1.0446890043578148,
+      "effectiveScore": 0.2817049249775054,
+      "dlProbability": 0.8881534041960152,
+      "dlScoreModifier": 1.0388153404196014,
       "trend2": 0.11817734998311696
     },
     {
@@ -7816,9 +7826,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.4028060435194488,
-      "effectiveScore": 0.4210011365469327,
-      "dlProbability": 0.9517085411258327,
-      "dlScoreModifier": 1.0451708541125833,
+      "effectiveScore": 0.418967564207798,
+      "dlProbability": 0.90122339146505,
+      "dlScoreModifier": 1.040122339146505,
       "trend2": 0.17553921003560882
     },
     {
@@ -7829,9 +7839,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5286533371744635,
-      "effectiveScore": 0.5536230506096775,
-      "dlProbability": 0.9723267911004141,
-      "dlScoreModifier": 1.0472326791100415,
+      "effectiveScore": 0.5516418108526672,
+      "dlProbability": 0.9348496843143375,
+      "dlScoreModifier": 1.0434849684314338,
       "trend2": 0.2303823159639684
     },
     {
@@ -7842,9 +7852,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.506353552303837,
-      "effectiveScore": 0.5274204972712485,
-      "dlProbability": 0.916052082019765,
-      "dlScoreModifier": 1.0416052082019764,
+      "effectiveScore": 0.5216540479867864,
+      "dlProbability": 0.8021702052515338,
+      "dlScoreModifier": 1.0302170205251533,
       "trend2": 0.22066427254547444
     },
     {
@@ -7855,9 +7865,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.6085952273136045,
-      "effectiveScore": 0.6370703433347439,
-      "dlProbability": 0.9678826705038601,
-      "dlScoreModifier": 1.046788267050386,
+      "effectiveScore": 0.6335840923086542,
+      "dlProbability": 0.9105990956477419,
+      "dlScoreModifier": 1.0410599095647741,
       "trend2": 0.26522026457359665
     },
     {
@@ -7868,9 +7878,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5626685828160098,
-      "effectiveScore": 0.5879565445062223,
-      "dlProbability": 0.9494290682385844,
-      "dlScoreModifier": 1.0449429068238585,
+      "effectiveScore": 0.5792780085508725,
+      "dlProbability": 0.7951902104030204,
+      "dlScoreModifier": 1.029519021040302,
       "trend2": 0.24520585062822908
     },
     {
@@ -7881,9 +7891,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.56945210257391,
-      "effectiveScore": 0.5948314813962764,
-      "dlProbability": 0.9456806587885476,
-      "dlScoreModifier": 1.0445680658788548,
+      "effectiveScore": 0.5879485573047072,
+      "dlProbability": 0.8248114221932573,
+      "dlScoreModifier": 1.0324811422193256,
       "trend2": 0.24816204683908666
     },
     {
@@ -7894,9 +7904,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5694856570329649,
-      "effectiveScore": 0.5937729055405879,
-      "dlProbability": 0.9264769131177102,
-      "dlScoreModifier": 1.042647691311771,
+      "effectiveScore": 0.5879842029471575,
+      "dlProbability": 0.8248290046595814,
+      "dlScoreModifier": 1.0324829004659581,
       "trend2": 0.2481766695671476
     },
     {
@@ -7907,9 +7917,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.6452856264885469,
-      "effectiveScore": 0.6740280150758905,
-      "dlProbability": 0.9454211810628913,
-      "dlScoreModifier": 1.044542118106289,
+      "effectiveScore": 0.67031901539636,
+      "dlProbability": 0.8879427633316015,
+      "dlScoreModifier": 1.0387942763331601,
       "trend2": 0.2812096068158006
     },
     {
@@ -7920,9 +7930,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.6743351037466448,
-      "effectiveScore": 0.7045760927497623,
-      "dlProbability": 0.9484563955679703,
-      "dlScoreModifier": 1.044845639556797,
+      "effectiveScore": 0.6990320146840805,
+      "dlProbability": 0.8662409208747721,
+      "dlScoreModifier": 1.0366240920874772,
       "trend2": 0.2938691047847969
     },
     {
@@ -7933,9 +7943,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.7346254504597,
-      "effectiveScore": 0.7687452141905176,
-      "dlProbability": 0.9644511527536493,
-      "dlScoreModifier": 1.0464451152753649,
+      "effectiveScore": 0.7632352760845724,
+      "dlProbability": 0.889447787399272,
+      "dlScoreModifier": 1.0389447787399273,
       "trend2": 0.32014308951033055
     },
     {
@@ -7946,9 +7956,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8541857768186649,
-      "effectiveScore": 0.8939010376724855,
-      "dlProbability": 0.9649487492256815,
-      "dlScoreModifier": 1.0464948749225682,
+      "effectiveScore": 0.892847858359374,
+      "dlProbability": 0.9526191209212398,
+      "dlScoreModifier": 1.045261912092124,
       "trend2": 0.37224639227430445
     },
     {
@@ -7959,9 +7969,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8262295482091574,
-      "effectiveScore": 0.864842376546496,
-      "dlProbability": 0.9673377806571,
-      "dlScoreModifier": 1.04673377806571,
+      "effectiveScore": 0.856885138547606,
+      "dlProbability": 0.8710299444614895,
+      "dlScoreModifier": 1.037102994446149,
       "trend2": 0.36006332212269965
     },
     {
@@ -7972,9 +7982,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.8522069291211147,
-      "effectiveScore": 0.8913040578992478,
-      "dlProbability": 0.9587750632167971,
-      "dlScoreModifier": 1.0458775063216796,
+      "effectiveScore": 0.8850993233118921,
+      "dlProbability": 0.8859672230628242,
+      "dlScoreModifier": 1.0385967223062824,
       "trend2": 0.37138402844635965
     },
     {
@@ -7985,9 +7995,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9048897452955793,
-      "effectiveScore": 0.9464816413601157,
-      "dlProbability": 0.9596349586319008,
-      "dlScoreModifier": 1.04596349586319,
+      "effectiveScore": 0.9421685509127095,
+      "dlProbability": 0.9119706937882588,
+      "dlScoreModifier": 1.041197069378826,
       "trend2": 0.3943427205576169
     },
     {
@@ -7998,9 +8008,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9521755781726443,
-      "effectiveScore": 0.9965498328259143,
-      "dlProbability": 0.9660301699653985,
-      "dlScoreModifier": 1.04660301699654,
+      "effectiveScore": 0.991363655536817,
+      "dlProbability": 0.9115635630917999,
+      "dlScoreModifier": 1.04115635630918,
       "trend2": 0.41494945643623343
     },
     {
@@ -8011,9 +8021,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9492075784394355,
-      "effectiveScore": 0.9928723335809159,
-      "dlProbability": 0.9600127109527332,
-      "dlScoreModifier": 1.0460012710952733,
+      "effectiveScore": 0.9868216766117162,
+      "dlProbability": 0.8962684140609248,
+      "dlScoreModifier": 1.0396268414060925,
       "trend2": 0.41365602914800004
     },
     {
@@ -8024,9 +8034,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0670190701169142,
-      "effectiveScore": 1.1174009578624937,
-      "dlProbability": 0.9721742015356789,
-      "dlScoreModifier": 1.0472174201535678,
+      "effectiveScore": 1.1163815598985163,
+      "dlProbability": 0.9626205019577893,
+      "dlScoreModifier": 1.046262050195779,
       "trend2": 0.464997205664342
     },
     {
@@ -8037,9 +8047,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1533772659830148,
-      "effectiveScore": 1.2086434298009416,
-      "dlProbability": 0.9791681390635357,
-      "dlScoreModifier": 1.0479168139063535,
+      "effectiveScore": 1.2069161414669154,
+      "dlProbability": 0.9641922210792818,
+      "dlScoreModifier": 1.0464192221079283,
       "trend2": 0.5026313219501463
     },
     {
@@ -8050,9 +8060,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.2119795429670888,
-      "effectiveScore": 1.270828613075669,
-      "dlProbability": 0.9855615794018259,
-      "dlScoreModifier": 1.0485561579401825,
+      "effectiveScore": 1.2675923072105395,
+      "dlProbability": 0.9588589350881561,
+      "dlScoreModifier": 1.0458858935088156,
       "trend2": 0.5281696612416609
     },
     {
@@ -8063,9 +8073,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.198318347301625,
-      "effectiveScore": 1.2556121817033432,
-      "dlProbability": 0.9781186446050206,
-      "dlScoreModifier": 1.0478118644605021,
+      "effectiveScore": 1.249366638974892,
+      "dlProbability": 0.925999416500779,
+      "dlScoreModifier": 1.042599941650078,
       "trend2": 0.5222162364263214
     },
     {
@@ -8076,9 +8086,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.128631822004344,
-      "effectiveScore": 1.175009083193505,
-      "dlProbability": 0.9109157679676182,
-      "dlScoreModifier": 1.041091576796762,
+      "effectiveScore": 1.172630804956054,
+      "dlProbability": 0.8898435441379969,
+      "dlScoreModifier": 1.0389843544137998,
       "trend2": 0.4918474825369063
     },
     {
@@ -8089,9 +8099,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1407458377239414,
-      "effectiveScore": 1.193170226434584,
-      "dlProbability": 0.9595623931027581,
-      "dlScoreModifier": 1.045956239310276,
+      "effectiveScore": 1.1880110702894309,
+      "dlProbability": 0.9143362263744457,
+      "dlScoreModifier": 1.0414336226374445,
       "trend2": 0.49712666040424236
     },
     {
@@ -8102,9 +8112,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1597337681665572,
-      "effectiveScore": 1.21340409303974,
-      "dlProbability": 0.962781427482544,
-      "dlScoreModifier": 1.0462781427482544,
+      "effectiveScore": 1.2094804983817842,
+      "dlProbability": 0.9289495708473895,
+      "dlScoreModifier": 1.042894957084739,
       "trend2": 0.5054014277860454
     },
     {
@@ -8115,9 +8125,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1447717363555268,
-      "effectiveScore": 1.1976477306557778,
-      "dlProbability": 0.9618911580450618,
-      "dlScoreModifier": 1.0461891158045062,
+      "effectiveScore": 1.1916321317363636,
+      "dlProbability": 0.9093427003187615,
+      "dlScoreModifier": 1.0409342700318762,
       "trend2": 0.49888111041024824
     },
     {
@@ -8128,9 +8138,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1196378830547584,
-      "effectiveScore": 1.170164321146822,
-      "dlProbability": 0.9512748171239966,
-      "dlScoreModifier": 1.0451274817123997,
+      "effectiveScore": 1.1640529475682835,
+      "dlProbability": 0.8966913337403823,
+      "dlScoreModifier": 1.0396691333740382,
       "trend2": 0.4879280057472227
     },
     {
@@ -8141,9 +8151,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.2021842988858524,
-      "effectiveScore": 1.257787284348667,
-      "dlProbability": 0.9625163172929962,
-      "dlScoreModifier": 1.0462516317292996,
+      "effectiveScore": 1.2574960461525884,
+      "dlProbability": 0.9600937420160718,
+      "dlScoreModifier": 1.0460093742016072,
       "trend2": 0.5239009829638902
     },
     {
@@ -8154,9 +8164,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.2197588735871627,
-      "effectiveScore": 1.2766280390973352,
-      "dlProbability": 0.9662328493083806,
-      "dlScoreModifier": 1.0466232849308381,
+      "effectiveScore": 1.2740319022968472,
+      "dlProbability": 0.9449488327973711,
+      "dlScoreModifier": 1.0444948832797372,
       "trend2": 0.5315598227688368
     },
     {
@@ -8167,9 +8177,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1543771693904776,
-      "effectiveScore": 1.2069020550874672,
-      "dlProbability": 0.9550062760226194,
-      "dlScoreModifier": 1.045500627602262,
+      "effectiveScore": 1.1993852403951482,
+      "dlProbability": 0.8898905158392485,
+      "dlScoreModifier": 1.0389890515839248,
       "trend2": 0.5030670707604777
     },
     {
@@ -8180,9 +8190,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.109041863187838,
-      "effectiveScore": 1.14813885230452,
-      "dlProbability": 0.8525294257540571,
-      "dlScoreModifier": 1.0352529425754058,
+      "effectiveScore": 1.1508541758856217,
+      "dlProbability": 0.8770129341880564,
+      "dlScoreModifier": 1.0377012934188057,
       "trend2": 0.4833103566655227
     },
     {
@@ -8193,9 +8203,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.133345942674587,
-      "effectiveScore": 1.1820005968750014,
-      "dlProbability": 0.9293009960012198,
-      "dlScoreModifier": 1.042930099600122,
+      "effectiveScore": 1.181197400660472,
+      "dlProbability": 0.9222140494274855,
+      "dlScoreModifier": 1.0422214049427485,
       "trend2": 0.4939018534476224
     },
     {
@@ -8206,9 +8216,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.0962591083285438,
-      "effectiveScore": 1.1443743902981187,
-      "dlProbability": 0.938904284616945,
-      "dlScoreModifier": 1.0438904284616946,
+      "effectiveScore": 1.1372719772520603,
+      "dlProbability": 0.8741165625163975,
+      "dlScoreModifier": 1.0374116562516398,
       "trend2": 0.4777397483636365
     },
     {
@@ -8219,9 +8229,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1337666679060507,
-      "effectiveScore": 1.1831429834996936,
-      "dlProbability": 0.9355068550818824,
-      "dlScoreModifier": 1.0435506855081882,
+      "effectiveScore": 1.1837831949405204,
+      "dlProbability": 0.9411536204962269,
+      "dlScoreModifier": 1.0441153620496226,
       "trend2": 0.4940852016767798
     },
     {
@@ -8232,9 +8242,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 1.1361035611594663,
-      "effectiveScore": 1.1860046557291926,
-      "dlProbability": 0.9392301571416533,
-      "dlScoreModifier": 1.0439230157141652,
+      "effectiveScore": 1.1834870568016356,
+      "dlProbability": 0.9170702149178318,
+      "dlScoreModifier": 1.0417070214917832,
       "trend2": 0.49510359850136043
     },
     {
@@ -8245,9 +8255,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9904290712428271,
-      "effectiveScore": 1.026459159397949,
-      "dlProbability": 0.8637826190815474,
-      "dlScoreModifier": 1.0363782619081547,
+      "effectiveScore": 1.022158201792111,
+      "dlProbability": 0.8203574235706653,
+      "dlScoreModifier": 1.0320357423570665,
       "trend2": 0.4316199807808323
     },
     {
@@ -8258,9 +8268,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9707654920352933,
-      "effectiveScore": 1.0054972634049337,
-      "dlProbability": 0.8577771527171018,
-      "dlScoreModifier": 1.0357777152717103,
+      "effectiveScore": 1.0049321102169233,
+      "dlProbability": 0.8519554255064911,
+      "dlScoreModifier": 1.0351955425506492,
       "trend2": 0.42305077181265444
     },
     {
@@ -8271,9 +8281,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.9120280957426543,
-      "effectiveScore": 0.9406646464101902,
-      "dlProbability": 0.81398759315871,
-      "dlScoreModifier": 1.031398759315871,
+      "effectiveScore": 0.9396713914695247,
+      "dlProbability": 0.8030969753663213,
+      "dlScoreModifier": 1.0303096975366322,
       "trend2": 0.39745354875544747
     },
     {
@@ -8284,9 +8294,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.7589190915155699,
-      "effectiveScore": 0.7175329054318563,
-      "dlProbability": 0.44184114416449993,
-      "dlScoreModifier": 0.9454669324485369,
+      "effectiveScore": 0.774513211957157,
+      "dlProbability": 0.705478036011,
+      "dlScoreModifier": 1.0205478036011,
       "trend2": 0.33073003731919615
     },
     {
@@ -8297,9 +8307,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.7198522678034244,
-      "effectiveScore": 0.7293454419243671,
-      "dlProbability": 0.6318766995054488,
-      "dlScoreModifier": 1.0131876699505449,
+      "effectiveScore": 0.736222258492707,
+      "dlProbability": 0.7274076421157132,
+      "dlScoreModifier": 1.0227407642115713,
       "trend2": 0.31370507087849453
     },
     {
@@ -8310,9 +8320,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.7736575508671095,
-      "effectiveScore": 0.7908155423212283,
-      "dlProbability": 0.7217775995967247,
-      "dlScoreModifier": 1.0221777599596724,
+      "effectiveScore": 0.8031510888381914,
+      "dlProbability": 0.8812221303602064,
+      "dlScoreModifier": 1.0381222130360206,
       "trend2": 0.33715292385065476
     },
     {
@@ -8323,9 +8333,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.6174321751508374,
-      "effectiveScore": 0.6197720122837447,
-      "dlProbability": 0.5378962617608292,
-      "dlScoreModifier": 1.0037896261760828,
+      "effectiveScore": 0.6284892154847257,
+      "dlProbability": 0.6790810517962913,
+      "dlScoreModifier": 1.017908105179629,
       "trend2": 0.2690713260644326
     },
     {
@@ -8336,9 +8346,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.6704743847375265,
-      "effectiveScore": 0.680725200080015,
-      "dlProbability": 0.6528889928658709,
-      "dlScoreModifier": 1.0152888992865872,
+      "effectiveScore": 0.6953609992305797,
+      "dlProbability": 0.8711791987817064,
+      "dlScoreModifier": 1.0371179198781706,
       "trend2": 0.2921866385558676
     },
     {
@@ -8349,9 +8359,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.7155186750058745,
-      "effectiveScore": 0.6749485625183987,
-      "dlProbability": 0.4648966443541677,
-      "dlScoreModifier": 0.9432997154307081,
+      "effectiveScore": 0.7427314981786087,
+      "dlProbability": 0.8803230317155705,
+      "dlScoreModifier": 1.038032303171557,
       "trend2": 0.3118165305535995
     },
     {
@@ -8362,9 +8372,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5863539000608143,
-      "effectiveScore": 0.5903679057008926,
-      "dlProbability": 0.568457046839152,
-      "dlScoreModifier": 1.0068457046839152,
+      "effectiveScore": 0.5971507844569395,
+      "dlProbability": 0.6841359696764252,
+      "dlScoreModifier": 1.0184135969676424,
       "trend2": 0.25552769645325335
     },
     {
@@ -8375,9 +8385,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5167013573871799,
-      "effectiveScore": 0.5173954280765519,
-      "dlProbability": 0.5134327243280661,
-      "dlScoreModifier": 1.0013432724328066,
+      "effectiveScore": 0.5229431387389378,
+      "dlProbability": 0.6208005603724542,
+      "dlScoreModifier": 1.0120800560372454,
       "trend2": 0.22517375188213382
     },
     {
@@ -8388,9 +8398,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5479485672778546,
-      "effectiveScore": 0.5494212455913334,
-      "dlProbability": 0.5268762143278345,
-      "dlScoreModifier": 1.0026876214327833,
+      "effectiveScore": 0.5642717515756716,
+      "dlProbability": 0.7978962857574158,
+      "dlScoreModifier": 1.0297896285757415,
       "trend2": 0.2387910017428873
     },
     {
@@ -8401,9 +8411,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.5360722179377945,
-      "effectiveScore": 0.5390933132842748,
-      "dlProbability": 0.5563561260104479,
-      "dlScoreModifier": 1.0056356126010448,
+      "effectiveScore": 0.5500458250010833,
+      "dlProbability": 0.760666503424551,
+      "dlScoreModifier": 1.0260666503424551,
       "trend2": 0.23361539672205445
     },
     {
@@ -8414,9 +8424,9 @@
       "targetPositionRatio": 1.0,
       "currentOpen": 1.0,
       "ruleScore": 0.4044429959725355,
-      "effectiveScore": 0.38543572487926014,
-      "dlProbability": 0.36166136454624753,
-      "dlScoreModifier": 0.9530038317326526,
+      "effectiveScore": 0.40715849573013246,
+      "dlProbability": 0.5671417179834491,
+      "dlScoreModifier": 1.006714171798345,
       "trend2": 0.17625257902573127
     }
   ]

@@ -32,13 +32,17 @@ from evergreen_lab import strategies as strategies  # noqa: F401,E402
 # 여러 전략 병렬 평가 + 진행 바 (registry가 채워진 뒤 import).
 from evergreen_lab.analysis.compare import evaluate_strategies  # noqa: E402
 
-# v6 배포 모델(ONNX) 학습+export 진입점. torch/onnx는 함수 내부에서만 import하므로
-# 여기서 노출해도 lab import가 무거워지지 않는다.
-from evergreen_lab.strategies.v6_trend2 import export_v6  # noqa: E402
+# v6 배포 모델(ONNX) 학습+export 진입점 + DL HPO 기본 그리드. torch/onnx는 함수 내부에서만
+# import하므로 여기서 노출해도 lab import가 무거워지지 않는다.
+from evergreen_lab.strategies.v6_trend2 import DEFAULT_DL_PARAM_GRID, export_v6  # noqa: E402
+
+# 하이퍼파라미터 탐색(OOS): 단일 분할(grid_search)과 walk-forward 다중 창(walk_forward).
+from evergreen_lab.analysis.optimizer import grid_search  # noqa: E402
+from evergreen_lab.analysis.walk_forward import walk_forward  # noqa: E402
 
 __all__ = [
     "Action", "BarContext", "BacktestResult", "BacktestRow", "Candle", "Cost",
-    "Position", "Strategy", "Summary", "create", "evaluate", "evaluate_candles",
-    "evaluate_strategies", "export_v6", "list_strategies", "load_candles", "register",
-    "run_backtest",
+    "DEFAULT_DL_PARAM_GRID", "Position", "Strategy", "Summary", "create", "evaluate",
+    "evaluate_candles", "evaluate_strategies", "export_v6", "grid_search", "list_strategies",
+    "load_candles", "register", "run_backtest", "walk_forward",
 ]

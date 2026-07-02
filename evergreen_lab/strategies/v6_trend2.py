@@ -39,6 +39,19 @@ from evergreen_lab.core.registry import register
 
 PREFERRED_INTERVAL_KEY = "minute_240"
 
+# early stopping용 검증셋 최소 행 수. 이보다 작으면 val 손실 신호가 노이즈라 early stopping을 끈다.
+_MIN_VAL_ROWS = 50
+
+# v6 DL 하이퍼파라미터 HPO 기본 그리드. grid_search/walk_forward가 create("v6", **params)로 생성하므로
+# 키는 Trend2Strategy 생성자 kwargs다. dl_epochs는 상한이고 early stopping이 실제 종료를 정한다.
+# 백테스트 metric(calmar 등, OOS)으로 순위를 매겨 best를 고른다. (조합 수 x MLP 학습이라 비용이 든다.)
+DEFAULT_DL_PARAM_GRID = {
+    "dl_lr": [0.002, 0.005, 0.01],
+    "dl_dropout": [0.0, 0.05, 0.15],
+    "dl_hidden1": [16, 32, 64],
+    "dl_epochs": [400],
+}
+
 DL_FEATURE_NAMES = (
     "candle_return",
     "range_pct",
@@ -95,6 +108,13 @@ class Trend2Strategy(Strategy):
         dl_epochs: int = 130,
         dl_min_train_rows: int = 1000,
         dl_progress: bool = False,
+        dl_hidden1: int = 32,
+        dl_hidden2: int = 12,
+        dl_lr: float = 0.005,
+        dl_weight_decay: float = 0.01,
+        dl_dropout: float = 0.03,
+        dl_val_fraction: float = 0.15,
+        dl_patience: int = 15,
     ) -> None:
         if buy_cutoff < 0.0 or sell_cutoff < 0.0:
             raise ValueError("cutoffs must be >= 0")
@@ -104,6 +124,18 @@ class Trend2Strategy(Strategy):
             raise ValueError("train_fraction must be in (0, 1]")
         if dl_epochs <= 0 or dl_min_train_rows <= 0:
             raise ValueError("dl_epochs and dl_min_train_rows must be > 0")
+        if dl_hidden1 <= 0 or dl_hidden2 <= 0:
+            raise ValueError("dl_hidden1 and dl_hidden2 must be > 0")
+        if dl_lr <= 0.0:
+            raise ValueError("dl_lr must be > 0")
+        if dl_weight_decay < 0.0:
+            raise ValueError("dl_weight_decay must be >= 0")
+        if not (0.0 <= dl_dropout < 1.0):
+            raise ValueError("dl_dropout must be in [0, 1)")
+        if not (0.0 <= dl_val_fraction < 1.0):
+            raise ValueError("dl_val_fraction must be in [0, 1)")
+        if dl_patience < 0:
+            raise ValueError("dl_patience must be >= 0")
         self.buy_cutoff = buy_cutoff
         self.sell_cutoff = sell_cutoff
         self.rule_scale = rule_scale
@@ -112,6 +144,13 @@ class Trend2Strategy(Strategy):
         self.dl_epochs = dl_epochs
         self.dl_min_train_rows = dl_min_train_rows
         self.dl_progress = dl_progress
+        self.dl_hidden1 = dl_hidden1
+        self.dl_hidden2 = dl_hidden2
+        self.dl_lr = dl_lr
+        self.dl_weight_decay = dl_weight_decay
+        self.dl_dropout = dl_dropout
+        self.dl_val_fraction = dl_val_fraction
+        self.dl_patience = dl_patience
 
     def warmup(self) -> int:
         return 35
@@ -167,8 +206,11 @@ class Trend2Strategy(Strategy):
                     "auto rule_scale(+train_fraction)로 OOS 학습하거나 dl_profile을 직접 넘겨라."
                 )
             # auto rule_scale 경로: train_fraction 구간에서만 학습 (walk_forward가 test 캔들과 분리).
-            profile = _fit_dl_profile(list(candles[:trade_from]), scale, self.dl_epochs, self.dl_min_train_rows,
-                                      progress=self.dl_progress)
+            profile = _fit_dl_profile(
+                list(candles[:trade_from]), scale, self.dl_epochs, self.dl_min_train_rows,
+                progress=self.dl_progress, hidden1=self.dl_hidden1, hidden2=self.dl_hidden2,
+                lr=self.dl_lr, weight_decay=self.dl_weight_decay, dropout=self.dl_dropout,
+                val_fraction=self.dl_val_fraction, patience=self.dl_patience)
         return _Prepared(close=close, trend=trend, scale=scale, trade_from=trade_from, profile=profile)
 
 
@@ -269,8 +311,25 @@ def _fit_dl_profile(
     min_train_rows: int,
     progress: bool = False,
     label: str = "v6",
+    *,
+    hidden1: int = 32,
+    hidden2: int = 12,
+    lr: float = 0.005,
+    weight_decay: float = 0.01,
+    dropout: float = 0.03,
+    val_fraction: float = 0.15,
+    patience: int = 15,
 ) -> DeepLearningProfile | None:
-    """train 구간에서만 MLP를 학습(다음 바 방향 라벨, PyTorch). torch/numpy 없거나 행이 부족하면 None(규칙 전용 폴백)."""
+    """train 구간에서만 MLP를 학습(다음 바 방향 라벨, PyTorch). torch/numpy 없거나 행이 부족하면 None(규칙 전용 폴백).
+
+    ``epochs``는 상한이며, train 구간 뒤쪽 ``val_fraction``을 검증셋으로 떼어 val BCE가 ``patience`` epoch
+    동안 개선되지 않으면 조기 종료하고 best 가중치를 복원한다(과적합/과소적합 방지). 14개 피처 표준화 통계
+    (center/scale)는 train 하위구간에서만 적합해 val 정보 누수를 막는다. HP(hidden/lr/weight_decay/dropout)는
+    walk_forward HPO로 스윕할 수 있도록 인자로 노출한다. val이 너무 작으면 early stopping 없이 전체 epoch를 돈다(재현 가능).
+
+    주의(부분 누수): ``scale``(rule_scale)은 바깥 train 구간 전체(=inner val 포함)에서 적합돼 ``trend2_signed_score``
+    피처에 쓰이므로, early stopping의 val은 이 스칼라 하나에 대해선 완전한 holdout이 아니다. 추론(Java/ONNX)과
+    동일한 rule_scale을 써야 하는 제약상 의도된 것이며(train/serve 정합), OOS 백테스트 구간에는 영향이 없다."""
     try:
         import numpy as np
     except ImportError:
@@ -290,45 +349,82 @@ def _fit_dl_profile(
     if len(rows) < min_train_rows:
         return None
 
-    x_raw = np.asarray(rows, dtype=np.float64)
-    y = np.asarray(targets, dtype=np.float64).reshape(-1, 1)
-    center = np.nanmedian(x_raw, axis=0)
-    q75 = np.nanpercentile(x_raw, 75, axis=0)
-    q25 = np.nanpercentile(x_raw, 25, axis=0)
-    std = np.nanstd(x_raw, axis=0)
-    scale_vec = q75 - q25
-    scale_vec = np.where(np.isfinite(scale_vec) & (np.abs(scale_vec) >= 1e-8), scale_vec, std)
-    scale_vec = np.where(np.isfinite(scale_vec) & (np.abs(scale_vec) >= 1e-8), scale_vec, 1.0)
-    center = np.where(np.isfinite(center), center, 0.0)
-    x = np.clip(np.nan_to_num((x_raw - center) / scale_vec, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
-
     try:
+        import copy
+
         import torch
         from torch import nn
     except ImportError:
         return None  # torch(dev 의존성)가 없으면 DL 없이 규칙 전용으로 폴백한다.
 
+    x_raw_all = np.asarray(rows, dtype=np.float64)
+    y_all = np.asarray(targets, dtype=np.float64).reshape(-1, 1)
+
+    # 시간순 유지 val 분리(뒤쪽 val_fraction). val이 최소 _MIN_VAL_ROWS는 돼야 early stopping 신호가 의미 있고,
+    # 남는 train이 min_train_rows 이상이어야 한다. 아니면 val 없이 전체 epoch 학습.
+    n_total = x_raw_all.shape[0]
+    n_val = int(n_total * val_fraction) if (patience > 0 and val_fraction > 0.0) else 0
+    if n_val < _MIN_VAL_ROWS or (n_total - n_val) < min_train_rows:
+        n_val = 0
+    n_train = n_total - n_val
+
+    # 표준화(center/scale)는 train 하위구간에서만 적합 → val 정보 누수 방지.
+    x_train_raw = x_raw_all[:n_train]
+    center = np.nanmedian(x_train_raw, axis=0)
+    q75 = np.nanpercentile(x_train_raw, 75, axis=0)
+    q25 = np.nanpercentile(x_train_raw, 25, axis=0)
+    std = np.nanstd(x_train_raw, axis=0)
+    scale_vec = q75 - q25
+    scale_vec = np.where(np.isfinite(scale_vec) & (np.abs(scale_vec) >= 1e-8), scale_vec, std)
+    scale_vec = np.where(np.isfinite(scale_vec) & (np.abs(scale_vec) >= 1e-8), scale_vec, 1.0)
+    center = np.where(np.isfinite(center), center, 0.0)
+
+    def _standardize(arr: "np.ndarray") -> "np.ndarray":
+        return np.clip(np.nan_to_num((arr - center) / scale_vec, nan=0.0, posinf=8.0, neginf=-8.0), -8.0, 8.0)
+
     torch.manual_seed(5005)
-    features_x = torch.tensor(x, dtype=torch.float64)
-    labels_y = torch.tensor(y, dtype=torch.float64)
-    input_dim = features_x.shape[1]
-    pos_rate = float(labels_y.mean())
+    train_x = torch.tensor(_standardize(x_raw_all[:n_train]), dtype=torch.float64)
+    train_y = torch.tensor(y_all[:n_train], dtype=torch.float64)
+    has_val = n_val > 0
+    if has_val:
+        val_x = torch.tensor(_standardize(x_raw_all[n_train:]), dtype=torch.float64)
+        val_y = torch.tensor(y_all[n_train:], dtype=torch.float64)
+    input_dim = train_x.shape[1]
+    pos_rate = float(train_y.mean())
     pos_weight = torch.tensor([(1.0 - pos_rate) / max(pos_rate, 1e-3)], dtype=torch.float64)
 
-    # numpy 손코딩 backprop을 대체하는 autograd MLP(14→32→12→1). 은닉1에만 dropout(0.03).
+    # autograd MLP(input_dim→hidden1→hidden2→1). Dropout 레이어는 (0.0이어도) weight 추출 인덱스(0/3/5)
+    # 안정성을 위해 항상 유지한다.
     model = nn.Sequential(
-        nn.Linear(input_dim, 32), nn.ReLU(), nn.Dropout(0.03),
-        nn.Linear(32, 12), nn.ReLU(),
-        nn.Linear(12, 1),
+        nn.Linear(input_dim, hidden1), nn.ReLU(), nn.Dropout(dropout),
+        nn.Linear(hidden1, hidden2), nn.ReLU(),
+        nn.Linear(hidden2, 1),
     ).double()
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=0.01)
-    model.train()
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+
+    best_state = None
+    best_val = math.inf
+    since_best = 0
     epochs_iter = _epoch_progress(epochs, label) if progress else range(1, epochs + 1)
     for _epoch in epochs_iter:
+        model.train()
         optimizer.zero_grad()
-        loss_fn(model(features_x), labels_y).backward()
+        loss_fn(model(train_x), train_y).backward()
         optimizer.step()
+        if has_val:
+            model.eval()
+            with torch.no_grad():
+                val_loss = float(loss_fn(model(val_x), val_y))
+            if val_loss < best_val - 1e-6:
+                best_val, since_best = val_loss, 0
+                best_state = copy.deepcopy(model.state_dict())
+            else:
+                since_best += 1
+                if since_best >= patience:
+                    break
+    if best_state is not None:
+        model.load_state_dict(best_state)  # 조기 종료 시 best val 가중치 복원
     model.eval()
 
     # torch Linear는 weight를 (out, in)으로 저장한다 → numpy/Java forward pass가 쓰는 (in, out)으로
@@ -423,11 +519,10 @@ def export_v6(
     out_path: str | Path,
     bars: list[Candle],
     *,
-    dl_epochs: int = 130,
-    dl_min_train_rows: int = 1000,
     provenance: dict[str, Any] | None = None,
     golden_path: str | Path | None = None,
     progress: bool = True,
+    **dl_params: Any,
 ) -> DeepLearningProfile | None:
     """전체 ``bars``로 규칙 scale(auto-q70)과 MLP를 학습해 프로덕션 ``v6.onnx``를 쓴다.
 
@@ -436,16 +531,23 @@ def export_v6(
     운영자는 이를 config ``evergreen.trading.v6.rule-scale``에 맞춰야 한다. ``out_path``는 모델을 쓸
     경로이며 확장자는 ``.onnx``로 맞춰진다(예: ``src/main/resources/strategy-models/v6.onnx``).
     선택적으로 자바 패리티 골든 픽스처(candles + 기대 신호 JSON + 짝 onnx)도 함께 낼 수 있다.
-    """
-    strategy = Trend2Strategy(train_fraction=1.0, dl_epochs=dl_epochs, dl_min_train_rows=dl_min_train_rows,
-                              dl_progress=progress)
+
+    ``**dl_params``는 :class:`Trend2Strategy`의 DL 하이퍼파라미터(``dl_epochs``, ``dl_min_train_rows``,
+    ``dl_hidden1/2``, ``dl_lr``, ``dl_weight_decay``, ``dl_dropout``, ``dl_val_fraction``, ``dl_patience``)로
+    그대로 전달된다 — ``walk_forward``/``grid_search`` HPO로 찾은 best 파라미터를 여기 넘겨 그 설정으로
+    배포 모델을 학습·export한다. 지정하지 않으면 전략 기본값(early stopping 포함)을 쓴다."""
+    reserved = {"train_fraction", "dl_progress", "dl_profile"} & dl_params.keys()
+    if reserved:
+        # 이 값들은 export가 직접 제어한다(전체 이력 학습). HPO best params를 그대로 넘길 때 충돌을 명확히 막는다.
+        raise ValueError(f"export_v6는 {sorted(reserved)}을(를) 직접 제어하므로 넘길 수 없다. DL 하이퍼파라미터만 넘겨라.")
+    strategy = Trend2Strategy(train_fraction=1.0, dl_progress=progress, **dl_params)
     prep = strategy._prepare(bars)
     if not math.isfinite(prep.scale) or prep.scale <= 0.0:
         raise ValueError(f"resolved rule_scale is not finite/positive, refusing to export: {prep.scale}")
     if prep.profile is None:
         # 조용히 DL-disabled 번들을 쓰지 않는다: numpy 부재나 학습 행 부족은 배포 버그다.
         raise ValueError("v6 MLP 학습이 프로파일을 만들지 못했다(numpy 부재 또는 학습 행 부족); export를 중단한다.")
-    prov = _augment_provenance(provenance, bars, prep)
+    prov = _augment_provenance(provenance, bars, prep, strategy)
 
     # 표준화+MLP를 self-contained ONNX 그래프로 내보낸다(Java onnxruntime 인퍼런스용). JSON은 쓰지 않는다.
     onnx_file = Path(out_path).with_suffix(".onnx")
@@ -475,8 +577,13 @@ def export_v6(
     return prep.profile
 
 
-def _augment_provenance(provenance: dict[str, Any] | None, bars: list[Candle], prep: "_Prepared") -> dict[str, Any]:
-    """재현성 검증을 위해 런타임(numpy/python)·데이터 해시·학습 seed·rule_scale을 provenance에 덧붙인다."""
+def _augment_provenance(
+    provenance: dict[str, Any] | None,
+    bars: list[Candle],
+    prep: "_Prepared",
+    strategy: "Trend2Strategy | None" = None,
+) -> dict[str, Any]:
+    """재현성 검증을 위해 런타임(numpy/python)·데이터 해시·학습 seed·rule_scale·DL 하이퍼파라미터를 덧붙인다."""
     import hashlib
     import platform
 
@@ -495,6 +602,19 @@ def _augment_provenance(provenance: dict[str, Any] | None, bars: list[Candle], p
         "trainSeed": 5005,
         "ruleScale": prep.scale,
     })
+    if strategy is not None:
+        # 어떤 DL 하이퍼파라미터로 이 모델을 학습했는지 감사(audit)할 수 있게 기록한다.
+        merged["dlHyperparams"] = {
+            "hidden1": strategy.dl_hidden1,
+            "hidden2": strategy.dl_hidden2,
+            "lr": strategy.dl_lr,
+            "weightDecay": strategy.dl_weight_decay,
+            "dropout": strategy.dl_dropout,
+            "valFraction": strategy.dl_val_fraction,
+            "patience": strategy.dl_patience,
+            "maxEpochs": strategy.dl_epochs,
+            "minTrainRows": strategy.dl_min_train_rows,
+        }
     return merged
 
 
@@ -534,14 +654,19 @@ def _export_onnx(profile: DeepLearningProfile, out_path: str | Path) -> None:
 
     out_file = Path(out_path)
     out_file.parent.mkdir(parents=True, exist_ok=True)
+    # dynamo exporter 권장 방식: 구식 dynamic_axes 대신 dynamic_shapes로 배치 축을 동적 선언한다.
+    # 키는 forward(self, x)의 인자명 'x'. batch>=1 허용(Java=1행, Python=N행 추론). 예시 입력은
+    # batch=2로 두어 축이 1로 specialize되지 않게 한다. 출력 배치 동적성은 그래프에서 자동 파생된다.
+    batch = torch.export.Dim("batch", min=1)
     torch.onnx.export(
         _StdMLP().eval(),
-        torch.zeros((1, input_dim), dtype=torch.float64),
+        (torch.zeros((2, input_dim), dtype=torch.float64),),
         str(out_file),
         input_names=["features"],
         output_names=["probability"],
-        dynamic_axes={"features": {0: "batch"}, "probability": {0: "batch"}},
+        dynamic_shapes={"x": {0: batch}},
         opset_version=18,
+        dynamo=True,
     )
     # dynamo exporter가 가중치를 외부 파일(.data)로 분리할 수 있다 → 단일 자립 파일로 합쳐
     # Java 클래스패스 리소스 로딩을 단순화한다(사이드카 .data 제거).
