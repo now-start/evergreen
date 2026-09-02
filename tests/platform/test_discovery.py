@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from evergreen.discovery import register_with_eureka
-from evergreen.settings import PlatformSettings
+from evergreen.platform.discovery import register_with_eureka
+from evergreen.platform.settings import PlatformSettings
 
 
 @pytest.mark.asyncio
@@ -19,7 +19,7 @@ async def test_eureka_registration_advertises_management_endpoint(
 ) -> None:
     eureka_client = object()
     init_async = AsyncMock(return_value=eureka_client)
-    monkeypatch.setattr("evergreen.discovery.eureka_client.init_async", init_async)
+    monkeypatch.setattr("evergreen.platform.discovery.eureka_client.init_async", init_async)
     settings = PlatformSettings(
         spring_profiles_active="prod",
         server_port=8080,

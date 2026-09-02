@@ -2,8 +2,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from evergreen import bootstrap as bootstrap_module
-from evergreen.settings import PlatformSettings
+from evergreen.platform import bootstrap as bootstrap_module
+from evergreen.platform.settings import PlatformSettings
 
 
 def test_bootstrap_loads_config_before_telemetry(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -2,7 +2,7 @@ import os
 
 from opentelemetry.instrumentation.auto_instrumentation import initialize
 
-from evergreen.settings import PlatformSettings
+from evergreen.platform.settings import PlatformSettings
 
 
 def initialize_telemetry(settings: PlatformSettings) -> None:

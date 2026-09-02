@@ -3,7 +3,7 @@ from typing import Protocol, cast
 
 from py_eureka_client import eureka_client  # type: ignore[import-untyped]
 
-from evergreen.settings import PlatformSettings
+from evergreen.platform.settings import PlatformSettings
 
 
 class EurekaRegistration(Protocol):

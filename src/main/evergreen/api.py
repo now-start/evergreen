@@ -3,11 +3,10 @@ from contextlib import asynccontextmanager
 from importlib.metadata import version
 
 from fastapi import FastAPI
-from pyctuator.pyctuator import Pyctuator
 
-from evergreen.discovery import deregister_from_eureka, register_with_eureka
-from evergreen.port_routing import PlatformPortRoutingMiddleware
-from evergreen.settings import PlatformSettings, get_settings
+from evergreen.platform.discovery import deregister_from_eureka, register_with_eureka
+from evergreen.platform.management import configure_management
+from evergreen.platform.settings import PlatformSettings, get_settings
 
 
 def create_app(settings: PlatformSettings) -> FastAPI:
@@ -20,8 +19,8 @@ def create_app(settings: PlatformSettings) -> FastAPI:
             await deregister_from_eureka(eureka_client)
 
     app = FastAPI(
-        title="evergreen API",
-        description="evergreen 프로젝트의 API 문서입니다.",
+        title=f"{settings.spring_application_name} API",
+        description=f"{settings.spring_application_name} service API",
         version=version("evergreen"),
         openapi_url="/v3/api-docs",
         docs_url="/swagger-ui/index.html",
@@ -36,19 +35,7 @@ def create_app(settings: PlatformSettings) -> FastAPI:
         ],
         lifespan=lifespan,
     )
-    app.add_middleware(
-        PlatformPortRoutingMiddleware,
-        application_port=settings.server_port,
-        management_port=settings.management_server_port,
-    )
-    app.state.actuator = Pyctuator(
-        app=app,
-        app_name=settings.spring_application_name,
-        app_description="Chart-driven Bitcoin automated trading system",
-        app_url="/",
-        pyctuator_endpoint_url="/actuator",
-        registration_url=None,
-    )
+    configure_management(app, settings)
     return app
 
 

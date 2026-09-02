@@ -2,8 +2,8 @@ import socket
 
 import uvicorn
 
-from evergreen.bootstrap import bootstrap_platform
-from evergreen.settings import PlatformSettings
+from evergreen.platform.bootstrap import bootstrap_platform
+from evergreen.platform.settings import PlatformSettings
 
 
 def run_server(settings: PlatformSettings) -> None:

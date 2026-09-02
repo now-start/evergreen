@@ -1,8 +1,28 @@
+from fastapi import FastAPI
+from pyctuator.pyctuator import Pyctuator
 from starlette.responses import Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from evergreen.platform.settings import PlatformSettings
 
-class PlatformPortRoutingMiddleware:
+
+def configure_management(app: FastAPI, settings: PlatformSettings) -> None:
+    app.add_middleware(
+        _ManagementPortMiddleware,
+        application_port=settings.server_port,
+        management_port=settings.management_server_port,
+    )
+    app.state.actuator = Pyctuator(
+        app=app,
+        app_name=settings.spring_application_name,
+        app_description=f"{settings.spring_application_name} service",
+        app_url="/",
+        pyctuator_endpoint_url="/actuator",
+        registration_url=None,
+    )
+
+
+class _ManagementPortMiddleware:
     """Separate application and management routes like Spring Boot."""
 
     def __init__(

@@ -1,4 +1,4 @@
-from evergreen.settings import PlatformSettings
+from evergreen.platform.settings import PlatformSettings
 
 
 def test_default_profile_enables_platform_integrations() -> None:

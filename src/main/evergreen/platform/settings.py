@@ -4,6 +4,8 @@ from pydantic_settings import BaseSettings
 
 
 class PlatformSettings(BaseSettings):
+    """Configuration shared with the Spring Platform."""
+
     spring_application_name: str = "evergreen"
     spring_profiles_active: str = "default"
     spring_config_import: str = "optional:configserver:https://spring.nowstart.org/config"

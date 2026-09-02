@@ -6,7 +6,7 @@ from urllib.parse import quote
 
 import httpx
 
-from evergreen.settings import PlatformSettings
+from evergreen.platform.settings import PlatformSettings
 
 logger = logging.getLogger(__name__)
 

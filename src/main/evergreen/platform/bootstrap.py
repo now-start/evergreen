@@ -1,8 +1,8 @@
 from dotenv import load_dotenv
 
-from evergreen.config_server import load_spring_config
-from evergreen.settings import PlatformSettings, get_settings
-from evergreen.telemetry import initialize_telemetry
+from evergreen.platform.config_server import load_spring_config
+from evergreen.platform.settings import PlatformSettings, get_settings
+from evergreen.platform.telemetry import initialize_telemetry
 
 
 def bootstrap_platform() -> PlatformSettings:

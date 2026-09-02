@@ -24,6 +24,17 @@ uv run pip-audit
 애플리케이션 패키지는 `src/main/evergreen`에 두며, import 경로는
 `evergreen`을 사용합니다.
 
+```text
+src/main/evergreen/
+├── api.py          # FastAPI 앱 팩토리와 lifespan
+├── main.py         # 실행 진입점과 Uvicorn 포트 바인딩
+└── platform/       # Config Server, Eureka, Actuator, OpenTelemetry 연동
+```
+
+비즈니스 기능은 `evergreen` 아래에 기능 단위로 추가하고, 공통 Platform 연동은
+`platform` 패키지에 한정합니다. 사용하지 않는 계층이나 빈 패키지는 미리 만들지
+않습니다.
+
 로컬에서는 다음 명령으로 실행합니다.
 
 ```bash

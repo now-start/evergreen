@@ -3,8 +3,8 @@ import os
 import httpx
 import pytest
 
-from evergreen.config_server import SpringConfigError, load_spring_config
-from evergreen.settings import PlatformSettings
+from evergreen.platform.config_server import SpringConfigError, load_spring_config
+from evergreen.platform.settings import PlatformSettings
 
 
 def test_spring_config_is_skipped_for_local_profile() -> None:

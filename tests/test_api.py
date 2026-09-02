@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from evergreen import api as api_module
-from evergreen.settings import PlatformSettings
+from evergreen.platform.settings import PlatformSettings
 
 
 @pytest.fixture
@@ -84,7 +84,7 @@ async def test_openapi_endpoint_matches_springdoc_path(
     schema = response.json()
     assert schema["info"] == {
         "title": "evergreen API",
-        "description": "evergreen 프로젝트의 API 문서입니다.",
+        "description": "evergreen service API",
         "version": "0.1.0",
     }
     assert schema["servers"] == [
