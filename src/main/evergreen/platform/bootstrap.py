@@ -1,8 +1,17 @@
-from dotenv import load_dotenv
+import os
 
-from evergreen.platform.config_server import load_spring_config
-from evergreen.platform.settings import PlatformSettings, get_settings
-from evergreen.platform.telemetry import initialize_telemetry
+from dotenv import load_dotenv
+from opentelemetry.instrumentation.auto_instrumentation import initialize
+
+from evergreen.platform.config import PlatformSettings, get_settings, load_spring_config
+
+
+def initialize_telemetry(settings: PlatformSettings) -> None:
+    if not settings.platform_integrations_enabled or settings.otel_sdk_disabled:
+        return
+
+    os.environ.setdefault("OTEL_SERVICE_NAME", settings.spring_application_name)
+    initialize(swallow_exceptions=False)
 
 
 def bootstrap_platform() -> PlatformSettings:

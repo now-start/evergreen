@@ -3,7 +3,7 @@ from pyctuator.pyctuator import Pyctuator
 from starlette.responses import Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from evergreen.platform.settings import PlatformSettings
+from evergreen.platform.config import PlatformSettings
 
 
 def configure_management(app: FastAPI, settings: PlatformSettings) -> None:

@@ -1,9 +1,10 @@
+import os
 from unittest.mock import Mock
 
 import pytest
 
 from evergreen.platform import bootstrap as bootstrap_module
-from evergreen.platform.settings import PlatformSettings
+from evergreen.platform.config import PlatformSettings
 
 
 def test_bootstrap_loads_config_before_telemetry(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -28,3 +29,37 @@ def test_bootstrap_loads_config_before_telemetry(monkeypatch: pytest.MonkeyPatch
     assert settings_loader.cache_clear.call_count == 2
     load_spring_config.assert_called_once_with(bootstrap_settings)
     initialize_telemetry.assert_called_once_with(runtime_settings)
+
+
+def test_telemetry_is_skipped_when_sdk_is_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    initialize = Mock()
+    monkeypatch.setattr(bootstrap_module, "initialize", initialize)
+
+    bootstrap_module.initialize_telemetry(PlatformSettings(otel_sdk_disabled=True))
+
+    initialize.assert_not_called()
+
+
+def test_telemetry_is_skipped_for_local_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+    initialize = Mock()
+    monkeypatch.setattr(bootstrap_module, "initialize", initialize)
+
+    bootstrap_module.initialize_telemetry(PlatformSettings(spring_profiles_active="local"))
+
+    initialize.assert_not_called()
+
+
+def test_telemetry_initializes_after_remote_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    initialize = Mock()
+    monkeypatch.delenv("OTEL_SERVICE_NAME", raising=False)
+    monkeypatch.setattr(bootstrap_module, "initialize", initialize)
+
+    bootstrap_module.initialize_telemetry(
+        PlatformSettings(
+            spring_application_name="evergreen",
+            otel_sdk_disabled=False,
+        )
+    )
+
+    assert os.environ["OTEL_SERVICE_NAME"] == "evergreen"
+    initialize.assert_called_once_with(swallow_exceptions=False)

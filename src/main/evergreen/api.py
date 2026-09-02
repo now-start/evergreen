@@ -4,9 +4,9 @@ from importlib.metadata import version
 
 from fastapi import FastAPI
 
+from evergreen.platform.config import PlatformSettings, get_settings
 from evergreen.platform.discovery import deregister_from_eureka, register_with_eureka
 from evergreen.platform.management import configure_management
-from evergreen.platform.settings import PlatformSettings, get_settings
 
 
 def create_app(settings: PlatformSettings) -> FastAPI:

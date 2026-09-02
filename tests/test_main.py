@@ -3,7 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 from evergreen import main as main_module
-from evergreen.platform.settings import PlatformSettings
+from evergreen.platform.config import PlatformSettings
 
 
 def test_main_starts_uvicorn_with_configured_address(monkeypatch: pytest.MonkeyPatch) -> None:

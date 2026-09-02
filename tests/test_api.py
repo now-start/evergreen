@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from evergreen import api as api_module
-from evergreen.platform.settings import PlatformSettings
+from evergreen.platform.config import PlatformSettings
 
 
 @pytest.fixture

@@ -44,6 +44,35 @@ uv run evergreen
 
 `local` 프로필에서는 Config Server, Eureka, OpenTelemetry를 비활성화합니다.
 
+## Docker
+
+이미지는 uv lockfile을 사용해 빌드하며, 런타임에서는 UID `10001`의 비루트
+사용자로 실행합니다. 빌드 컨텍스트에는 패키징에 필요한 파일만 포함됩니다.
+
+```bash
+docker build -t evergreen:local .
+docker run --rm \
+  -p 8080:8080 \
+  -p 8081:8081 \
+  -e SPRING_PROFILES_ACTIVE=local \
+  evergreen:local
+```
+
+컨테이너 healthcheck는 관리 포트의 `/actuator/health`를 확인합니다.
+PyTorch는 범용 Swarm 노드에서 불필요한 CUDA 라이브러리를 설치하지 않도록 CPU
+전용 wheel을 사용합니다. GPU 실행 환경은 별도 이미지 정책을 결정한 뒤 추가합니다.
+
+## CI
+
+GitHub Actions는 pull request와 `develop` push에서 포맷, lint, 타입 검사, 테스트,
+의존성 취약점 감사를 실행합니다. `develop` push에서는 검사를 통과한 뒤
+`linux/amd64`와 `linux/arm64` 이미지를 다음 태그로 GHCR에 푸시합니다.
+
+- `ghcr.io/now-start/evergreen:latest`
+- `ghcr.io/now-start/evergreen:sha-<commit>`
+
+현재 파이프라인은 이미지만 발행하며 서비스 배포는 수행하지 않습니다.
+
 ## Spring Platform 연동
 
 - 서비스 이름: `evergreen`

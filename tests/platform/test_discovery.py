@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from evergreen.platform.config import PlatformSettings
 from evergreen.platform.discovery import register_with_eureka
-from evergreen.platform.settings import PlatformSettings
 
 
 @pytest.mark.asyncio

@@ -3,8 +3,22 @@ import os
 import httpx
 import pytest
 
-from evergreen.platform.config_server import SpringConfigError, load_spring_config
-from evergreen.platform.settings import PlatformSettings
+from evergreen.platform.config import PlatformSettings, SpringConfigError, load_spring_config
+
+
+def test_default_profile_enables_platform_integrations() -> None:
+    settings = PlatformSettings()
+
+    assert settings.active_profiles == {"default"}
+    assert settings.platform_integrations_enabled is True
+    assert settings.server_port == 8080
+    assert settings.management_server_port == 8081
+
+
+def test_local_profile_disables_platform_integrations() -> None:
+    settings = PlatformSettings(spring_profiles_active="default, local")
+
+    assert settings.platform_integrations_enabled is False
 
 
 def test_spring_config_is_skipped_for_local_profile() -> None:
