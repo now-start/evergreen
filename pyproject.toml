@@ -1,0 +1,97 @@
+[project]
+name = "evergreen"
+version = "0.1.0"
+description = "Chart-driven Bitcoin automated trading system"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "alembic",
+    "asyncmy",
+    "fastapi",
+    "httpx",
+    "numpy",
+    "opentelemetry-distro",
+    "opentelemetry-exporter-otlp",
+    "opentelemetry-instrumentation-fastapi",
+    "opentelemetry-instrumentation-httpx",
+    "opentelemetry-instrumentation-logging",
+    "opentelemetry-instrumentation-sqlalchemy",
+    "opentelemetry-instrumentation-system-metrics",
+    "pandas",
+    "pyarrow",
+    "py-eureka-client",
+    "pyctuator",
+    "pydantic",
+    "pydantic-settings",
+    "python-dotenv",
+    "scikit-learn",
+    "sqlalchemy[asyncio]",
+    "torch",
+    "uvicorn[standard]",
+]
+
+[project.scripts]
+evergreen = "evergreen.main:main"
+
+[build-system]
+requires = ["uv_build>=0.11.3,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = "src/main"
+
+[dependency-groups]
+dev = [
+    "mypy",
+    "pip-audit",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["src/main", "tests"]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP", "RUF", "S", "ASYNC", "DTZ"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]
+
+[tool.ruff.format]
+indent-style = "space"
+line-ending = "auto"
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src/main", "tests"]
+strict = true
+pretty = true
+show_error_codes = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+addopts = [
+    "-ra",
+    "--strict-config",
+    "--strict-markers",
+    "--cov=evergreen",
+    "--cov-report=term-missing:skip-covered",
+]
+asyncio_default_fixture_loop_scope = "function"
+asyncio_mode = "strict"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+relative_files = true
+source = ["evergreen"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
