@@ -62,16 +62,25 @@ docker run --rm \
 PyTorch는 범용 Swarm 노드에서 불필요한 CUDA 라이브러리를 설치하지 않도록 CPU
 전용 wheel을 사용합니다. GPU 실행 환경은 별도 이미지 정책을 결정한 뒤 추가합니다.
 
+## 버전
+
+프로젝트 버전은 `pyproject.toml`에서 SemVer 표기인 `2.0.0-alpha.1`로 관리합니다.
+Python 패키지 메타데이터와 `uv.lock`, OpenAPI에는 PEP 440 정규화 결과인
+`2.0.0a1`이 표시됩니다. Git 태그와 Docker 이미지 태그는 원래 SemVer 표기를
+사용합니다.
+
 ## CI
 
-GitHub Actions는 pull request와 `develop` push에서 포맷, lint, 타입 검사, 테스트,
-의존성 취약점 감사를 실행합니다. `develop` push에서는 검사를 통과한 뒤
-`linux/amd64`와 `linux/arm64` 이미지를 다음 태그로 GHCR에 푸시합니다.
+GitHub Actions는 `now-start/workflow`의 `reusable-python-app.yaml`을 호출합니다.
+`main`/`develop` push, 두 브랜치를 대상으로 하는 PR, 수동 실행에서 포맷, lint,
+타입 검사, 테스트, 의존성 취약점 감사를 실행합니다.
 
-- `ghcr.io/now-start/evergreen:latest`
-- `ghcr.io/now-start/evergreen:sha-<commit>`
+`main` push에서만 검증 후 `linux/amd64`, `linux/arm64` 이미지를 버전 태그로
+발행하고 GitHub Release를 생성합니다. 알파/베타/RC 버전은 prerelease로 표시합니다.
 
-현재 파이프라인은 이미지만 발행하며 서비스 배포는 수행하지 않습니다.
+예: `ghcr.io/now-start/evergreen:2.0.0-alpha.1`, Git 태그 `2.0.0-alpha.1`.
+발행된 버전은 덮어쓰지 않으므로 새 릴리스에는 버전을 올려야 합니다.
+`latest` 같은 가변 태그와 서비스 배포는 이 파이프라인에서 관리하지 않습니다.
 
 ## Spring Platform 연동
 
