@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+from collections.abc import Iterator
 from functools import lru_cache
 from urllib.parse import quote
 
@@ -59,7 +60,7 @@ def load_spring_config(
     *,
     client: httpx.Client | None = None,
 ) -> int:
-    """Load flat Spring Config properties into the process environment."""
+    """Load flat or nested Spring Config properties into the process environment."""
     if not settings.platform_integrations_enabled:
         return 0
 
@@ -85,10 +86,7 @@ def load_spring_config(
         raise SpringConfigError("Spring Config Server response must be a JSON object")
 
     loaded = 0
-    for property_name, value in payload.items():
-        if not isinstance(property_name, str):
-            raise SpringConfigError("Spring Config property names must be strings")
-
+    for property_name, value in _flatten_properties(payload):
         serialized = _serialize_property(value)
         if serialized is None:
             continue
@@ -99,6 +97,19 @@ def load_spring_config(
             loaded += 1
 
     return loaded
+
+
+def _flatten_properties(
+    properties: dict[str, object], prefix: str = ""
+) -> Iterator[tuple[str, object]]:
+    for key, value in properties.items():
+        if not isinstance(key, str):
+            raise SpringConfigError("Spring Config property names must be strings")
+        property_name = f"{prefix}.{key}" if prefix else key
+        if isinstance(value, dict):
+            yield from _flatten_properties(value, property_name)
+        else:
+            yield property_name, value
 
 
 def _parse_config_import(config_import: str) -> tuple[bool, str]:

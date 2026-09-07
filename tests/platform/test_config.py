@@ -74,6 +74,50 @@ def test_optional_spring_config_failure_does_not_block_startup() -> None:
         assert load_spring_config(settings, client=client) == 0
 
 
+@pytest.mark.parametrize("service_url_key", ["service-url", "serviceUrl"])
+def test_spring_config_loads_nested_properties(
+    monkeypatch: pytest.MonkeyPatch, service_url_key: str
+) -> None:
+    monkeypatch.setattr(os, "environ", {})
+    payload = {
+        "server": {"port": 18080},
+        "management.server": {"port": 18081},
+        "eureka": {"client": {service_url_key: {"defaultZone": "http://eureka:8761/eureka/"}}},
+        "otel": {
+            "sdk": {"disabled": True},
+            "exporter": {"otlp": {"endpoint": "http://grafana:4317"}},
+        },
+    }
+    transport = httpx.MockTransport(lambda _: httpx.Response(200, json=payload))
+
+    with httpx.Client(transport=transport) as client:
+        assert load_spring_config(PlatformSettings(), client=client) == 5
+
+    settings = PlatformSettings()
+    assert settings.server_port == 18080
+    assert settings.management_server_port == 18081
+    assert settings.eureka_client_service_url_default_zone == "http://eureka:8761/eureka/"
+    assert settings.otel_sdk_disabled is True
+    assert os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] == "http://grafana:4317"
+    assert "EUREKA" not in os.environ
+
+
+def test_nested_properties_preserve_environment_and_list_values(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(os, "environ", {"SERVER_PORT": "19080"})
+    payload = {
+        "server": {"port": 18080},
+        "example": {"items": ["BTC", "ETH"], "unset": None, "empty": {}},
+    }
+    transport = httpx.MockTransport(lambda _: httpx.Response(200, json=payload))
+
+    with httpx.Client(transport=transport) as client:
+        assert load_spring_config(PlatformSettings(), client=client) == 1
+
+    assert os.environ == {"SERVER_PORT": "19080", "EXAMPLE_ITEMS": '["BTC","ETH"]'}
+
+
 def test_required_spring_config_failure_blocks_startup() -> None:
     settings = PlatformSettings(
         spring_profiles_active="prod",
