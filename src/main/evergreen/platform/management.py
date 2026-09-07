@@ -16,8 +16,8 @@ def configure_management(app: FastAPI, settings: PlatformSettings) -> None:
         app=app,
         app_name=settings.spring_application_name,
         app_description=f"{settings.spring_application_name} service",
-        app_url="/",
-        pyctuator_endpoint_url="/actuator",
+        app_url=settings.application_url,
+        pyctuator_endpoint_url=f"{settings.management_url}/actuator",
         registration_url=None,
     )
 

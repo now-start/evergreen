@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import socket
 from collections.abc import Iterator
 from functools import lru_cache
 from urllib.parse import quote
@@ -44,6 +45,23 @@ class PlatformSettings(BaseSettings):
     @property
     def platform_integrations_enabled(self) -> bool:
         return "local" not in self.active_profiles
+
+    @property
+    def advertised_host(self) -> str:
+        return self.eureka_instance_hostname or socket.gethostname()
+
+    @property
+    def application_url(self) -> str:
+        return _instance_url(self.advertised_host, self.server_port)
+
+    @property
+    def management_url(self) -> str:
+        return _instance_url(self.advertised_host, self.management_server_port)
+
+
+def _instance_url(host: str, port: int) -> str:
+    url_host = f"[{host}]" if ":" in host and not host.startswith("[") else host
+    return f"http://{url_host}:{port}"
 
 
 class SpringConfigError(RuntimeError):
