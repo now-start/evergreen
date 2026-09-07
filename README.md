@@ -2,9 +2,32 @@
 
 차트 데이터만을 사용해 비트코인을 자동 매매하는 Python 프로젝트입니다.
 
-현재 단계에서는 거래 전략을 구현하지 않고, 재현 가능한 개발 환경과 검증 가능한
-패키지 구조만 구성합니다. 거래소, 데이터 저장소, 모델 구조, 자동 승격 기준은 설계
-문서에서 결정한 뒤 추가합니다.
+현재는 Spring Platform 연동 기반과 공개 캔들 수집·규칙 전략·MLP/CNN 오프라인 학습 및 평가를 제공합니다.
+[매매 전략 V0](docs/trading-strategy-v0.md)에 업비트 BTC/KRW 현물의 진입·청산,
+데이터 계약, 백테스트와 자동 승격 기준을 정리합니다. 이 문서는 검증할 초안이며,
+온라인 파인튜닝·자동 승격은 아직 없습니다.
+별도 [주문 실행기](docs/trading-execution.md)는 CCXT Upbit SDK와 기존 MariaDB를 사용하며,
+기본 비활성화입니다. 웹 서비스 기동이나 이 코드의 배포만으로 주문을 시작하지 않습니다.
+
+계좌 접근 없이 실행하는 방법은 [오프라인 리서치 가이드](docs/offline-research.md)를
+참고하세요. 연구 CLI는 서버 기동·Config Server·Eureka·OTel 초기화와 분리되어 있습니다.
+전략 개선은 [실험 01의 사전 계획과 결과](docs/strategy-experiment-01.md)처럼
+개발 구간에서 후보를 고른 뒤 별도 구간을 검증합니다.
+[실험 02: 평균회귀·RSI 반등](docs/strategy-experiment-02.md)도 같은 방식으로 비교했으며
+현재 판정은 수익성 미검증입니다.
+[딥러닝 실험 03](docs/deep-learning-experiment-03.md)에서는 MLP와 1D CNN을 실제 학습했습니다.
+최종 평가 A는 손실, B는 데이터 누락으로 전체 검증을 완료하지 못했습니다.
+[실험 04: 검증 기반 조기 종료](docs/early-stopping-experiment-04.md)에서는 매 epoch 검증과
+최적 가중치 복원을 추가하고 같은 학습 자료로 고정 20 epoch와 재비교했습니다.
+MLP 성과는 개선됐지만 CNN은 혼재하며, 새로운 미관측 구간의 수익성 검증은 남아 있습니다.
+[실험 05: 규칙·딥러닝 혼합](docs/hybrid-experiment-05.md)은 추세·돌파·RSI와 MLP/CNN의
+6개 조합을 비교했습니다. 모두 거래 수 기준 미달로 현금 유지를 선택했으며 새 평가는 데이터 누락으로 미완료입니다.
+[실험 06: 규칙 후보 수익성 학습](docs/meta-experiment-06.md)은 비용 차감 거래 결과로 모델을 다시
+학습했습니다. 추세용 MLP/CNN을 학습했지만 위험·거래 수 기준 미달이며, 돌파·RSI는 검증 표본이 부족했습니다.
+
+현재 주력 검증 후보는 [168시간 고점 돌파](docs/breakout-strategy.md)입니다.
+별도 8월 평가에서 기본 순수익률 +14.15%였으나 청산 1회로 표본 수 기준 미달입니다.
+전략별 코드는 [패키지 구조](docs/research-packages.md)에 따라 공통 체결·학습과 분리합니다.
 
 ## 개발 환경
 
@@ -28,7 +51,11 @@ uv run pip-audit
 src/main/evergreen/
 ├── api.py          # FastAPI 앱 팩토리와 lifespan
 ├── main.py         # 실행 진입점과 Uvicorn 포트 바인딩
-└── platform/       # Config Server, Eureka, Actuator, OpenTelemetry 연동
+├── platform/       # Config Server, Eureka, Actuator, OpenTelemetry 연동
+├── market.py       # 공통 캔들 계약·공개 데이터·품질 검사
+├── strategies/    # 공통 순수 전략 신호
+├── research/      # 오프라인 모의 체결, 학습·실험·보고
+└── trading/       # 별도 주문 워커, CCXT·MariaDB (기본 비활성화)
 ```
 
 비즈니스 기능은 `evergreen` 아래에 기능 단위로 추가하고, 공통 Platform 연동은
@@ -64,9 +91,9 @@ PyTorch는 범용 Swarm 노드에서 불필요한 CUDA 라이브러리를 설치
 
 ## 버전
 
-프로젝트 버전은 `pyproject.toml`에서 SemVer 표기인 `2.0.0-alpha.4`로 관리합니다.
+프로젝트 버전은 `pyproject.toml`에서 SemVer 표기인 `2.0.0-alpha.5`로 관리합니다.
 Python 패키지 메타데이터와 `uv.lock`, OpenAPI에는 PEP 440 정규화 결과인
-`2.0.0a4`이 표시됩니다. Git 태그와 Docker 이미지 태그는 원래 SemVer 표기를
+`2.0.0a5`가 표시됩니다. Git 태그와 Docker 이미지 태그는 원래 SemVer 표기를
 사용합니다.
 
 ## CI
@@ -78,7 +105,7 @@ GitHub Actions는 `now-start/workflow`의 `reusable-python-app.yaml`을 호출�
 `main` push에서만 검증 후 `linux/amd64`, `linux/arm64` 이미지를 버전 태그로
 발행하고 GitHub Release를 생성합니다. 알파/베타/RC 버전은 prerelease로 표시합니다.
 
-예: `ghcr.io/now-start/evergreen:2.0.0-alpha.4`, Git 태그 `2.0.0-alpha.4`.
+예: `ghcr.io/now-start/evergreen:2.0.0-alpha.5`, Git 태그 `2.0.0-alpha.5`.
 발행된 버전은 덮어쓰지 않으므로 새 릴리스에는 버전을 올려야 합니다.
 `latest` 같은 가변 태그와 서비스 배포는 이 파이프라인에서 관리하지 않습니다.
 

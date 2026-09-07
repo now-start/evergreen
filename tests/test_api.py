@@ -85,7 +85,7 @@ async def test_openapi_endpoint_matches_springdoc_path(
     assert schema["info"] == {
         "title": "evergreen API",
         "description": "evergreen service API",
-        "version": "2.0.0a4",
+        "version": "2.0.0a5",
     }
     assert schema["servers"] == [
         {"url": "/evergreen", "description": "Platform Gateway"},

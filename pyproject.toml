@@ -1,12 +1,13 @@
 [project]
 name = "evergreen"
-version = "2.0.0-alpha.4"
+version = "2.0.0-alpha.5"
 description = "Chart-driven Bitcoin automated trading system"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "alembic",
     "asyncmy",
+    "ccxt",
     "fastapi",
     "httpx",
     "numpy",
@@ -81,6 +82,10 @@ strict = true
 pretty = true
 show_error_codes = true
 warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = ["ccxt", "ccxt.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = [
