@@ -85,7 +85,7 @@ async def test_openapi_endpoint_matches_springdoc_path(
     assert schema["info"] == {
         "title": "evergreen API",
         "description": "evergreen service API",
-        "version": "2.0.0a3",
+        "version": "2.0.0a4",
     }
     assert schema["servers"] == [
         {"url": "/evergreen", "description": "Platform Gateway"},
@@ -94,14 +94,16 @@ async def test_openapi_endpoint_matches_springdoc_path(
 
 
 @pytest.mark.asyncio
-async def test_swagger_ui_uses_springdoc_compatible_path(
-    application_client: AsyncClient,
+@pytest.mark.parametrize(
+    "path",
+    ["/swagger-ui/index.html", "/swagger-ui/oauth2-redirect.html", "/docs", "/redoc"],
+)
+async def test_service_does_not_expose_documentation_ui(
+    application_client: AsyncClient, path: str
 ) -> None:
-    response = await application_client.get("/swagger-ui/index.html")
+    response = await application_client.get(path)
 
-    assert response.status_code == 200
-    assert "/v3/api-docs" in response.text
-    assert "/swagger-ui/oauth2-redirect.html" in response.text
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio

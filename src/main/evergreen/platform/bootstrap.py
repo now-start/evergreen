@@ -11,6 +11,7 @@ def initialize_telemetry(settings: PlatformSettings) -> None:
         return
 
     os.environ.setdefault("OTEL_SERVICE_NAME", settings.spring_application_name)
+    os.environ.setdefault("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf")
     initialize(swallow_exceptions=False)
 
 

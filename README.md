@@ -64,9 +64,9 @@ PyTorch는 범용 Swarm 노드에서 불필요한 CUDA 라이브러리를 설치
 
 ## 버전
 
-프로젝트 버전은 `pyproject.toml`에서 SemVer 표기인 `2.0.0-alpha.3`로 관리합니다.
+프로젝트 버전은 `pyproject.toml`에서 SemVer 표기인 `2.0.0-alpha.4`로 관리합니다.
 Python 패키지 메타데이터와 `uv.lock`, OpenAPI에는 PEP 440 정규화 결과인
-`2.0.0a3`이 표시됩니다. Git 태그와 Docker 이미지 태그는 원래 SemVer 표기를
+`2.0.0a4`이 표시됩니다. Git 태그와 Docker 이미지 태그는 원래 SemVer 표기를
 사용합니다.
 
 ## CI
@@ -78,7 +78,7 @@ GitHub Actions는 `now-start/workflow`의 `reusable-python-app.yaml`을 호출�
 `main` push에서만 검증 후 `linux/amd64`, `linux/arm64` 이미지를 버전 태그로
 발행하고 GitHub Release를 생성합니다. 알파/베타/RC 버전은 prerelease로 표시합니다.
 
-예: `ghcr.io/now-start/evergreen:2.0.0-alpha.3`, Git 태그 `2.0.0-alpha.3`.
+예: `ghcr.io/now-start/evergreen:2.0.0-alpha.4`, Git 태그 `2.0.0-alpha.4`.
 발행된 버전은 덮어쓰지 않으므로 새 릴리스에는 버전을 올려야 합니다.
 `latest` 같은 가변 태그와 서비스 배포는 이 파이프라인에서 관리하지 않습니다.
 
@@ -90,7 +90,6 @@ GitHub Actions는 `now-start/workflow`의 `reusable-python-app.yaml`을 호출�
 - 애플리케이션 포트: `server.port` (`8080`)
 - 관리 포트: `management.server.port` (`8081`)
 - Admin Swagger 문서: Gateway가 제공하는 `/evergreen/v3/api-docs`
-- 서비스 Swagger UI: `/swagger-ui/index.html`
 - Actuator: 관리 포트에서 Pyctuator의 전체 `/actuator/**` 엔드포인트 제공
 - 관측 데이터: OpenTelemetry Collector를 통한 OTLP traces, metrics, logs
 
@@ -108,7 +107,8 @@ GitHub Actions는 `now-start/workflow`의 `reusable-python-app.yaml`을 호출�
 `/evergreen/**` 경로를 자동 생성하고, Spring Boot Admin은 Eureka에서 서비스를
 발견합니다. Admin의 Swagger 수집기도 Eureka 서비스 목록을 읽어
 `/evergreen/v3/api-docs`를 자동 등록하므로 별도의 Gateway/Admin 직접 등록 설정은
-없습니다. Eureka에는 `management.port=8081`, `/actuator/info`,
+없습니다. Swagger UI는 Admin에서만 제공하며, 서비스 자체는 OpenAPI JSON만
+제공합니다. Eureka에는 `management.port=8081`, `/actuator/info`,
 `/actuator/health`를 함께 광고합니다.
 
 비로컬 환경에서는 애플리케이션 이름, 활성 프로필, Config Server 주소 같은
@@ -121,3 +121,7 @@ SQLAlchemy, logging, system-metrics instrumentation이 OTLP exporter를 통해
 Collector로 전송됩니다. 초기화는 Config Server 설정을 읽은 뒤 애플리케이션
 엔트리포인트에서 수행하므로 별도의 `opentelemetry-instrument` 래퍼는 사용하지
 않습니다.
+
+OTLP 프로토콜의 기본값은 Spring Boot starter와 동일한 `http/protobuf`입니다.
+Config Server의 `otel.exporter.otlp.protocol` 또는 환경변수
+`OTEL_EXPORTER_OTLP_PROTOCOL`로 지정한 값과 신호별 설정은 그대로 우선합니다.

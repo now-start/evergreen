@@ -1,6 +1,6 @@
 [project]
 name = "evergreen"
-version = "2.0.0-alpha.3"
+version = "2.0.0-alpha.4"
 description = "Chart-driven Bitcoin automated trading system"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"

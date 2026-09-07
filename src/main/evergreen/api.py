@@ -23,8 +23,7 @@ def create_app(settings: PlatformSettings) -> FastAPI:
         description=f"{settings.spring_application_name} service API",
         version=version("evergreen"),
         openapi_url="/v3/api-docs",
-        docs_url="/swagger-ui/index.html",
-        swagger_ui_oauth2_redirect_url="/swagger-ui/oauth2-redirect.html",
+        docs_url=None,
         redoc_url=None,
         servers=[
             {
