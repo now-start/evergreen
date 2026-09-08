@@ -99,9 +99,9 @@ PyTorch는 범용 Swarm 노드에서 불필요한 CUDA 라이브러리를 설치
 
 ## 버전
 
-프로젝트 정식 버전은 `pyproject.toml`에서 `2.0.1`으로 관리합니다.
+프로젝트 정식 버전은 `pyproject.toml`에서 `2.0.2`로 관리합니다.
 Python 패키지 메타데이터, `uv.lock`, OpenAPI, Git 태그와 Docker 이미지 태그도
-동일한 `2.0.1`을 사용합니다.
+동일한 `2.0.2`를 사용합니다.
 
 ## CI
 
@@ -112,7 +112,7 @@ GitHub Actions는 `now-start/workflow`의 `reusable-python-app.yaml`을 호출�
 `main` push에서만 검증 후 `linux/amd64`, `linux/arm64` 이미지를 버전 태그로
 발행하고 GitHub Release를 생성합니다. 알파/베타/RC 버전은 prerelease로 표시합니다.
 
-예: `ghcr.io/now-start/evergreen:2.0.1`, Git 태그 `2.0.1`.
+예: `ghcr.io/now-start/evergreen:2.0.2`, Git 태그 `2.0.2`.
 발행된 버전은 덮어쓰지 않으므로 새 릴리스에는 버전을 올려야 합니다.
 `latest` 같은 가변 태그와 서비스 배포는 이 파이프라인에서 관리하지 않습니다.
 

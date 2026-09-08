@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator
+from importlib.metadata import version
 from unittest.mock import AsyncMock
 
 import pytest
@@ -85,7 +86,7 @@ async def test_openapi_endpoint_matches_springdoc_path(
     assert schema["info"] == {
         "title": "evergreen API",
         "description": "evergreen service API",
-        "version": "2.0.1",
+        "version": version("evergreen"),
     }
     assert schema["servers"] == [
         {"url": "/evergreen", "description": "Platform Gateway"},
