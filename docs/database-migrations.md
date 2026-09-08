@@ -11,11 +11,14 @@ Docker 기본 명령 `evergreen`의 비로컬 시작 순서:
 1. Config Server 설정을 읽는다.
 2. MariaDB 세션 잠금을 획득하고 Alembic `upgrade head`를 실행한다.
 3. 성공한 경우에만 OpenTelemetry, HTTP/관리 포트, Eureka 등록을 시작한다.
+4. 비로컬·실거래 활성화 설정일 때 API lifespan에서 매매 루프를 함께 시작한다.
 
 새 이미지가 시작되면 미적용 revision만 실행된다. 최신 버전이면 DDL을 반복하지 않는다.
 마이그레이션 오류, 알 수 없는 DB revision, 잠금 시간 초과는 **기동 실패**로 처리한다.
 기존 Docker healthcheck는 이 단계가 끝나기 전 성공하지 않는다.
 동시 시작한 인스턴스는 동일 MariaDB 서버의 잠금에서 최대 60초 대기한 뒤 순서대로 검사한다.
+활성 매매 루프는 같은 잠금을 계속 보유하므로 다른 인스턴스의 기동이 실패할 수 있다.
+현재 통합 실행은 replica 1과 stop-first 배포를 전제로 한다.
 `local` 프로필은 자동 DB 접속을 생략한다. 수동 명령으로는 로컬 프로필에서도 적용할 수 있다.
 
 거래 워커도 같은 revision을 확인한 뒤 시작한다. 마이그레이션과 워커는 같은 세션 잠금을 사용한다.

@@ -14,7 +14,7 @@ Config Server 조회 이전 로그는 시작 시 환경변수 또는 기본 레�
 | 마이그레이션 | `database_migration`, `database_schema_apply`, `database_revision` |
 | DB 잠금 | `database_lock_wait`, `database_lock_acquired`, `database_lock_unavailable`, `execution_lock_lost` |
 | 플랫폼 연동 | `telemetry_initialize`, `eureka_client_initialize`, `eureka_client_stop` |
-| 거래 워커 | `worker_started`, `worker_heartbeat`, `worker_failed`, `worker_stopped` |
+| 매매 루프 | `worker_skipped`, `worker_started`, `worker_heartbeat`, `worker_failed`, `worker_stopping`, `worker_stopped` |
 | 매매 판단 | `trading_signal`, `trading_rejected`, `trading_halted`, `trading_cycle_result` |
 | 주문 | `order_intent_committed`, `order_submit`, `order_accepted`, `order_reconcile_lookup`, `order_reconciled` |
 | DB 기록 | `execution_state_committed`, `execution_state_initialized` |
@@ -27,6 +27,10 @@ Eureka 클라이언트 초기화가 실제 레지스트리 등록·게이트웨�
 반복 조회·대기(`pending`, `already-evaluated`, `outside-signal-window`, `halted`)와
 계좌 평가 저장은 DEBUG로 제한한다. 워커는 정상 사이클을 완료하며 최소 60초 간격으로
 `worker_heartbeat`를 남긴다. 이는 독립적인 헬스체크가 아니며, 외부 호출에서 멈추면 출력되지 않는다.
+API와 함께 실행되는 루프 상태·마지막 완료 시각은 `/actuator/info`의 `trading`에서도 확인한다.
+`worker_started`는 진입 로그이며 DB 검증·주문 성공 증거는 아니다. `worker_skipped`는
+`local_profile` 또는 `live_disabled`로 루프를 시작하지 않았음을 의미한다.
+루프 장애는 API health 실패로 전환하지 않으므로 health 200만으로 매매 정상 여부를 판단하지 않는다.
 
 ## 장애 확인
 
@@ -45,6 +49,7 @@ Eureka 클라이언트 초기화가 실제 레지스트리 등록·게이트웨�
 
 API 서버는 기존 OpenTelemetry 설정을 유지한다. 초기 설정 로딩·마이그레이션 로그는
 OTel 초기화 전이므로 컨테이너 표준 오류 로그에서 확인해야 한다.
-거래 워커는 금융 HTTP 요청의 자동 계측을 켜지 않으며 로그도 stdout/stderr 수집 경로를 사용한다.
-**워커 로그의 Grafana 전달에는 별도 컨테이너 로그 수집 설정이 필요하다.**
+API lifespan의 매매 루프는 금융 HTTP·SQL 자동 계측을 context 단위로 억제한다.
+고정 이벤트 로그는 API와 같은 로깅 핸들러를 사용하므로 기존 OTel 로그 수집 설정을 따른다.
+수동 거래 CLI는 OTel 초기화를 하지 않으므로 stdout/stderr 수집 경로를 사용한다.
 이번 변경은 수집기 배포나 운영 환경의 실제 전달 여부를 검증하지 않는다.

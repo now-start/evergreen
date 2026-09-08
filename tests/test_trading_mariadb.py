@@ -20,9 +20,10 @@ from evergreen.database.config import DatabaseSettings
 from evergreen.database.connection import LOCK_NAME, locked_connection
 from evergreen.database.migration import configuration, migrate, run_migrations
 from evergreen.database.migrations.versions.v0001_execution import legacy_schema
-from evergreen.trading.__main__ import run
 from evergreen.trading.config import TradingSettings
-from evergreen.trading.state import events, metadata, open_store
+from evergreen.trading.runtime import run
+from evergreen.trading.state import Store, events, metadata, open_store
+from evergreen.trading.upbit import Upbit
 
 
 @pytest_asyncio.fixture
@@ -105,12 +106,12 @@ async def test_worker_initialization_and_cleanup_without_exchange_access(
     )
     sdk = AsyncMock()
     factory = Mock(return_value=sdk)
-    monkeypatch.setattr("evergreen.trading.__main__.Upbit", factory)
+    monkeypatch.setattr("evergreen.trading.runtime.Upbit", factory)
     assert await run(config, initialize=True, once=True) == 0
     factory.assert_not_called()
     trader = AsyncMock()
     trader.tick.return_value = "no-signal"
-    monkeypatch.setattr("evergreen.trading.__main__.Trader", Mock(return_value=trader))
+    monkeypatch.setattr("evergreen.trading.runtime.Trader", Mock(return_value=trader))
     assert await run(config, initialize=False, once=True) == 0
     trader.tick.assert_awaited_once()
     sdk.close.assert_awaited_once()
@@ -119,6 +120,52 @@ async def test_worker_initialization_and_cleanup_without_exchange_access(
         await run(config, initialize=False, once=True)
     async with open_store(engine, config.identity):
         pass  # Worker failure released the DB lock.
+
+
+@pytest.mark.asyncio
+async def test_loop_cancellation_preserves_pending_and_releases_single_owner_lock(
+    engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = TradingSettings(
+        live_enabled=True,
+        access_key=SecretStr("test"),
+        secret_key=SecretStr("test"),
+        datasource_url=SecretStr(f"jdbc:mariadb://127.0.0.1:{engine.url.port}/evergreen_test"),
+        datasource_username=SecretStr(engine.url.username or ""),
+        datasource_password=SecretStr(engine.url.password or ""),
+    )
+    async with open_store(engine, config.identity, initialize=True):
+        pass
+    started = asyncio.Event()
+    sdk = AsyncMock()
+    factory = Mock(return_value=sdk)
+
+    def trader(api: Upbit, store: Store, settings: TradingSettings) -> Mock:
+        async def tick() -> str:
+            state = await store.load()
+            state.pending = {"identifier": "unconfirmed-intent"}
+            await store.save(state, "intent")
+            started.set()
+            await asyncio.Event().wait()
+            return "pending"
+
+        return Mock(tick=tick)
+
+    monkeypatch.setattr("evergreen.trading.runtime.Upbit", factory)
+    monkeypatch.setattr("evergreen.trading.runtime.Trader", trader)
+    task = asyncio.create_task(run(config, initialize=False, once=False))
+    try:
+        await asyncio.wait_for(started.wait(), timeout=5)
+        with pytest.raises(RuntimeError, match="다른"):
+            await run(config, initialize=False, once=True)
+        factory.assert_called_once()  # The second loop never reaches the exchange adapter.
+    finally:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    sdk.close.assert_awaited_once()
+    async with open_store(engine, config.identity) as store:
+        assert (await store.load()).pending == {"identifier": "unconfirmed-intent"}
 
 
 @pytest.mark.asyncio

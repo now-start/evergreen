@@ -6,8 +6,10 @@
 [매매 전략 V0](docs/trading-strategy-v0.md)에 업비트 BTC/KRW 현물의 진입·청산,
 데이터 계약, 백테스트와 자동 승격 기준을 정리합니다. 이 문서는 검증할 초안이며,
 온라인 파인튜닝·자동 승격은 아직 없습니다.
-별도 [주문 실행기](docs/trading-execution.md)는 공식 `upbit-sdk`와 기존 MariaDB를 사용하며,
-기본 비활성화입니다. 웹 서비스 기동이나 이 코드의 배포만으로 주문을 시작하지 않습니다.
+[주문 실행기](docs/trading-execution.md)는 공식 `upbit-sdk`와 기존 MariaDB를 사용하며,
+API와 같은 프로세스에서 시작·종료됩니다. 비로컬 프로파일에서 Config Server의
+`evergreen.execution.live-enabled=true`일 때만 매매 루프를 시작하며 기본값은 false입니다.
+최초 계좌 상태는 별도로 초기화해야 하며, 실행 상태는 `/actuator/info`의 `trading`에서 확인합니다.
 
 계좌 접근 없이 실행하는 방법은 [오프라인 리서치 가이드](docs/offline-research.md)를
 참고하세요. 연구 CLI는 서버 기동·Config Server·Eureka·OTel 초기화와 분리되어 있습니다.
@@ -56,7 +58,7 @@ src/main/evergreen/
 ├── market.py       # 공통 캔들 계약·공개 데이터·품질 검사
 ├── strategies/    # 공통 순수 전략 신호
 ├── research/      # 오프라인 모의 체결, 학습·실험·보고
-└── trading/       # 별도 주문 워커, 공식 Upbit SDK·MariaDB (기본 비활성화)
+└── trading/       # API lifespan 매매 루프, 공식 Upbit SDK·MariaDB (기본 비활성화)
 ```
 
 비즈니스 기능은 `evergreen` 아래에 기능 단위로 추가하고, 공통 Platform 연동은
@@ -97,9 +99,9 @@ PyTorch는 범용 Swarm 노드에서 불필요한 CUDA 라이브러리를 설치
 
 ## 버전
 
-프로젝트 정식 버전은 `pyproject.toml`에서 `2.0.0`으로 관리합니다.
+프로젝트 정식 버전은 `pyproject.toml`에서 `2.0.1`으로 관리합니다.
 Python 패키지 메타데이터, `uv.lock`, OpenAPI, Git 태그와 Docker 이미지 태그도
-동일한 `2.0.0`을 사용합니다.
+동일한 `2.0.1`을 사용합니다.
 
 ## CI
 
@@ -110,7 +112,7 @@ GitHub Actions는 `now-start/workflow`의 `reusable-python-app.yaml`을 호출�
 `main` push에서만 검증 후 `linux/amd64`, `linux/arm64` 이미지를 버전 태그로
 발행하고 GitHub Release를 생성합니다. 알파/베타/RC 버전은 prerelease로 표시합니다.
 
-예: `ghcr.io/now-start/evergreen:2.0.0`, Git 태그 `2.0.0`.
+예: `ghcr.io/now-start/evergreen:2.0.1`, Git 태그 `2.0.1`.
 발행된 버전은 덮어쓰지 않으므로 새 릴리스에는 버전을 올려야 합니다.
 `latest` 같은 가변 태그와 서비스 배포는 이 파이프라인에서 관리하지 않습니다.
 

@@ -6,7 +6,9 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from evergreen.platform.config import PlatformSettings
 
 
-def configure_management(app: FastAPI, settings: PlatformSettings) -> None:
+def configure_management(
+    app: FastAPI, settings: PlatformSettings, *, trading_info: dict[str, str | None]
+) -> None:
     app.add_middleware(
         _ManagementPortMiddleware,
         application_port=settings.server_port,
@@ -19,6 +21,7 @@ def configure_management(app: FastAPI, settings: PlatformSettings) -> None:
         app_url=settings.application_url,
         pyctuator_endpoint_url=f"{settings.management_url}/actuator",
         registration_url=None,
+        additional_app_info={"trading": trading_info},
     )
 
 

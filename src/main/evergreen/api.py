@@ -7,14 +7,18 @@ from fastapi import FastAPI
 from evergreen.platform.config import PlatformSettings, get_settings
 from evergreen.platform.discovery import deregister_from_eureka, register_with_eureka
 from evergreen.platform.management import configure_management
+from evergreen.trading.runtime import TradingRuntime
 
 
 def create_app(settings: PlatformSettings) -> FastAPI:
+    trading = TradingRuntime()
+
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         eureka_client = await register_with_eureka(settings)
         try:
-            yield
+            async with trading.lifespan(settings):
+                yield
         finally:
             await deregister_from_eureka(eureka_client)
 
@@ -34,7 +38,7 @@ def create_app(settings: PlatformSettings) -> FastAPI:
         ],
         lifespan=lifespan,
     )
-    configure_management(app, settings)
+    configure_management(app, settings, trading_info=trading.info)
     return app
 
 

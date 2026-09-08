@@ -1,54 +1,20 @@
-"""Explicit worker entrypoint, separate from FastAPI and experiment commands."""
+"""Explicit initialization and diagnostic entrypoint for the shared trading loop."""
 
 import argparse
 import asyncio
 import logging
 import sys
-from time import monotonic
 
 from dotenv import load_dotenv
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.pool import NullPool
 from upbit import APIError
 
 from evergreen.observability import configure_logging, operation
 from evergreen.platform.config import PlatformSettings, load_spring_config
 from evergreen.trading.config import TradingSettings
-from evergreen.trading.engine import Trader
-from evergreen.trading.state import open_store
-from evergreen.trading.upbit import Upbit
+from evergreen.trading.runtime import run
 
 logger = logging.getLogger(__name__)
-
-
-async def run(settings: TradingSettings, *, initialize: bool, once: bool) -> int:
-    logger.info(
-        "event=worker_started initialize=%s strategy=breakout-v1 market=KRW-BTC", initialize
-    )
-    engine = create_async_engine(settings.database_url, poolclass=NullPool, hide_parameters=True)
-    try:
-        async with open_store(engine, settings.identity, initialize=initialize) as store:
-            if initialize:
-                print("MariaDB 실행 상태 초기화 완료. 주문·계좌 조회 없음.")
-                return 0
-            api = Upbit(settings)
-            try:
-                trader = Trader(api, store, settings)
-                heartbeat = monotonic()
-                while True:
-                    result = await trader.tick()
-                    if monotonic() - heartbeat >= 60:
-                        logger.info("event=worker_heartbeat result=%s", result)
-                        heartbeat = monotonic()
-                    if once:
-                        return 0
-                    await asyncio.sleep(settings.poll_seconds)
-            finally:
-                await api.close()
-    finally:
-        await engine.dispose()
-        logger.info("event=worker_stopped")
 
 
 def main(argv: list[str] | None = None) -> int:

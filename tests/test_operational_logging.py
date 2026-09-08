@@ -92,8 +92,8 @@ async def test_eureka_lifecycle_and_failure_logs(
 async def test_worker_heartbeat_and_cleanup_without_external_io(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    from evergreen.trading.__main__ import run
     from evergreen.trading.config import TradingSettings
+    from evergreen.trading.runtime import run
 
     @asynccontextmanager
     async def store(*args: object, **kwargs: object) -> AsyncIterator[object]:
@@ -103,11 +103,11 @@ async def test_worker_heartbeat_and_cleanup_without_external_io(
     engine = Mock(dispose=AsyncMock())
     api = Mock(close=AsyncMock())
     trader = Mock(tick=AsyncMock(return_value="pending"))
-    monkeypatch.setattr("evergreen.trading.__main__.create_async_engine", Mock(return_value=engine))
-    monkeypatch.setattr("evergreen.trading.__main__.open_store", store)
-    monkeypatch.setattr("evergreen.trading.__main__.Upbit", Mock(return_value=api))
-    monkeypatch.setattr("evergreen.trading.__main__.Trader", Mock(return_value=trader))
-    monkeypatch.setattr("evergreen.trading.__main__.monotonic", Mock(side_effect=[0, 61, 61]))
+    monkeypatch.setattr("evergreen.trading.runtime.create_async_engine", Mock(return_value=engine))
+    monkeypatch.setattr("evergreen.trading.runtime.open_store", store)
+    monkeypatch.setattr("evergreen.trading.runtime.Upbit", Mock(return_value=api))
+    monkeypatch.setattr("evergreen.trading.runtime.Trader", Mock(return_value=trader))
+    monkeypatch.setattr("evergreen.trading.runtime.monotonic", Mock(side_effect=[0, 61, 61]))
     settings = TradingSettings(
         access_key=SecretStr("private-sentinel"),
         secret_key=SecretStr("private-sentinel"),
