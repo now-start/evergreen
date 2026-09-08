@@ -3,6 +3,7 @@
 import asyncio
 import os
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from decimal import Decimal
 from unittest.mock import AsyncMock, Mock
 
@@ -12,7 +13,7 @@ from alembic import command
 from alembic.util.exc import CommandError
 from pydantic import SecretStr
 from sqlalchemy import Connection, select, text
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -22,7 +23,7 @@ from evergreen.database.migration import configuration, migrate, run_migrations
 from evergreen.database.migrations.versions.v0001_execution import legacy_schema
 from evergreen.trading.config import TradingSettings
 from evergreen.trading.runtime import run
-from evergreen.trading.state import Store, events, metadata, open_store
+from evergreen.trading.state import State, StateUnavailable, Store, events, metadata, open_store
 from evergreen.trading.upbit import Upbit
 
 
@@ -51,7 +52,7 @@ async def test_mariadb_persistence_lock_identity_and_explicit_initialization(
     with pytest.raises(ValueError, match="최초 초기화"):
         async with open_store(engine, "account"):
             pass
-    async with open_store(engine, "account", initialize=True) as store:
+    async with initialized_store(engine, "account") as store:
         state = await store.load()
         state.halted, state.peak = True, Decimal("123456.789")
         state.pending = {"identifier": "never-repost"}
@@ -66,16 +67,28 @@ async def test_mariadb_persistence_lock_identity_and_explicit_initialization(
     with pytest.raises(ValueError, match="계정"):
         async with open_store(engine, "wrong-account"):
             pass
-    with pytest.raises(IntegrityError):
+    with pytest.raises(StateUnavailable):
         async with open_store(engine, "account", initialize=True):
             pass
     async with engine.connect() as connection:
-        assert (await connection.execute(select(events.c.event))).scalars().all() == ["intent"]
+        assert (await connection.execute(select(events.c.event))).scalars().all() == [
+            "initialization-approved",
+            "initialized",
+            "intent",
+        ]
+
+
+@asynccontextmanager
+async def initialized_store(engine: AsyncEngine, identity: str) -> AsyncIterator[Store]:
+    """Seed a synthetic baseline, never a real exchange account."""
+    async with open_store(engine, identity, initialize=True) as store:
+        await store.initialize(State(identity=identity))
+        yield store
 
 
 @pytest.mark.asyncio
 async def test_mariadb_lost_lock_blocks_state_operations(engine: AsyncEngine) -> None:
-    async with open_store(engine, "account", initialize=True) as store:
+    async with initialized_store(engine, "account") as store:
         async with store.connection.begin():
             await store.connection.execute(text("SELECT RELEASE_LOCK(:name)"), {"name": LOCK_NAME})
         for operation in (store.load, store.assert_owner):
@@ -85,7 +98,7 @@ async def test_mariadb_lost_lock_blocks_state_operations(engine: AsyncEngine) ->
 
 @pytest.mark.asyncio
 async def test_mariadb_audit_failure_rolls_back_state(engine: AsyncEngine) -> None:
-    async with open_store(engine, "account", initialize=True) as store:
+    async with initialized_store(engine, "account") as store:
         state = await store.load()
         state.halted = True
         with pytest.raises(SQLAlchemyError):
@@ -134,7 +147,7 @@ async def test_loop_cancellation_preserves_pending_and_releases_single_owner_loc
         datasource_username=SecretStr(engine.url.username or ""),
         datasource_password=SecretStr(engine.url.password or ""),
     )
-    async with open_store(engine, config.identity, initialize=True):
+    async with initialized_store(engine, config.identity):
         pass
     started = asyncio.Event()
     sdk = AsyncMock()
@@ -275,3 +288,129 @@ async def test_unknown_revision_and_destructive_downgrade_are_rejected(engine: A
     with pytest.raises(CommandError):
         await migrate(engine)
     assert await migrate(engine, "current") == ("future",)
+
+
+@pytest.mark.asyncio
+async def test_approval_is_required_and_does_not_create_state(engine: AsyncEngine) -> None:
+    with pytest.raises(StateUnavailable) as missing:
+        async with open_store(engine, "account"):
+            pass
+    assert missing.value.reason == "initialization_approval_required"
+    async with open_store(engine, "account", initialize=True) as store:
+        assert await store.load_for_start("account") is None
+    async with engine.connect() as connection:
+        assert (
+            await connection.execute(text("SELECT COUNT(*) FROM evergreen_execution_state"))
+        ).scalar_one() == 0
+    with pytest.raises(StateUnavailable) as mismatch:
+        async with open_store(engine, "other-account"):
+            pass
+    assert mismatch.value.reason == "initialization_account_mismatch"
+    with pytest.raises(StateUnavailable):
+        async with open_store(engine, "account", initialize=True):
+            pass
+
+
+@pytest.mark.asyncio
+async def test_state_loss_cannot_reuse_consumed_approval(engine: AsyncEngine) -> None:
+    async with initialized_store(engine, "account"):
+        pass
+    async with engine.begin() as connection:
+        await connection.execute(text("DELETE FROM evergreen_execution_state WHERE id=1"))
+    with pytest.raises(StateUnavailable) as recovery:
+        async with open_store(engine, "account"):
+            pass
+    assert recovery.value.reason == "execution_state_recovery_required"
+    with pytest.raises(StateUnavailable):
+        async with open_store(engine, "account", initialize=True):
+            pass
+    # Losing both state and history also loses approval: it must not bootstrap itself.
+    async with engine.begin() as connection:
+        await connection.execute(events.delete())
+    with pytest.raises(StateUnavailable) as empty:
+        async with open_store(engine, "account"):
+            pass
+    assert empty.value.reason == "initialization_approval_required"
+
+
+@pytest.mark.asyncio
+async def test_initialization_rechecks_lock_and_preserves_approval(engine: AsyncEngine) -> None:
+    async with open_store(engine, "account", initialize=True) as store:
+        async with store.connection.begin():
+            await store.connection.execute(text("SELECT RELEASE_LOCK(:name)"), {"name": LOCK_NAME})
+        with pytest.raises(RuntimeError, match="잠금"):
+            await store.initialize(State(identity="account"))
+    async with open_store(engine, "account") as store:
+        assert await store.load_for_start("account") is None
+
+
+@pytest.mark.asyncio
+async def test_corrupted_state_is_not_reinitialized(engine: AsyncEngine) -> None:
+    async with initialized_store(engine, "account"):
+        pass
+    async with engine.begin() as connection:
+        await connection.execute(text("UPDATE evergreen_execution_state SET payload='invalid'"))
+    with pytest.raises(ValueError):
+        async with open_store(engine, "account"):
+            pass
+    with pytest.raises(StateUnavailable):
+        async with open_store(engine, "account", initialize=True):
+            pass
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("payload", ["not-json", '{"identity":"wrong"}'])
+async def test_invalid_approval_is_rejected(engine: AsyncEngine, payload: str) -> None:
+    async with open_store(engine, "account", initialize=True):
+        pass
+    async with engine.begin() as connection:
+        await connection.execute(events.update().values(payload=payload))
+    with pytest.raises(StateUnavailable):
+        async with open_store(engine, "account"):
+            pass
+
+
+@pytest.mark.asyncio
+async def test_initialization_audit_failure_rolls_back_baseline(engine: AsyncEngine) -> None:
+    async with open_store(engine, "account", initialize=True) as store:
+        # Trigger failure after the state INSERT, not during its validation.
+        async with store.connection.begin():
+            await store.connection.execute(
+                text(
+                    "CREATE TRIGGER reject_initialized BEFORE INSERT ON evergreen_execution_event "
+                    "FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='test rejection'"
+                )
+            )
+        try:
+            with pytest.raises(SQLAlchemyError):
+                await store.initialize(State(identity="account"))
+            assert await store.load_for_start("account") is None
+        finally:
+            async with store.connection.begin():
+                await store.connection.execute(text("DROP TRIGGER reject_initialized"))
+
+
+@pytest.mark.asyncio
+async def test_automatic_initialization_with_real_store_and_fake_exchange(
+    engine: AsyncEngine,
+) -> None:
+    from evergreen.trading.engine import Trader
+    from test_trading_execution import NOW, FakeUpbit, settings
+
+    api, config = FakeUpbit(), settings()
+    async with open_store(engine, config.identity, initialize=True):
+        pass
+    async with open_store(engine, config.identity) as store:
+        trader = Trader(api, store, config, lambda: NOW)
+        api.open_orders = True
+        with pytest.raises(ValueError, match="대기 주문"):
+            await trader.tick()
+        assert await store.load_for_start(config.identity) is None
+        api.open_orders = False
+        assert await trader.tick() == "initialized"
+        assert not api.sent
+        baseline = await store.load()
+    async with open_store(engine, config.identity) as store:
+        assert (await store.load()) == baseline
+        assert await Trader(api, store, config, lambda: NOW).tick() == "submitted"
+        assert len(api.sent) == 1

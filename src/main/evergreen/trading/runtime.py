@@ -14,7 +14,7 @@ from sqlalchemy.pool import NullPool
 from evergreen.platform.config import PlatformSettings
 from evergreen.trading.config import TradingSettings
 from evergreen.trading.engine import Trader
-from evergreen.trading.state import open_store
+from evergreen.trading.state import StateUnavailable, open_store
 from evergreen.trading.upbit import Upbit
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,8 @@ async def run(
     once: bool,
     on_cycle: Callable[[str], None] | None = None,
 ) -> int:
+    if initialize and settings.live_enabled:
+        raise StateUnavailable("initialization_requires_live_disabled")
     # Context-local suppression keeps financial HTTP/SQL data out of API auto-instrumentation.
     with suppress_instrumentation():
         logger.info(
@@ -38,7 +40,9 @@ async def run(
         try:
             async with open_store(engine, settings.identity, initialize=initialize) as store:
                 if initialize:
-                    print("MariaDB 실행 상태 초기화 완료. 주문·계좌 조회 없음.")
+                    print(
+                        "최초 설치 승인 기록 완료. 계좌 검증·상태 생성은 다음 워커 기동에서 수행합니다."
+                    )
                     return 0
                 api = Upbit(settings)
                 try:
@@ -81,6 +85,8 @@ class TradingRuntime:
 
     def _failed(self, error: Exception) -> None:
         self.info.update(status="failed", error_type=type(error).__name__)
+        if isinstance(error, StateUnavailable):
+            self.info["reason"] = error.reason
         logger.error(
             "event=worker_failed error_type=%s action=inspect_state_before_restart",
             type(error).__name__,

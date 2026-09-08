@@ -30,6 +30,9 @@ class MemoryStore(Store):
     async def load(self) -> State:
         return self.state.model_copy(deep=True)
 
+    async def load_for_start(self, identity: str) -> State | None:
+        return await self.load()
+
     async def save(self, state: State, event: str, detail: dict[str, object] | None = None) -> None:
         await self.assert_owner()
         self.state = state.model_copy(deep=True)
@@ -158,6 +161,53 @@ class FakeUpbit(Upbit):
                 "trades": [{"funds": str(funds), "volume": str(volume)}] if volume else [],
             }
         )
+
+
+class ApprovedStore(MemoryStore):
+    def __init__(self, identity: str) -> None:
+        super().__init__(identity)
+        self.initialized = False
+
+    async def load_for_start(self, identity: str) -> State | None:
+        return await self.load() if self.initialized else None
+
+    async def initialize(self, state: State) -> None:
+        await self.assert_owner()
+        self.state = state.model_copy(deep=True)
+        self.initialized = True
+
+
+@pytest.mark.asyncio
+async def test_approved_first_cycle_only_initializes_verified_balances() -> None:
+    api, config = FakeUpbit(), settings()
+    store = ApprovedStore(config.identity)
+    trader = Trader(api, store, config, lambda: NOW)
+    assert await trader.tick() == "initialized"
+    assert store.state.krw == api.cash and store.state.btc == api.btc
+    assert store.state.peak == api.cash
+    assert store.state.last_signal is None and store.state.pending is None
+    assert store.state.order_sequence == 0
+    assert not api.sent
+    assert await trader.tick() == "submitted"
+    assert len(api.sent) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["open_orders", "locked", "btc", "stale", "api", "lock"])
+async def test_initialization_failure_never_writes_baseline_or_submits(failure: str) -> None:
+    from unittest.mock import AsyncMock
+
+    api, config = FakeUpbit(), settings()
+    store = ApprovedStore(config.identity)
+    if failure == "api":
+        api.chance = AsyncMock(side_effect=ValueError("unavailable"))  # type: ignore[method-assign]
+    elif failure == "lock":
+        store.owned = False
+    else:
+        setattr(api, failure, Decimal(100) if failure in {"btc", "locked"} else True)
+    with pytest.raises((ValueError, RuntimeError)):
+        await Trader(api, store, config, lambda: NOW).tick()
+    assert not store.initialized and not api.sent
 
 
 @pytest.mark.parametrize("ambiguous", [False, True])

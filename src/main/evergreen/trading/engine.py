@@ -140,7 +140,8 @@ class Trader:
         if not self.settings.live_enabled:
             raise _reject("live_disabled", "실거래 비활성화 상태입니다")
         with operation(logger, "execution_state_load"):
-            state = await self.store.load()
+            saved = await self.store.load_for_start(self.settings.identity)
+        state = saved if saved is not None else State(identity=self.settings.identity)
         if state.identity != self.settings.identity:
             raise _reject("account_identity_mismatch", "실행 계정과 DB 상태가 다릅니다")
         if state.pending is not None:
@@ -176,6 +177,10 @@ class Trader:
             )
         equity = cash + btc * bid * (1 - chance.ask_fee)
         state.peak = max(state.peak, equity)
+        if saved is None:
+            await self.store.initialize(state)
+            # The first cycle only establishes a verified baseline; it never submits an order.
+            return "initialized"
         if state.peak > 0 and equity <= state.peak * (1 - self.settings.max_drawdown):
             if not state.halted:
                 logger.warning("event=trading_halted reason=max_drawdown")

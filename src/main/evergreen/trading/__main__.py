@@ -21,9 +21,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="업비트 단일 계정 주문 실행기 · 기본 비활성화")
     action = parser.add_mutually_exclusive_group()
     action.add_argument(
+        "--approve-initialization",
         "--initialize-state",
+        dest="initialize_state",
         action="store_true",
-        help="MariaDB 최초 실행 상태 생성(계좌 접근 없음)",
+        help="빈 DB에 최초 설치 승인 기록(계좌 접근 없음, 다음 기동에서 검증 후 상태 생성)",
     )
     action.add_argument("--execute", action="store_true", help="Config Server 활성화 설정도 필요")
     parser.add_argument("--once", action="store_true", help="한 사이클만 실행")

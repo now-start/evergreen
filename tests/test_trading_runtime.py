@@ -19,7 +19,7 @@ from evergreen import api as api_module
 from evergreen.platform.config import PlatformSettings
 from evergreen.trading import runtime
 from evergreen.trading.config import TradingSettings
-from evergreen.trading.state import Store
+from evergreen.trading.state import StateUnavailable, Store
 from evergreen.trading.upbit import Upbit
 
 
@@ -229,3 +229,38 @@ async def test_invalid_credentials_block_background_task(
     async with worker.lifespan(PlatformSettings()):
         assert worker.info["status"] == "failed"
     run.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_initialization_approval_requires_disabled_live_setting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine, exchange = Mock(), Mock()
+    monkeypatch.setattr(runtime, "create_async_engine", engine)
+    monkeypatch.setattr(runtime, "Upbit", exchange)
+    with pytest.raises(StateUnavailable) as failure:
+        await runtime.run(TradingSettings(live_enabled=True), initialize=True, once=True)
+    assert failure.value.reason == "initialization_requires_live_disabled"
+    engine.assert_not_called()
+    exchange.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_initialization_failure_reason_is_visible_in_actuator(
+    configured: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime, "run", AsyncMock(side_effect=StateUnavailable("execution_state_recovery_required"))
+    )
+    monkeypatch.setattr(api_module, "register_with_eureka", AsyncMock())
+    monkeypatch.setattr(api_module, "deregister_from_eureka", AsyncMock())
+    app = api_module.create_app(PlatformSettings())
+    async with app.router.lifespan_context(app):
+        await asyncio.sleep(0)
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test:8081"
+        ) as client:
+            trading = (await client.get("/actuator/info")).json()["trading"]
+    assert trading["status"] == "failed"
+    assert trading["reason"] == "execution_state_recovery_required"
