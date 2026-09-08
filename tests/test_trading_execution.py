@@ -1,9 +1,11 @@
+import logging
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-import ccxt
+import httpx
 import pytest
 from pydantic import SecretStr
+from upbit import APITimeoutError, NotFoundError
 
 from evergreen.market import Candle
 from evergreen.trading.config import TradingSettings
@@ -118,12 +120,18 @@ class FakeUpbit(Upbit):
         self.latest = params.copy()
         self.before_cash, self.before_btc = self.cash, self.btc
         if self.timeout:
-            raise ccxt.RequestTimeout("ambiguous POST")
+            raise APITimeoutError(request=httpx.Request("POST", "https://api.upbit.com/v1/orders"))
         return await self.order(params["identifier"])
 
     async def order(self, identifier: str) -> Order:
         if self.not_found:
-            raise ccxt.OrderNotFound("order_not_found")
+            raise NotFoundError(
+                "order_not_found",
+                response=httpx.Response(
+                    404, request=httpx.Request("GET", "https://api.upbit.com/v1/order")
+                ),
+                body=None,
+            )
         assert self.latest is not None and identifier == self.latest["identifier"]
         volume = (
             abs(self.btc - self.before_btc)
@@ -154,13 +162,16 @@ class FakeUpbit(Upbit):
 
 @pytest.mark.parametrize("ambiguous", [False, True])
 @pytest.mark.asyncio
-async def test_intent_survives_restart_and_no_duplicate_post(ambiguous: bool) -> None:
+async def test_intent_survives_restart_and_no_duplicate_post(
+    ambiguous: bool, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.INFO, logger="evergreen")
     api, config = FakeUpbit(), settings()
     api.timeout = ambiguous
     store = MemoryStore(config.identity)
     runner = Trader(api, store, config, lambda: NOW)
     if ambiguous:
-        with pytest.raises(ccxt.RequestTimeout):
+        with pytest.raises(APITimeoutError):
             await runner.tick()
     else:
         assert await runner.tick() == "submitted"
@@ -173,25 +184,33 @@ async def test_intent_survives_restart_and_no_duplicate_post(ambiguous: bool) ->
     assert await runner.tick() == "already-evaluated"
     assert len(api.sent) == 1
     assert (await store.load()).btc == 900 and (await store.load()).pending is None
+    assert "event=order_intent_committed order_sequence=1" in caplog.text
+    assert "event=order_reconciled order_sequence=1 state=done" in caplog.text
+    assert api.sent[0]["identifier"] not in caplog.text
+    assert config.identity not in caplog.text
+    assert "event=trading_cycle_result result=already-evaluated" not in caplog.text
+    if ambiguous:
+        assert "event=order_submit status=failed error_type=APITimeoutError" in caplog.text
 
 
 @pytest.mark.asyncio
-async def test_not_found_after_timeout_never_reposts() -> None:
+async def test_not_found_after_timeout_never_reposts(caplog: pytest.LogCaptureFixture) -> None:
     api, config = FakeUpbit(), settings()
     api.timeout = True
     store = MemoryStore(config.identity)
     runner = Trader(api, store, config, lambda: NOW)
-    with pytest.raises(ccxt.RequestTimeout):
+    with pytest.raises(APITimeoutError):
         await runner.tick()
     api.not_found = True
     for _ in range(3):
-        with pytest.raises(ccxt.OrderNotFound):
+        with pytest.raises(NotFoundError):
             await runner.tick()
     assert len(api.sent) == 1 and (await store.load()).pending is not None
+    assert "event=order_reconcile_lookup status=failed error_type=NotFoundError" in caplog.text
 
 
 @pytest.mark.asyncio
-async def test_drawdown_sells_all_and_halt_persists() -> None:
+async def test_drawdown_sells_all_and_halt_persists(caplog: pytest.LogCaptureFixture) -> None:
     api, config = FakeUpbit(), settings()
     store = MemoryStore(config.identity)
     runner = Trader(api, store, config, lambda: NOW)
@@ -206,6 +225,56 @@ async def test_drawdown_sells_all_and_halt_persists() -> None:
     assert await runner.tick() == "reconciled"
     assert await Trader(api, store, config, lambda: NOW).tick() == "halted"
     assert len(api.sent) == 2
+    assert "event=trading_halted reason=max_drawdown" in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("field", "reason"),
+    [
+        ("stale", "stale_quote"),
+        ("missing", "invalid_candles"),
+        ("open_orders", "existing_open_orders"),
+    ],
+)
+async def test_rejection_logs_distinct_safe_reason(
+    field: str, reason: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    api, config = FakeUpbit(), settings()
+    setattr(api, field, True)
+    with pytest.raises(ValueError):
+        await Trader(api, MemoryStore(config.identity), config, lambda: NOW).tick()
+    assert f"event=trading_rejected reason={reason}" in caplog.text
+    assert not api.sent
+
+
+@pytest.mark.asyncio
+async def test_slow_submission_log_cannot_bypass_final_quote_check(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.INFO, logger="evergreen")
+    current = NOW
+
+    class SlowHandler(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            nonlocal current
+            if record.getMessage() == "event=order_submit status=started":
+                current += timedelta(seconds=6)
+
+    logger = logging.getLogger("evergreen.trading.engine")
+    handler = SlowHandler()
+    logger.addHandler(handler)
+    api, config = FakeUpbit(), settings()
+    store = MemoryStore(config.identity)
+    try:
+        with pytest.raises(ValueError, match="만료"):
+            await Trader(api, store, config, lambda: current).tick()
+        assert not api.sent
+        assert store.state.pending is not None
+        assert "reason=expired_before_submission" in caplog.text
+    finally:
+        logger.removeHandler(handler)
+        handler.close()
 
 
 @pytest.mark.parametrize("field", ["stale", "missing", "open_orders", "locked", "btc"])
@@ -357,3 +426,27 @@ def test_disabled_cli_redacts_failures(
     )
     assert main(["--execute"]) == 1
     assert "ValueError" in capsys.readouterr().err
+
+
+def test_cli_redacts_sdk_errors(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from evergreen.trading.__main__ import main
+
+    async def fail(*args: object, **kwargs: object) -> int:
+        raise NotFoundError(
+            "private-account-data",
+            response=httpx.Response(
+                404, request=httpx.Request("GET", "https://api.upbit.com/v1/order")
+            ),
+            body={"private": "private-account-data"},
+        )
+
+    monkeypatch.setattr("evergreen.trading.__main__.load_dotenv", lambda **kwargs: None)
+    monkeypatch.setattr("evergreen.trading.__main__.load_spring_config", lambda *args: None)
+    monkeypatch.setattr("evergreen.trading.__main__.TradingSettings", settings)
+    monkeypatch.setattr("evergreen.trading.__main__.run", fail)
+    assert main(["--execute"]) == 1
+    error = capsys.readouterr().err
+    assert "NotFoundError" in error
+    assert "private-account-data" not in error

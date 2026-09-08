@@ -1,11 +1,13 @@
 """Fixed-host Upbit adapter. POST is deliberately never retried."""
 
+import logging
 from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
-import ccxt.async_support as ccxt
+import httpx
 from pydantic import BaseModel, Field, TypeAdapter
+from upbit import AsyncUpbit
 
 from evergreen.market import Candle, Nonnegative, Positive, UpbitCandle
 from evergreen.trading.config import TradingSettings
@@ -72,19 +74,23 @@ class Order(BaseModel):
 
 
 class Upbit:
-    def __init__(self, settings: TradingSettings) -> None:
+    def __init__(
+        self, settings: TradingSettings, *, transport: httpx.AsyncBaseTransport | None = None
+    ) -> None:
         self.settings = settings
-        self.sdk = ccxt.upbit(
-            {
-                "apiKey": settings.access_key.get_secret_value(),
-                "secret": settings.secret_key.get_secret_value(),
-                "hostname": "api.upbit.com",
-                "enableRateLimit": True,
-                "timeout": 10000,
-                "verbose": False,
-                "aiohttp_trust_env": False,
-                "options": {"maxRetriesOnFailure": 0},
-            }
+        # SDK options and HTTP query logs can expose private order identifiers.
+        for name in ("upbit", "httpx", "httpcore"):
+            logging.getLogger(name).setLevel(logging.WARNING)
+        self.sdk = AsyncUpbit(
+            access_key=settings.access_key.get_secret_value(),
+            secret_key=settings.secret_key.get_secret_value(),
+            base_url="https://api.upbit.com",
+            environment="kr",
+            max_retries=0,
+            timeout=10,
+            http_client=httpx.AsyncClient(
+                transport=transport, trust_env=False, follow_redirects=False, timeout=10
+            ),
         )
 
     async def close(self) -> None:
@@ -92,36 +98,35 @@ class Upbit:
 
     async def chance(self) -> Chance:
         self.settings.require_credentials()
-        return Chance.model_validate(
-            await self.sdk.private_get_orders_chance({"market": "KRW-BTC"})
-        )
+        response = await self.sdk.orders.with_raw_response.retrieve_chance(market="KRW-BTC")
+        return Chance.model_validate(await response.json())
 
     async def book(self) -> Book:
-        books = TypeAdapter(list[Book]).validate_python(
-            await self.sdk.public_get_orderbook({"markets": "KRW-BTC"})
-        )
+        response = await self.sdk.orderbooks.with_raw_response.list(markets="KRW-BTC")
+        books = TypeAdapter(list[Book]).validate_python(await response.json())
         if len(books) != 1:
             raise ValueError("단일 BTC 호가가 필요합니다")
         return books[0]
 
     async def candles(self, end: datetime, now: datetime) -> list[Candle]:
-        records = TypeAdapter(list[UpbitCandle]).validate_python(
-            await self.sdk.public_get_candles_minutes_unit(
-                {"unit": 60, "market": "KRW-BTC", "count": 169, "to": end.isoformat()}
-            )
+        response = await self.sdk.candles.with_raw_response.list_minutes(
+            60, market="KRW-BTC", count=169, to=end.isoformat()
         )
+        records = TypeAdapter(list[UpbitCandle]).validate_python(await response.json())
         return sorted((bar.candle(now) for bar in records), key=lambda bar: bar.open_time)
 
     async def has_open_orders(self) -> bool:
         self.settings.require_credentials()
-        value = await self.sdk.private_get_orders_open({"market": "KRW-BTC", "limit": 1})
+        response = await self.sdk.orders.with_raw_response.list_open(market="KRW-BTC", limit=1)
+        value = await response.json()
         if not isinstance(value, list):
             raise ValueError("대기 주문 응답이 잘못됐습니다")
         return bool(value)
 
     async def order(self, identifier: str) -> Order:
         self.settings.require_credentials()
-        return Order.model_validate(await self.sdk.private_get_order({"identifier": identifier}))
+        response = await self.sdk.orders.with_raw_response.retrieve(identifier=identifier)
+        return Order.model_validate(await response.json())
 
     async def submit(self, params: dict[str, str]) -> Order:
         if not self.settings.live_enabled:
@@ -144,4 +149,20 @@ class Upbit:
         amount = Decimal(params["price" if side == "bid" else "volume"])
         if not amount.is_finite() or amount <= 0 or not 1 <= len(params["identifier"]) <= 64:
             raise ValueError("주문 수량·식별자가 잘못됐습니다")
-        return Order.model_validate(await self.sdk.private_post_orders(params))
+        if side == "bid":
+            response = await self.sdk.orders.with_raw_response.create(
+                market="KRW-BTC",
+                side="bid",
+                ord_type="price",
+                price=params["price"],
+                identifier=params["identifier"],
+            )
+        else:
+            response = await self.sdk.orders.with_raw_response.create(
+                market="KRW-BTC",
+                side="ask",
+                ord_type="market",
+                volume=params["volume"],
+                identifier=params["identifier"],
+            )
+        return Order.model_validate(await response.json())

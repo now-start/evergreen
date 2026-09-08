@@ -6,7 +6,7 @@
 [매매 전략 V0](docs/trading-strategy-v0.md)에 업비트 BTC/KRW 현물의 진입·청산,
 데이터 계약, 백테스트와 자동 승격 기준을 정리합니다. 이 문서는 검증할 초안이며,
 온라인 파인튜닝·자동 승격은 아직 없습니다.
-별도 [주문 실행기](docs/trading-execution.md)는 CCXT Upbit SDK와 기존 MariaDB를 사용하며,
+별도 [주문 실행기](docs/trading-execution.md)는 공식 `upbit-sdk`와 기존 MariaDB를 사용하며,
 기본 비활성화입니다. 웹 서비스 기동이나 이 코드의 배포만으로 주문을 시작하지 않습니다.
 
 계좌 접근 없이 실행하는 방법은 [오프라인 리서치 가이드](docs/offline-research.md)를
@@ -52,10 +52,11 @@ src/main/evergreen/
 ├── api.py          # FastAPI 앱 팩토리와 lifespan
 ├── main.py         # 실행 진입점과 Uvicorn 포트 바인딩
 ├── platform/       # Config Server, Eureka, Actuator, OpenTelemetry 연동
+├── database/       # 배포 기동 전 Alembic 스키마 마이그레이션
 ├── market.py       # 공통 캔들 계약·공개 데이터·품질 검사
 ├── strategies/    # 공통 순수 전략 신호
 ├── research/      # 오프라인 모의 체결, 학습·실험·보고
-└── trading/       # 별도 주문 워커, CCXT·MariaDB (기본 비활성화)
+└── trading/       # 별도 주문 워커, 공식 Upbit SDK·MariaDB (기본 비활성화)
 ```
 
 비즈니스 기능은 `evergreen` 아래에 기능 단위로 추가하고, 공통 Platform 연동은
@@ -70,6 +71,8 @@ uv run evergreen
 ```
 
 `local` 프로필에서는 Config Server, Eureka, OpenTelemetry를 비활성화합니다.
+
+기동·DB·매매 로그와 수집 범위는 [운영 로그](docs/operational-logging.md)를 참고하세요.
 
 ## Docker
 
@@ -86,15 +89,17 @@ docker run --rm \
 ```
 
 컨테이너 healthcheck는 관리 포트의 `/actuator/health`를 확인합니다.
+비로컬 배포는 Config Server 로드 후 Alembic 마이그레이션을 자동 적용하며,
+실패하면 포트와 Eureka를 열지 않습니다. 기존 테이블 편입과 수동 명령은
+[DB 마이그레이션](docs/database-migrations.md)을 참고하세요.
 PyTorch는 범용 Swarm 노드에서 불필요한 CUDA 라이브러리를 설치하지 않도록 CPU
 전용 wheel을 사용합니다. GPU 실행 환경은 별도 이미지 정책을 결정한 뒤 추가합니다.
 
 ## 버전
 
-프로젝트 버전은 `pyproject.toml`에서 SemVer 표기인 `2.0.0-alpha.5`로 관리합니다.
-Python 패키지 메타데이터와 `uv.lock`, OpenAPI에는 PEP 440 정규화 결과인
-`2.0.0a5`가 표시됩니다. Git 태그와 Docker 이미지 태그는 원래 SemVer 표기를
-사용합니다.
+프로젝트 정식 버전은 `pyproject.toml`에서 `2.0.0`으로 관리합니다.
+Python 패키지 메타데이터, `uv.lock`, OpenAPI, Git 태그와 Docker 이미지 태그도
+동일한 `2.0.0`을 사용합니다.
 
 ## CI
 
@@ -105,7 +110,7 @@ GitHub Actions는 `now-start/workflow`의 `reusable-python-app.yaml`을 호출�
 `main` push에서만 검증 후 `linux/amd64`, `linux/arm64` 이미지를 버전 태그로
 발행하고 GitHub Release를 생성합니다. 알파/베타/RC 버전은 prerelease로 표시합니다.
 
-예: `ghcr.io/now-start/evergreen:2.0.0-alpha.5`, Git 태그 `2.0.0-alpha.5`.
+예: `ghcr.io/now-start/evergreen:2.0.0`, Git 태그 `2.0.0`.
 발행된 버전은 덮어쓰지 않으므로 새 릴리스에는 버전을 올려야 합니다.
 `latest` 같은 가변 태그와 서비스 배포는 이 파이프라인에서 관리하지 않습니다.
 
@@ -125,10 +130,11 @@ GitHub Actions는 `now-start/workflow`의 `reusable-python-app.yaml`을 호출�
 1. `.env`와 프로세스 환경변수 로드
 2. Config Server의 `{application}-{profile}.json?resolvePlaceholders=true` 조회
 3. 원격 설정을 환경변수보다 낮은 우선순위로 병합하고 Pydantic으로 재검증
-4. 원격 OTLP 설정으로 OpenTelemetry 자동 계측 초기화
-5. 애플리케이션 포트와 관리 포트 시작
-6. Eureka 등록 및 heartbeat 시작
-7. 종료 시 Eureka deregistration
+4. 기존 MariaDB에 Alembic 미적용 revision 반영, 실패 시 기동 중단
+5. 원격 OTLP 설정으로 OpenTelemetry 자동 계측 초기화
+6. 애플리케이션 포트와 관리 포트 시작
+7. Eureka 등록 및 heartbeat 시작
+8. 종료 시 Eureka deregistration
 
 애플리케이션은 Eureka에만 등록합니다. Gateway는 discovery locator로
 `/evergreen/**` 경로를 자동 생성하고, Spring Boot Admin은 Eureka에서 서비스를

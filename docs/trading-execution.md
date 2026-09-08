@@ -42,10 +42,15 @@ TLS가 필요한 운영 환경은 CA·호스트 검증 정책을 확정해 드�
 
 ## SDK와 주문 안전장치
 
-[업비트 통합 가이드](https://global-docs.upbit.com/docs/ccxt-library-integration-guide)에 소개된
-CCXT 비동기 Upbit SDK를 사용한다. 서명·HTTP 전송·요청 제한은 SDK가 담당하며,
+[공식 Python SDK](https://github.com/upbit-official/upbit-sdk-python)의
+`upbit-sdk` (`AsyncUpbit`)를 사용한다. 서명·HTTP 전송은 SDK가 담당하며,
 한국 업비트 호스트와 BTC/KRW 마켓을 고정한다. 공개 연구용 대량 캔들 수집기는 기존 HTTPX 구현을 유지한다.
-주문은 SDK의 native 메서드로 원화 금액/BTC 수량의 Decimal 문자열과 고유 identifier를 보존한다.
+주문은 SDK의 `orders.create`로 원화 금액/BTC 수량의 Decimal 문자열과 고유 identifier를 보존한다.
+응답은 `with_raw_response`로 원본 JSON을 받아 기존 Pydantic 계약으로 검증한다.
+타임아웃은 10초, 자동 재시도는 0회이며 리다이렉트·환경변수 프록시를 사용하지 않는다.
+429 요청 제한 오류도 즉시 실행을 중단한다. 재시작 시 DB의 미확정 주문을 조회하며 재전송하지 않는다.
+SDK·HTTP 로그에는 요청 옵션과 주문 식별자가 포함될 수 있으므로
+별도 거래 워커에서는 `upbit`·`httpx`·`httpcore` 로거를 WARNING 이상으로 제한한다.
 
 1. 계정 잔고·주문 가능 조건·미체결 주문을 확인한다.
 2. 연속된 확정 169개 시간봉으로 168시간 고점 돌파 / 48시간 저점 청산을 판단한다.
@@ -68,9 +73,11 @@ API 키는 필요한 조회·주문 권한만 부여하고 출금 권한은 부�
 
 ## MariaDB 상태와 복구
 
-처음에만 별도 명령으로 `evergreen_execution_state`, `evergreen_execution_event`
-InnoDB 테이블과 단일 상태 행을 생성한다. 기존 다른 테이블을 수정하지 않으며
-이미 초기화된 상태를 덮어쓰거나 자동 초기화하지 않는다. 필요한 CREATE/SELECT/INSERT/UPDATE 권한을 확인한다.
+테이블 생성·변경은 [Alembic 마이그레이션](database-migrations.md)이 관리한다.
+비로컬 웹 배포와 거래 워커 시작 전에 미적용 revision을 반영한다.
+별도 `--initialize-state` 명령은 최초 계좌 상태 행만 생성하며 이미 초기화된 상태를 덮어쓰지 않는다.
+마이그레이션 적용만으로 계좌를 초기화하거나 거래를 활성화하지 않는다.
+이전 버전에서 이미 테이블을 만든 경우 문서의 baseline 절차를 먼저 수행한다.
 상태와 감사 이벤트는 같은 트랜잭션으로 저장된다. 감사 이벤트 보관·아카이브 정책은 운영자가 별도로 정해야 한다.
 
 동일 MariaDB 서버의 세션 잠금 `evergreen:execution:KRW-BTC`로 동시 워커를 차단한다.
@@ -95,5 +102,5 @@ EVERGREEN_TEST_MARIADB_URL='mysql+asyncmy://USER:PASSWORD@127.0.0.1:PORT/evergre
   uv run pytest tests/test_trading_mariadb.py --no-cov
 ```
 
-통합 테스트는 해당 테스트 DB의 두 실행 테이블을 삭제·재생성한다. 운영 DB 주소를 넣지 않는다.
+통합 테스트는 해당 테스트 DB의 두 실행 테이블과 Alembic 이력을 삭제·재생성한다. 운영 DB 주소를 넣지 않는다.
 운영 계정·운영 네트워크·거래소 최종 체결까지의 검증은 이 테스트에 포함되지 않는다.

@@ -1,5 +1,5 @@
 import os
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import pytest
 
@@ -17,10 +17,16 @@ def test_bootstrap_loads_config_before_telemetry(monkeypatch: pytest.MonkeyPatch
     load_dotenv = Mock()
     load_spring_config = Mock()
     initialize_telemetry = Mock()
+    initialize_database = Mock()
+    ordered = Mock()
+    ordered.attach_mock(load_spring_config, "config")
+    ordered.attach_mock(initialize_database, "database")
+    ordered.attach_mock(initialize_telemetry, "telemetry")
     monkeypatch.setattr(bootstrap_module, "get_settings", settings_loader)
     monkeypatch.setattr(bootstrap_module, "load_dotenv", load_dotenv)
     monkeypatch.setattr(bootstrap_module, "load_spring_config", load_spring_config)
     monkeypatch.setattr(bootstrap_module, "initialize_telemetry", initialize_telemetry)
+    monkeypatch.setattr(bootstrap_module, "initialize_database", initialize_database)
 
     result = bootstrap_module.bootstrap_platform()
 
@@ -29,6 +35,11 @@ def test_bootstrap_loads_config_before_telemetry(monkeypatch: pytest.MonkeyPatch
     assert settings_loader.cache_clear.call_count == 2
     load_spring_config.assert_called_once_with(bootstrap_settings)
     initialize_telemetry.assert_called_once_with(runtime_settings)
+    assert ordered.mock_calls == [
+        call.config(bootstrap_settings),
+        call.database(runtime_settings),
+        call.telemetry(runtime_settings),
+    ]
 
 
 def test_telemetry_is_skipped_when_sdk_is_disabled(monkeypatch: pytest.MonkeyPatch) -> None:

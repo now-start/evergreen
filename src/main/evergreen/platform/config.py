@@ -10,6 +10,8 @@ from urllib.parse import quote
 import httpx
 from pydantic_settings import BaseSettings
 
+from evergreen.observability import operation
+
 logger = logging.getLogger(__name__)
 
 _DEFAULT_CONFIG_SERVER_URL = "http://localhost:8888"
@@ -80,6 +82,7 @@ def load_spring_config(
 ) -> int:
     """Load flat or nested Spring Config properties into the process environment."""
     if not settings.platform_integrations_enabled:
+        logger.info("event=config_skipped reason=local_profile")
         return 0
 
     optional, base_url = _parse_config_import(settings.spring_config_import)
@@ -88,11 +91,14 @@ def load_spring_config(
     http_client = client or httpx.Client(timeout=5.0)
 
     try:
-        response = http_client.get(url)
-        response.raise_for_status()
+        with operation(logger, "config_fetch"):
+            response = http_client.get(url)
+            response.raise_for_status()
     except httpx.HTTPError as error:
         if optional:
-            logger.warning("Optional Spring Config Server is unavailable: %s", error)
+            logger.warning(
+                "event=config_unavailable optional=true error_type=%s", type(error).__name__
+            )
             return 0
         raise SpringConfigError("Spring Config Server is unavailable") from error
     finally:
@@ -114,6 +120,7 @@ def load_spring_config(
             os.environ[environment_name] = serialized
             loaded += 1
 
+    logger.info("event=config_loaded count=%d", loaded)
     return loaded
 
 

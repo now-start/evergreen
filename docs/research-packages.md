@@ -6,6 +6,7 @@
 ```text
 src/main/evergreen/
 ├── market.py                 # 공통 캔들 계약·공개 데이터 수집·품질 검사
+├── database/                 # 공통 datasource·스키마 revision·배포 전 적용
 ├── strategies/               # 공통 순수 신호, 계좌·학습·서버 초기화 없음
 │   ├── types.py, registry.py  # 전략 ID·파라미터·워밍업·라우팅
 │   ├── breakout.py, trend.py  # 돌파·추세
@@ -23,7 +24,7 @@ src/main/evergreen/
 │   └── __main__.py           # 기존 연구 CLI
 ├── trading/
 │   ├── config.py             # 기존 Config Server 키·datasource 해석
-│   ├── upbit.py              # CCXT 비동기 Upbit SDK·응답 계약
+│   ├── upbit.py              # 공식 비동기 Upbit SDK·응답 계약
 │   ├── state.py              # MariaDB 상태·감사 이벤트·단일 세션 잠금
 │   ├── engine.py             # 잔고 대사·주문 의도·복구·위험 중단
 │   └── __main__.py           # 명시적 실행 워커, 기본 비활성화

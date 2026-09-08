@@ -3,12 +3,12 @@ import hashlib
 import hmac
 import json
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock
 from urllib.parse import unquote, urlencode
 
-import ccxt
+import httpx
 import pytest
 from pydantic import SecretStr
+from upbit import APITimeoutError
 
 from evergreen.trading.config import TradingSettings
 from evergreen.trading.upbit import Upbit
@@ -21,10 +21,7 @@ def settings(**kwargs: object) -> TradingSettings:
 
 
 @pytest.mark.asyncio
-async def test_sdk_signing_market_contract_and_no_post_retry(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    api = Upbit(settings(live_enabled=True))
+async def test_sdk_signing_market_contract_and_no_post_retry() -> None:
     seen = []
     params = {
         "market": "KRW-BTC",
@@ -34,18 +31,14 @@ async def test_sdk_signing_market_contract_and_no_post_retry(
         "identifier": "test-order",
     }
 
-    async def fetch(
-        url: str,
-        method: str = "GET",
-        headers: dict[str, str] | None = None,
-        body: str | None = None,
-    ) -> object:
-        assert headers is not None and body is not None
-        assert url == "https://api.upbit.com/v1/orders"
-        assert method == "POST"
-        payload = json.loads(body)
+    def fetch(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "https://api.upbit.com/v1/orders"
+        assert request.method == "POST"
+        payload = json.loads(request.content)
         assert payload == params
-        encoded, token, signature = headers["Authorization"].removeprefix("Bearer ").split(".")
+        encoded, token, signature = (
+            request.headers["Authorization"].removeprefix("Bearer ").split(".")
+        )
         decoded = json.loads(base64.urlsafe_b64decode(token + "=" * (-len(token) % 4)))
         algorithm = json.loads(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))["alg"]
         digest = {"HS256": hashlib.sha256, "HS512": hashlib.sha512}[algorithm]
@@ -63,14 +56,14 @@ async def test_sdk_signing_market_contract_and_no_post_retry(
         )
         assert decoded["access_key"] == "test-access"
         seen.append(decoded["nonce"])
-        raise ccxt.RequestTimeout("ambiguous")
+        raise httpx.ReadTimeout("ambiguous", request=request)
 
-    monkeypatch.setattr(api.sdk, "fetch", fetch)
+    api = Upbit(settings(live_enabled=True), transport=httpx.MockTransport(fetch))
     try:
-        with pytest.raises(ccxt.RequestTimeout):
+        with pytest.raises(APITimeoutError):
             await api.submit(params)
         assert len(seen) == 1
-        assert api.sdk.options["maxRetriesOnFailure"] == 0
+        assert api.sdk.max_retries == 0
     finally:
         await api.close()
 
@@ -90,15 +83,11 @@ async def test_sdk_signing_market_contract_and_no_post_retry(
         },
     ],
 )
-async def test_invalid_order_never_reaches_sdk(
-    params: dict[str, str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    api = Upbit(settings(live_enabled=True))
-
-    async def fail(*args: object) -> None:
+async def test_invalid_order_never_reaches_sdk(params: dict[str, str]) -> None:
+    def fail(request: httpx.Request) -> httpx.Response:
         pytest.fail("invalid order must not reach SDK")
 
-    monkeypatch.setattr(api.sdk, "private_post_orders", fail)
+    api = Upbit(settings(live_enabled=True), transport=httpx.MockTransport(fail))
     try:
         with pytest.raises(ValueError):
             await api.submit(params)
@@ -159,38 +148,43 @@ def test_missing_or_encrypted_credentials_fail(key: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_sdk_read_paths_and_response_validation(monkeypatch: pytest.MonkeyPatch) -> None:
-    api = Upbit(settings())
-    chance = AsyncMock(return_value={})
-    orders = AsyncMock(return_value=[])
-    order = AsyncMock(return_value={})
-    book = AsyncMock(return_value=[])
-    candles = AsyncMock(return_value=[])
-    for name, response in (
-        ("private_get_orders_chance", chance),
-        ("private_get_orders_open", orders),
-        ("private_get_order", order),
-        ("public_get_orderbook", book),
-        ("public_get_candles_minutes_unit", candles),
-    ):
-        monkeypatch.setattr(api.sdk, name, response)
+async def test_sdk_read_paths_and_response_validation() -> None:
+    responses: dict[str, object] = {
+        "/v1/orders/chance": {},
+        "/v1/orders/open": [],
+        "/v1/order": {},
+        "/v1/orderbook": [],
+        "/v1/candles/minutes/60": [],
+    }
+    seen: list[httpx.Request] = []
+
+    def fetch(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json=responses[request.url.path])
+
+    api = Upbit(settings(), transport=httpx.MockTransport(fetch))
     try:
         with pytest.raises(ValueError):
             await api.chance()
-        chance.assert_awaited_once_with({"market": "KRW-BTC"})
+        assert dict(seen[-1].url.params) == {"market": "KRW-BTC"}
         assert not await api.has_open_orders()
-        orders.return_value = {"error": "bad"}
+        assert dict(seen[-1].url.params) == {"market": "KRW-BTC", "limit": "1"}
+        responses["/v1/orders/open"] = [{"uuid": "pending"}]
+        assert await api.has_open_orders()
+        responses["/v1/orders/open"] = {"error": "bad"}
         with pytest.raises(ValueError):
             await api.has_open_orders()
         with pytest.raises(ValueError):
             await api.order("identifier")
-        order.assert_awaited_once_with({"identifier": "identifier"})
+        assert dict(seen[-1].url.params) == {"identifier": "identifier"}
         with pytest.raises(ValueError):
             await api.book()
         now = datetime(2026, 9, 7, tzinfo=UTC)
         assert await api.candles(now, now) == []
-        candles.assert_awaited_once_with(
-            {"unit": 60, "market": "KRW-BTC", "count": 169, "to": now.isoformat()}
-        )
+        assert dict(seen[-1].url.params) == {
+            "market": "KRW-BTC",
+            "count": "169",
+            "to": now.isoformat(),
+        }
     finally:
         await api.close()
