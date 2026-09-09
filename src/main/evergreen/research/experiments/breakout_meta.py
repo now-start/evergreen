@@ -62,6 +62,9 @@ def evaluate(
     exit_lookbacks: dict[str, int] | None = None,
     cooldowns: dict[str, int] | None = None,
     risk_budget_models: tuple[str, ...] = (),
+    failure_exit_models: tuple[str, ...] = (),
+    failure_exit_confirmations: dict[str, int] | None = None,
+    failure_exit_buffer_models: tuple[str, ...] = (),
 ) -> None:
     candidates = ("breakout-v1", "cash", "prior", *models)
     if set(parts) != set(candidates):
@@ -72,6 +75,14 @@ def evaluate(
         raise ValueError("재진입 대기는 명시된 연구 후보에만 허용합니다")
     if set(risk_budget_models) - set(models):
         raise ValueError("위험 여유 검사는 명시된 연구 후보에만 허용합니다")
+    if set(failure_exit_models) - set(models):
+        raise ValueError("돌파 실패 청산은 명시된 연구 후보에만 허용합니다")
+    if failure_exit_confirmations is not None and set(failure_exit_confirmations) - set(
+        failure_exit_models
+    ):
+        raise ValueError("돌파 실패 확인은 해당 청산 후보에만 허용합니다")
+    if set(failure_exit_buffer_models) - set(failure_exit_models):
+        raise ValueError("돌파 실패 변동 폭은 해당 청산 후보에만 허용합니다")
     joined = {name: joined_evaluations(values) for name, values in parts.items()}
     ranges = [[(p.start, p.bars[-1].close_time) for p in rows] for rows in joined.values()]
     if not ranges[0] or any(r != ranges[0] for r in ranges):
@@ -99,6 +110,9 @@ def evaluate(
                     breakout_exit_lookback=(exit_lookbacks or {}).get(name, 48),
                     breakout_cooldown_hours=(cooldowns or {}).get(name, 0),
                     breakout_risk_budget=name in risk_budget_models,
+                    breakout_failure_exit=name in failure_exit_models,
+                    breakout_failure_confirmations=(failure_exit_confirmations or {}).get(name, 1),
+                    breakout_failure_buffer=name in failure_exit_buffer_models,
                 )
                 write_json(directory / f"{scenario}.{name}.json", result.model_dump(mode="json"))
                 rows.append(

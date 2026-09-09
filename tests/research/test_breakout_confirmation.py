@@ -73,11 +73,19 @@ def test_wick_filter_preserves_next_open_exit_and_ignores_volume():
     assert not blocked.fills
 
 
-def test_confirmation_filters_cannot_be_combined(tmp_path):
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"volume_confirmation": True, "wick_confirmation": True},
+        {"volume_confirmation": True, "failed_breakout_exit": True},
+        {"risk_budget": True, "failed_breakout_exit": True},
+        {"failed_breakout_exit": True, "confirmed_failure_exit": True},
+        {"confirmed_failure_exit": True, "volatility_failure_exit": True},
+    ],
+)
+def test_confirmation_filters_cannot_be_combined(tmp_path, options):
     with pytest.raises(ValueError, match="동시"):
-        breakout_confirmation.run_study(
-            tmp_path, tmp_path, tmp_path / "out", volume_confirmation=True, wick_confirmation=True
-        )
+        breakout_confirmation.run_study(tmp_path, tmp_path, tmp_path / "out", **options)
     assert not (tmp_path / "out").exists()
 
 
@@ -175,7 +183,7 @@ def test_confirmation_uses_previous_bar_and_current_engine_condition():
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-@pytest.mark.parametrize("mode", ["time", "volume", "wick", "budget"])
+@pytest.mark.parametrize("mode", ["time", "volume", "wick", "budget", "failure"])
 def test_confirmation_pipeline_requires_reference_parity(tmp_path, monkeypatch, corrupt, mode):
     volume, wick = mode == "volume", mode == "wick"
     budget = mode == "budget"
@@ -184,8 +192,12 @@ def test_confirmation_pipeline_requires_reference_parity(tmp_path, monkeypatch, 
         "volume": ("26", "27", "volume-24h"),
         "wick": ("27", "28", "wick-25"),
         "budget": ("28", "29", "channel-budget"),
+        "failure": ("29", "30", "failed-breakout"),
     }[mode]
     bars = fixture()
+    if mode == "failure":
+        bars[210] = bars[210].model_copy(update={"close": Decimal(100), "low": Decimal(99)})
+        bars[211] = bars[211].model_copy(update={"open": Decimal(100), "low": Decimal(99)})
 
     def blocks(raw, out):
         out.mkdir()
@@ -226,6 +238,7 @@ def test_confirmation_pipeline_requires_reference_parity(tmp_path, monkeypatch, 
                 volume_confirmation=volume,
                 wick_confirmation=wick,
                 risk_budget=budget,
+                failed_breakout_exit=mode == "failure",
             )
         assert (output / "failure.json").exists() and not (output / "status.json").exists()
     else:
@@ -236,6 +249,7 @@ def test_confirmation_pipeline_requires_reference_parity(tmp_path, monkeypatch, 
             volume_confirmation=volume,
             wick_confirmation=wick,
             risk_budget=budget,
+            failed_breakout_exit=mode == "failure",
         )
         status = json.loads((output / "status.json").read_text())
         assert status["baseline_parity"] and not status["live_enabled"]
@@ -247,4 +261,11 @@ def test_confirmation_pipeline_requires_reference_parity(tmp_path, monkeypatch, 
                 (output / "seed-17/continuous/block-000/base.channel-budget.json").read_text()
             )
             assert not candidate["fills"]
+        if mode == "failure":
+            candidate = json.loads(
+                (output / "seed-17/continuous/block-000/base.failed-breakout.json").read_text()
+            )
+            assert candidate["fills"][1]["time"] == bars[211].open_time.isoformat().replace(
+                "+00:00", "Z"
+            )
         assert len(list((output / "seed-17/continuous/block-000").glob("*.json"))) == 17

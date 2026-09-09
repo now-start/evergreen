@@ -179,6 +179,9 @@ def run_backtest(
     breakout_exit_lookback: int = 48,
     breakout_cooldown_hours: int = 0,
     breakout_risk_budget: bool = False,
+    breakout_failure_exit: bool = False,
+    breakout_failure_confirmations: int = 1,
+    breakout_failure_buffer: bool = False,
 ) -> Result:
     start = utc_hour(start)
     if not capital.is_finite() or capital <= 0:
@@ -207,6 +210,24 @@ def run_backtest(
         raise ValueError("연구용 재진입 대기는 돌파 전략의 0/24시간만 지원합니다")
     if not candles:
         raise ValueError("empty dataset")
+    if breakout_failure_buffer and (
+        not breakout_failure_exit or breakout_failure_confirmations != 1
+    ):
+        raise ValueError("돌파 실패 변동 폭은 1시간 실패 청산에 단독 적용합니다")
+    if breakout_failure_confirmations not in (1, 2) or (
+        breakout_failure_confirmations != 1 and not breakout_failure_exit
+    ):
+        raise ValueError("돌파 실패 확인은 해당 청산의 1/2시간만 지원합니다")
+    if breakout_failure_exit and (
+        breakout_exit_lookback != 48
+        or breakout_cooldown_hours != 0
+        or breakout_risk_budget
+        or not (
+            strategy == "breakout-v1"
+            or (strategy in REGIME_STRATEGIES and regime_policy == "breakout-filter")
+        )
+    ):
+        raise ValueError("연구용 돌파 실패 청산은 원래 돌파 전략에 단독 적용합니다")
     if breakout_risk_budget and (
         breakout_exit_lookback != 48
         or breakout_cooldown_hours != 0
@@ -252,6 +273,7 @@ def run_backtest(
 
     entry_time: datetime | None = None
     last_exit: datetime | None = None
+    entry_breakout_level: Decimal | None = None
     router = RegimeRouter(regime_policy)
 
     def target(history: Sequence[Candle], holding: bool) -> Side | None:
@@ -261,6 +283,14 @@ def run_backtest(
             and history[-1].close_time < last_exit + timedelta(hours=breakout_cooldown_hours)
         ):
             return None
+        if holding and breakout_failure_exit:
+            if entry_breakout_level is None or entry_time is None:
+                raise ValueError("돌파 실패 청산의 진입 기준이 없습니다")
+            if all(
+                b.open_time >= entry_time and b.close < entry_breakout_level
+                for b in history[-breakout_failure_confirmations:]
+            ):
+                return "sell"
         if holding and breakout_exit_lookback == 24:
             floor = min(bar.low for bar in history[-25:-1])
             return "sell" if history[-1].close < floor else None
@@ -306,6 +336,32 @@ def run_backtest(
             portfolio.trade(side, bar.open, bar.open_time, reason, signal_time)
             if len(portfolio.fills) > previous_fills:
                 entry_time = bar.open_time if side == "buy" else None
+                if breakout_failure_exit:
+                    if side == "buy":
+                        if signal_time is None:
+                            raise ValueError("돌파 실패 청산의 진입 신호 시각이 없습니다")
+                        # Signal close is the next bar's open; exclude the signal bar itself.
+                        signal_index = indices[signal_time] - 1
+                        entry_breakout_level = max(
+                            b.high for b in bars[signal_index - 168 : signal_index]
+                        )
+                        if breakout_failure_buffer:
+                            entry_breakout_level -= (
+                                sum(
+                                    (
+                                        max(
+                                            bars[j].high - bars[j].low,
+                                            abs(bars[j].high - bars[j - 1].close),
+                                            abs(bars[j].low - bars[j - 1].close),
+                                        )
+                                        for j in range(signal_index - 24, signal_index)
+                                    ),
+                                    ZERO,
+                                )
+                                / 24
+                            )
+                    else:
+                        entry_breakout_level = None
                 if side == "sell":
                     last_exit = bar.open_time
             pending = None
