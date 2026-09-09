@@ -23,6 +23,8 @@ STRATEGY_PARAMETERS: dict[Strategy, dict[str, int | str]] = {
         "exit_level": 55,
         "trend_period": 168,
     },
+    "regime-rules-v1": {"up": "breakout-v1", "sideways": "band-reversion-v1", "down": "cash"},
+    "regime-mlp-v1": {"up": "breakout-v1", "sideways": "band-reversion-v1", "down": "cash"},
 }
 ML_STRATEGIES: tuple[Strategy, ...] = ("mlp-v1", "cnn-v1")
 HYBRID_COMPONENTS: dict[Strategy, tuple[Strategy, Strategy]] = {
@@ -82,6 +84,8 @@ for _meta_name, (_model_name, _rule_name) in META_COMPONENTS.items():
 
 
 def warmup_bars(strategy: Strategy) -> int:
+    if strategy in ("regime-rules-v1", "regime-mlp-v1"):
+        return 169
     if strategy in META_COMPONENTS:
         return max(55, warmup_bars(META_COMPONENTS[strategy][1]))
     if strategy in TIMED_RULES:
@@ -100,6 +104,8 @@ def warmup_bars(strategy: Strategy) -> int:
 
 
 def strategy_target(history: Sequence[Candle], holding: bool, strategy: Strategy) -> Side | None:
+    if strategy in ("regime-rules-v1", "regime-mlp-v1"):
+        raise ValueError("장세 전환에는 별도의 장세 판단과 진입 전략 상태가 필요합니다")
     if strategy in PREDICTIVE_STRATEGIES:
         raise ValueError("딥러닝 전략에는 별도의 예측 확률이 필요합니다")
     if len(history) < warmup_bars(strategy):

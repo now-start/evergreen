@@ -1,7 +1,7 @@
 """Deterministic, all-in spot simulation. This module cannot submit real orders."""
 
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import ROUND_DOWN, Decimal
 from typing import Annotated, Literal
 
@@ -16,6 +16,7 @@ from evergreen.strategies import (
     signal_target,
     warmup_bars,
 )
+from evergreen.strategies.regime import REGIME_STRATEGIES, RegimePolicy, RegimeRouter
 
 Reason = Literal["signal", "benchmark", "risk", "settlement"]
 Rate = Annotated[Decimal, Field(ge=0, lt=1, allow_inf_nan=False)]
@@ -106,6 +107,17 @@ class _Portfolio:
             self.halted = True
         self.curve.append(EquityPoint(time=time, phase=phase, equity=equity, drawdown=drawdown))
 
+    def channel_entry_fits(self, reference: Decimal, floor: Decimal) -> bool:
+        price = reference * (ONE + self.costs.buy_slippage)
+        quantity = (
+            self.cash / (ONE + self.costs.buy_fee) / price / self.costs.quantity_step
+        ).to_integral_value(rounding=ROUND_DOWN) * self.costs.quantity_step
+        buy_notional = quantity * price
+        sell_notional = quantity * (floor * (ONE - self.costs.sell_slippage))
+        projected = self.cash - (buy_notional + buy_notional * self.costs.buy_fee)
+        projected += sell_notional - sell_notional * self.costs.sell_fee
+        return projected >= self.peak * (ONE - DRAWDOWN_LIMIT)
+
     def trade(
         self,
         side: Side,
@@ -162,16 +174,48 @@ def run_backtest(
     *,
     extra_delay_bars: int = 0,
     predictions: dict[datetime, Decimal] | None = None,
+    regimes: dict[datetime, int] | None = None,
+    regime_policy: RegimePolicy = "routing",
+    breakout_exit_lookback: int = 48,
+    breakout_cooldown_hours: int = 0,
+    breakout_risk_budget: bool = False,
 ) -> Result:
     start = utc_hour(start)
     if not capital.is_finite() or capital <= 0:
         raise ValueError("capital must be finite and positive")
     if strategy not in STRATEGY_PARAMETERS:
         raise ValueError("unknown strategy")
+    if regime_policy != "routing" and strategy not in REGIME_STRATEGIES:
+        raise ValueError("장세 전략 외에는 장세 정책을 전달할 수 없습니다")
     if extra_delay_bars not in (0, 1):
         raise ValueError("extra_delay_bars must be 0 or 1")
+    if breakout_exit_lookback not in (24, 48) or (
+        breakout_exit_lookback != 48
+        and not (
+            strategy == "breakout-v1"
+            or (strategy in REGIME_STRATEGIES and regime_policy == "breakout-filter")
+        )
+    ):
+        raise ValueError("연구용 청산 채널은 돌파 전략의 24/48시간만 지원합니다")
+    if breakout_cooldown_hours not in (0, 24) or (
+        breakout_cooldown_hours
+        and not (
+            strategy == "breakout-v1"
+            or (strategy in REGIME_STRATEGIES and regime_policy == "breakout-filter")
+        )
+    ):
+        raise ValueError("연구용 재진입 대기는 돌파 전략의 0/24시간만 지원합니다")
     if not candles:
         raise ValueError("empty dataset")
+    if breakout_risk_budget and (
+        breakout_exit_lookback != 48
+        or breakout_cooldown_hours != 0
+        or not (
+            strategy == "breakout-v1"
+            or (strategy in REGIME_STRATEGIES and regime_policy == "breakout-filter")
+        )
+    ):
+        raise ValueError("연구용 위험 여유 검사는 원래 48시간 돌파 청산에만 적용합니다")
     bars, quality = validate_candles(
         candles, min(c.open_time for c in candles), max(c.close_time for c in candles)
     )
@@ -183,6 +227,16 @@ def run_backtest(
             f"evaluation requires {warmup_bars(strategy)} hours of warmup and a matching start"
         )
     first = indices[start]
+    if strategy in REGIME_STRATEGIES:
+        expected = {bar.close_time for bar in bars[first - 1 :]}
+        if (
+            regimes is None
+            or set(regimes) != expected
+            or any(v not in (-1, 0, 1, 2) for v in regimes.values())
+        ):
+            raise ValueError("장세 판단의 시각·범위·완전성이 잘못됐습니다")
+    elif regimes is not None:
+        raise ValueError("장세 전략 외에는 장세 판단을 전달할 수 없습니다")
     if strategy in PREDICTIVE_STRATEGIES:
         expected = {bar.close_time for bar in bars[first - 1 :]}
         if (
@@ -197,15 +251,40 @@ def run_backtest(
         raise ValueError("규칙 기반 전략에는 예측 확률을 전달할 수 없습니다")
 
     entry_time: datetime | None = None
+    last_exit: datetime | None = None
+    router = RegimeRouter(regime_policy)
 
     def target(history: Sequence[Candle], holding: bool) -> Side | None:
-        return signal_target(
-            history,
-            holding,
-            strategy,
-            probability=predictions[history[-1].close_time] if predictions is not None else None,
-            entry_time=entry_time,
-        )
+        if (
+            not holding
+            and last_exit is not None
+            and history[-1].close_time < last_exit + timedelta(hours=breakout_cooldown_hours)
+        ):
+            return None
+        if holding and breakout_exit_lookback == 24:
+            floor = min(bar.low for bar in history[-25:-1])
+            return "sell" if history[-1].close < floor else None
+        if regimes is not None:
+            signal = router.target(history, holding, regimes[history[-1].close_time])
+        else:
+            signal = signal_target(
+                history,
+                holding,
+                strategy,
+                probability=predictions[history[-1].close_time]
+                if predictions is not None
+                else None,
+                entry_time=entry_time,
+            )
+        if (
+            signal == "buy"
+            and breakout_risk_budget
+            and not portfolio.channel_entry_fits(
+                history[-1].close, min(bar.low for bar in history[-49:-1])
+            )
+        ):
+            return None
+        return signal
 
     active = strategy not in ("cash", "buy-hold")
     portfolio = _Portfolio(capital, costs, active)
@@ -227,6 +306,8 @@ def run_backtest(
             portfolio.trade(side, bar.open, bar.open_time, reason, signal_time)
             if len(portfolio.fills) > previous_fills:
                 entry_time = bar.open_time if side == "buy" else None
+                if side == "sell":
+                    last_exit = bar.open_time
             pending = None
         portfolio.mark(bar.open, bar.open_time, "open")
         exposure += int(portfolio.btc > 0)

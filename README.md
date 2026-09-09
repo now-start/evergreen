@@ -30,6 +30,29 @@ MLP 성과는 개선됐지만 CNN은 혼재하며, 새로운 미관측 구간의
 현재 주력 검증 후보는 [168시간 고점 돌파](docs/breakout-strategy.md)입니다.
 별도 8월 평가에서 기본 순수익률 +14.15%였으나 청산 1회로 표본 수 기준 미달입니다.
 전략별 코드는 [패키지 구조](docs/research-packages.md)에 따라 공통 체결·학습과 분리합니다.
+[실험 08: 장기 장세 전환](docs/regime-experiment-08.md)은 2020~2026년 공개 데이터를 수집하고,
+2022년 이후 워크포워드 MLP와 규칙 장세 전환을 기존 전략과 비교합니다.
+결측을 보간하지 않으며 전체 기간 연속 수익으로 보고하지 않습니다. 실거래 전략은 변경하지 않습니다.
+[실험 09–11: 장세 분리](docs/regime-experiment-09-11.md)는 보합 매수 금지·균형 학습·돌파 진입 필터를
+같은 과거 구간에서 비교합니다. 항상 평균회귀와 보합 더미를 대조군으로 포함합니다.
+[실험 12](docs/regime-experiment-12.md)와 [실험 13](docs/regime-experiment-13.md)은
+돌파 진입 필터의 세 시드 안정성과 24/72시간 목표를 비교하고 최근 8일을 고정 모델로 보조 평가합니다.
+[실험 14](docs/regime-experiment-14.md)는 같은 모델 크기·표본·평가 구간에서 장기 추세 입력의 효과를 비교합니다.
+[실험 15](docs/breakout-meta-experiment-15.md)는 원래 돌파 청산까지의 비용 차감 거래 수익성을 직접 학습합니다.
+[실험 16](docs/breakout-meta-experiment-16.md)은 같은 자료창에서 검증 기간을 늘려 거래 사건 부족을 점검합니다.
+[실험 17](docs/breakout-meta-experiment-17.md)은 학습 사건의 이익·손실 규모를 진입 기준에 반영합니다.
+[실험 18](docs/breakout-errors-18.md)은 동결 예측의 놓친 수익·회피 손실과 실제 모의 체결 손익을 분해합니다.
+[실험 19](docs/breakout-meta-experiment-19.md)는 모델 크기·입력을 유지하고 학습 손실에 거래 손익 규모를 반영합니다.
+[실험 20](docs/breakout-meta-experiment-20.md)은 같은 입력의 저복잡도 선형 모델과 비교합니다.
+[실험 21 결과](docs/breakout-meta-results-21.md)는 같은 모델 크기에서 돌파·청산 맥락 입력을 비교합니다.
+[실험 22 결과](docs/breakout-meta-results-22.md)는 겹치는 거래 사건의 학습 가중 기여를 조정한 비교입니다.
+[실험 23 결과](docs/breakout-meta-results-23.md)는 세 MLP 시드의 동결 점수 평균 비교이며, 두 조건 모두 채택 기준 미달입니다.
+[실험 24 결과](docs/breakout-exit-results-24.md)는 진입을 유지하고 청산 채널만 단축한 비교이며, 비용·위험 기준 미달입니다.
+[실험 25 결과](docs/breakout-exit-results-25.md)는 빠른 청산 후 24시간 재진입 대기 비교이며, 비용 절감에도 순손익이 악화됐습니다.
+[실험 26](docs/breakout-confirmation-26.md)은 연속 두 시간 돌파 확인 비교이며, 합산 손익은 소폭 늘었으나 구간별·위험 기준에 미달했습니다.
+[실험 27](docs/breakout-volume-27.md)은 같은 봉 거래량 확인 비교이며, 대부분 기존과 같고 일부 진입이 비싸져 순손익이 악화됐습니다.
+[실험 28](docs/breakout-wick-28.md)은 긴 윗꼬리 돌파 제외 비교이며, 합산 이익은 늘었지만 한 구간에 의존해 구간별·위험 기준에 미달했습니다.
+[실험 29](docs/breakout-budget-29.md)는 청산 채널과 계좌 위험 여유 비교이며, 중단 감소에도 기본·지연 조건 손익이 악화됐습니다.
 
 ## 개발 환경
 

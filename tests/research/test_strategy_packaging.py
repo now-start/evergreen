@@ -41,6 +41,8 @@ def strategy_digest() -> str:
     )
     digest = hashlib.sha256()
     for name in STRATEGY_PARAMETERS:
+        if name in ("regime-rules-v1", "regime-mlp-v1"):
+            continue  # New research strategies have separate stateful-regime tests.
         for delay in (0, 1):
             result = run_backtest(
                 candles,

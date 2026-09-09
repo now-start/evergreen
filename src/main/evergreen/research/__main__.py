@@ -77,8 +77,19 @@ def main(argv: list[str] | None = None) -> int:
     breakout.add_argument("--dataset", type=Path, required=True)
     breakout.add_argument("--trained-experiment", type=Path, required=True)
     breakout.add_argument("--output", type=Path, required=True)
+    regime = commands.add_parser("regime-study", help="실험 08b: 장기 장세 MLP·규칙 전환 비교")
+    regime.add_argument(
+        "--source", type=Path, required=True, help="regime_data로 수집한 분기별 원본 경로"
+    )
+    regime.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == "regime-study":
+            from evergreen.research.experiments.regime import run_regime_study
+
+            run_regime_study(args.source, args.output)
+            print(f"장세 전환 탐색 완료(전체 검증·실거래 승격 아님): {args.output / 'summary.md'}")
+            return 0
         if args.command == "breakout-study":
             from evergreen.research.experiments.breakout import run_breakout_study
 

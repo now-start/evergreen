@@ -27,5 +27,7 @@ Strategy = Literal[
     "meta-cnn-breakout-v1",
     "meta-mlp-rsi-v1",
     "meta-cnn-rsi-v1",
+    "regime-rules-v1",
+    "regime-mlp-v1",
 ]
 Side = Literal["buy", "sell"]

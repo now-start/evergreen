@@ -13,6 +13,8 @@ from evergreen.research.backtest import Costs, Result, run_backtest
 from evergreen.strategies import STRATEGY_PARAMETERS, Strategy, warmup_bars
 
 STRATEGY_LABELS: dict[Strategy, str] = {
+    "regime-rules-v1": "규칙 장세 전환",
+    "regime-mlp-v1": "MLP 장세 전환",
     "cash": "현금 유지",
     "buy-hold": "BTC 매수 후 보유",
     "sma-trend-v0": "기존 추세 SMA 20/60",
