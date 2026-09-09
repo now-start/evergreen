@@ -186,6 +186,8 @@ def run_backtest(
     breakout_trailing_exit: bool = False,
     breakout_trailing_profit_only: bool = False,
     breakout_trailing_adaptive: bool = False,
+    breakout_rejection_latch: bool = False,
+    breakout_entry_stop: bool = False,
 ) -> Result:
     start = utc_hour(start)
     if not capital.is_finite() or capital <= 0:
@@ -214,6 +216,29 @@ def run_backtest(
         raise ValueError("연구용 재진입 대기는 돌파 전략의 0/24시간만 지원합니다")
     if not candles:
         raise ValueError("empty dataset")
+    if breakout_entry_stop and (
+        breakout_exit_lookback != 48
+        or breakout_cooldown_hours != 0
+        or breakout_risk_budget
+        or breakout_failure_exit
+        or breakout_trailing_exit
+        or breakout_rejection_latch
+        or not (
+            strategy == "breakout-v1"
+            or (strategy in REGIME_STRATEGIES and regime_policy == "breakout-filter")
+        )
+    ):
+        raise ValueError("고정 손절은 원래 돌파 전략에 단독 적용합니다")
+    if breakout_rejection_latch and (
+        strategy not in REGIME_STRATEGIES
+        or regime_policy != "breakout-filter"
+        or breakout_exit_lookback != 48
+        or breakout_cooldown_hours != 0
+        or breakout_risk_budget
+        or breakout_failure_exit
+        or breakout_trailing_exit
+    ):
+        raise ValueError("거절 기록은 원래 돌파 진입 필터에 단독 적용합니다")
     if breakout_trailing_profit_only and not breakout_trailing_exit:
         raise ValueError("상승 후 활성 조건은 고점 추적 청산에만 적용합니다")
     if breakout_trailing_adaptive and not breakout_trailing_profit_only:
@@ -296,9 +321,15 @@ def run_backtest(
     entry_true_range: Decimal | None = None
     trailing_peak: Decimal | None = None
     entry_reference: Decimal | None = None
+    rejected_ceiling: Decimal | None = None
     router = RegimeRouter(regime_policy)
 
     def target(history: Sequence[Candle], holding: bool) -> Side | None:
+        nonlocal rejected_ceiling
+        if breakout_rejection_latch and not holding and rejected_ceiling is not None:
+            if history[-1].close > rejected_ceiling:
+                return None
+            rejected_ceiling = None
         if (
             not holding
             and last_exit is not None
@@ -324,11 +355,23 @@ def run_backtest(
                     distance = 3 * max(entry_true_range, prior_mean_true_range(history))
                 if history[-1].close < trailing_peak - distance:
                     return "sell"
+        if holding and breakout_entry_stop:
+            if entry_true_range is None or entry_reference is None:
+                raise ValueError("고정 손절의 실제 매수 기준이 없습니다")
+            if entry_true_range > 0 and history[-1].close < entry_reference - 3 * entry_true_range:
+                return "sell"
         if holding and breakout_exit_lookback == 24:
             floor = min(bar.low for bar in history[-25:-1])
             return "sell" if history[-1].close < floor else None
         if regimes is not None:
             signal = router.target(history, holding, regimes[history[-1].close_time])
+            if (
+                breakout_rejection_latch
+                and not holding
+                and signal is None
+                and signal_target(history, False, "breakout-v1") == "buy"
+            ):
+                rejected_ceiling = max(b.high for b in history[-169:-1])
         else:
             signal = signal_target(
                 history,
@@ -384,15 +427,15 @@ def run_backtest(
                             )
                     else:
                         entry_breakout_level = None
-                if breakout_trailing_exit:
+                if breakout_trailing_exit or breakout_entry_stop:
                     if side == "buy":
                         if signal_time is None:
-                            raise ValueError("고점 추적 청산의 진입 신호 시각이 없습니다")
+                            raise ValueError("변동 폭 청산의 진입 신호 시각이 없습니다")
                         signal_index = indices[signal_time] - 1
                         entry_true_range = prior_mean_true_range(
                             bars[signal_index - 25 : signal_index + 1]
                         )
-                        trailing_peak = bar.open
+                        trailing_peak = bar.open if breakout_trailing_exit else None
                         entry_reference = bar.open
                     else:
                         entry_true_range = trailing_peak = entry_reference = None

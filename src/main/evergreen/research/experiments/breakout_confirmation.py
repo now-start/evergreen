@@ -1,4 +1,4 @@
-"""Experiments 26-37: independent filters or exits; original breakout entry required."""
+"""Experiments 26-40: independent filters or exits; original breakout entry required."""
 
 import argparse
 import hashlib
@@ -69,6 +69,18 @@ def expansion_schedule(bars: list[Candle], start: datetime) -> dict[datetime, in
     }
 
 
+def compression_schedule(bars: list[Candle], start: datetime) -> dict[datetime, int]:
+    return {
+        b.close_time: 2
+        if i >= 169
+        and prior_mean_true_range(bars[i - 25 : i + 1])
+        <= prior_mean_true_range(bars[i - 169 : i + 1], lookback=168)
+        else 0
+        for i, b in enumerate(bars)
+        if b.close_time >= start
+    }
+
+
 def run_study(
     raw: Path,
     reference: Path,
@@ -85,6 +97,9 @@ def run_study(
     profit_trailing_exit: bool = False,
     adaptive_trailing_exit: bool = False,
     tr_expansion: bool = False,
+    tr_compression: bool = False,
+    rejection_latch: bool = False,
+    entry_stop: bool = False,
 ) -> None:
     if (
         sum(
@@ -100,6 +115,9 @@ def run_study(
                 profit_trailing_exit,
                 adaptive_trailing_exit,
                 tr_expansion,
+                tr_compression,
+                rejection_latch,
+                entry_stop,
             )
         )
         > 1
@@ -168,6 +186,26 @@ def run_study(
         )
         models = ("adaptive-trailing-tr24", candidate)
         trailing_models = profit_models = adaptive_models = ("adaptive-trailing-tr24",)
+    if tr_compression:
+        candidate, experiment, reference_experiment = "tr-compression-24-168", "38", "37"
+        confirmation, schedule = (
+            "prior24_mean_true_range_le_prior168_mean_true_range",
+            compression_schedule,
+        )
+        models = ("tr-expansion-24-168", candidate)
+    if rejection_latch:
+        candidate, experiment, reference_experiment = "expansion-rejection-latch", "39", "38"
+        confirmation, schedule = (
+            "expansion_rejection_until_close_le_frozen_prior168_ceiling",
+            expansion_schedule,
+        )
+        models = ("tr-expansion-24-168", "tr-compression-24-168", candidate)
+    latch_models = (candidate,) if rejection_latch else ()
+    if entry_stop:
+        candidate, experiment, reference_experiment = "entry-stop-tr24", "40", "39"
+        confirmation = "close_below_actual_entry_open_minus_3_frozen_entry_prior24_mean_true_range"
+        models = ("expansion-rejection-latch", candidate)
+        latch_models = ("expansion-rejection-latch",)
     output.mkdir(parents=True, exist_ok=False)
     write_json(
         output / "protocol.json",
@@ -228,12 +266,22 @@ def run_study(
             bars = [b for b in matching[0] if start - timedelta(hours=200) <= b.open_time < end]
             approvals = (
                 dict.fromkeys((b.close_time for b in bars if b.close_time >= start), 2)
-                if risk_budget or failure_mode or trailing_exit or profit_trailing_mode
+                if risk_budget
+                or failure_mode
+                or trailing_exit
+                or profit_trailing_mode
+                or entry_stop
                 else schedule(bars, start)
             )
             model_approvals = {candidate: approvals}
             if trailing_exit:
                 model_approvals["entry-cap-tr24"] = extension_schedule(bars, start)
+            if tr_compression or rejection_latch:
+                model_approvals["tr-expansion-24-168"] = expansion_schedule(bars, start)
+            if rejection_latch:
+                model_approvals["tr-compression-24-168"] = compression_schedule(bars, start)
+            if entry_stop:
+                model_approvals["expansion-rejection-latch"] = expansion_schedule(bars, start)
             for name in parts:
                 parts[name].append(
                     Evaluation(start, bars, model_approvals.get(name, dict.fromkeys(approvals, 2)))
@@ -254,6 +302,8 @@ def run_study(
             trailing_exit_models=trailing_models,
             trailing_profit_only_models=profit_models,
             trailing_adaptive_models=adaptive_models,
+            rejection_latch_models=latch_models,
+            entry_stop_models=(candidate,) if entry_stop else (),
         )
         generated = sorted((group / "continuous").glob("*/base.breakout-v1.json"))
         if len(generated) != len(baselines):
@@ -277,6 +327,12 @@ def run_study(
                     controls = ("breakout-v1", "profit-trailing-tr24")
                 if tr_expansion:
                     controls = ("breakout-v1", "adaptive-trailing-tr24")
+                if tr_compression:
+                    controls = ("breakout-v1", "tr-expansion-24-168")
+                if rejection_latch:
+                    controls = ("breakout-v1", "tr-expansion-24-168", "tr-compression-24-168")
+                if entry_stop:
+                    controls = ("breakout-v1", "expansion-rejection-latch")
                 for control in controls:
                     filename = f"{scenario}.{control}.json"
                     if read(old.parent / filename) != read(new.parent / filename):
@@ -312,6 +368,9 @@ def main() -> None:
     filters.add_argument("--profit-trailing-exit", action="store_true")
     filters.add_argument("--adaptive-trailing-exit", action="store_true")
     filters.add_argument("--tr-expansion", action="store_true")
+    filters.add_argument("--tr-compression", action="store_true")
+    filters.add_argument("--rejection-latch", action="store_true")
+    filters.add_argument("--entry-stop", action="store_true")
     for name in ("raw", "reference", "output"):
         parser.add_argument(f"--{name}", type=Path, required=True)
     args = parser.parse_args()
@@ -330,6 +389,9 @@ def main() -> None:
         profit_trailing_exit=args.profit_trailing_exit,
         adaptive_trailing_exit=args.adaptive_trailing_exit,
         tr_expansion=args.tr_expansion,
+        tr_compression=args.tr_compression,
+        rejection_latch=args.rejection_latch,
+        entry_stop=args.entry_stop,
     )
 
 
