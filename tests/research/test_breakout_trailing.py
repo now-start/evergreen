@@ -162,14 +162,17 @@ def test_trailing_dispatch_rejects_combined_modes_and_unknown_candidate(tmp_path
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_trailing_pipeline_preserves_cap_control_and_original_entry(tmp_path, monkeypatch, corrupt):
+@pytest.mark.parametrize("profit_mode", [False, True])
+def test_trailing_pipeline_preserves_cap_control_and_original_entry(
+    tmp_path, monkeypatch, corrupt, profit_mode
+):
     bars = trailing_bars()
     # Initial entry rejected by cap (extension3 > TR2.375), but not by trailing candidate.
     bars[199] = bars[199].model_copy(update={"close": Decimal(104)})
     start = bars[200].open_time
-    controls = ("breakout-v1", "entry-cap-tr24")
-    candidate = "trailing-tr24"
-    options = {"trailing_exit": True}
+    controls = ("breakout-v1", "trailing-tr24" if profit_mode else "entry-cap-tr24")
+    candidate = "profit-trailing-tr24" if profit_mode else "trailing-tr24"
+    options = {"profit_trailing_exit": True} if profit_mode else {"trailing_exit": True}
 
     def blocks(raw, out):
         out.mkdir()
@@ -182,7 +185,7 @@ def test_trailing_pipeline_preserves_cap_control_and_original_entry(tmp_path, mo
     folder.mkdir(parents=True)
     (ref / "datasets").mkdir()
     write_json(ref / "datasets/coverage.json", {"fixture": True})
-    write_json(ref / "protocol.json", {"experiment": "33"})
+    write_json(ref / "protocol.json", {"experiment": "34" if profit_mode else "33"})
     write_json(ref / "status.json", {"status": "completed_partial_coverage"})
     write_json(
         ref / "intervals.json",
@@ -220,7 +223,14 @@ def test_trailing_pipeline_preserves_cap_control_and_original_entry(tmp_path, mo
             (out / f"seed-17/continuous/block-000/base.{candidate}.json").read_text()
         )
         assert result["fills"][0]["time"] == bars[200].open_time.isoformat().replace("+00:00", "Z")
-        assert result["fills"][1]["time"] == bars[213].open_time.isoformat().replace("+00:00", "Z")
-        assert json.loads((out / "protocol.json").read_text())["experiment"] == "34"
+        if profit_mode:
+            assert result["fills"][1]["reason"] == "settlement"
+        else:
+            assert result["fills"][1]["time"] == bars[213].open_time.isoformat().replace(
+                "+00:00", "Z"
+            )
+        assert json.loads((out / "protocol.json").read_text())["experiment"] == (
+            "35" if profit_mode else "34"
+        )
         assert json.loads((out / "status.json").read_text())["baseline_parity"]
         assert len(list((out / "seed-17/continuous/block-000").glob("*.json"))) == 21

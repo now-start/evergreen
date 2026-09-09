@@ -1,4 +1,4 @@
-"""Experiments 26-34: independent filters or exits; original breakout entry required."""
+"""Experiments 26-37: independent filters or exits; original breakout entry required."""
 
 import argparse
 import hashlib
@@ -57,6 +57,18 @@ def extension_schedule(bars: list[Candle], start: datetime) -> dict[datetime, in
     }
 
 
+def expansion_schedule(bars: list[Candle], start: datetime) -> dict[datetime, int]:
+    return {
+        b.close_time: 2
+        if i >= 169
+        and prior_mean_true_range(bars[i - 25 : i + 1])
+        > prior_mean_true_range(bars[i - 169 : i + 1], lookback=168)
+        else 0
+        for i, b in enumerate(bars)
+        if b.close_time >= start
+    }
+
+
 def run_study(
     raw: Path,
     reference: Path,
@@ -70,6 +82,9 @@ def run_study(
     volatility_failure_exit: bool = False,
     extension_cap: bool = False,
     trailing_exit: bool = False,
+    profit_trailing_exit: bool = False,
+    adaptive_trailing_exit: bool = False,
+    tr_expansion: bool = False,
 ) -> None:
     if (
         sum(
@@ -82,6 +97,9 @@ def run_study(
                 volatility_failure_exit,
                 extension_cap,
                 trailing_exit,
+                profit_trailing_exit,
+                adaptive_trailing_exit,
+                tr_expansion,
             )
         )
         > 1
@@ -128,6 +146,28 @@ def run_study(
         candidate, experiment, reference_experiment = "trailing-tr24", "34", "33"
         confirmation = "close_below_held_close_peak_minus_3_frozen_entry_prior24_mean_true_range"
         models = ("entry-cap-tr24", candidate)
+    if profit_trailing_exit:
+        candidate, experiment, reference_experiment = "profit-trailing-tr24", "35", "34"
+        confirmation = "trailing_tr24_after_held_peak_ge_actual_entry_open_plus_trailing_distance"
+        models = ("trailing-tr24", candidate)
+    if adaptive_trailing_exit:
+        candidate, experiment, reference_experiment = "adaptive-trailing-tr24", "36", "35"
+        confirmation = "profit_trailing_with_3_max_entry_and_current_prior24_mean_true_range"
+        models = ("profit-trailing-tr24", candidate)
+    profit_trailing_mode = profit_trailing_exit or adaptive_trailing_exit
+    trailing_models = models if profit_trailing_mode else (candidate,) if trailing_exit else ()
+    profit_models = (
+        models if adaptive_trailing_exit else (candidate,) if profit_trailing_exit else ()
+    )
+    adaptive_models = (candidate,) if adaptive_trailing_exit else ()
+    if tr_expansion:
+        candidate, experiment, reference_experiment = "tr-expansion-24-168", "37", "36"
+        confirmation, schedule = (
+            "prior24_mean_true_range_gt_prior168_mean_true_range",
+            expansion_schedule,
+        )
+        models = ("adaptive-trailing-tr24", candidate)
+        trailing_models = profit_models = adaptive_models = ("adaptive-trailing-tr24",)
     output.mkdir(parents=True, exist_ok=False)
     write_json(
         output / "protocol.json",
@@ -188,7 +228,7 @@ def run_study(
             bars = [b for b in matching[0] if start - timedelta(hours=200) <= b.open_time < end]
             approvals = (
                 dict.fromkeys((b.close_time for b in bars if b.close_time >= start), 2)
-                if risk_budget or failure_mode or trailing_exit
+                if risk_budget or failure_mode or trailing_exit or profit_trailing_mode
                 else schedule(bars, start)
             )
             model_approvals = {candidate: approvals}
@@ -211,7 +251,9 @@ def run_study(
             if confirmed_failure_exit or volatility_failure_exit or extension_cap
             else None,
             failure_exit_buffer_models=buffer_models,
-            trailing_exit_models=(candidate,) if trailing_exit else (),
+            trailing_exit_models=trailing_models,
+            trailing_profit_only_models=profit_models,
+            trailing_adaptive_models=adaptive_models,
         )
         generated = sorted((group / "continuous").glob("*/base.breakout-v1.json"))
         if len(generated) != len(baselines):
@@ -229,6 +271,12 @@ def run_study(
                     controls = ("breakout-v1", *failure_models)
                 if trailing_exit:
                     controls = ("breakout-v1", "entry-cap-tr24")
+                if profit_trailing_exit:
+                    controls = ("breakout-v1", "trailing-tr24")
+                if adaptive_trailing_exit:
+                    controls = ("breakout-v1", "profit-trailing-tr24")
+                if tr_expansion:
+                    controls = ("breakout-v1", "adaptive-trailing-tr24")
                 for control in controls:
                     filename = f"{scenario}.{control}.json"
                     if read(old.parent / filename) != read(new.parent / filename):
@@ -261,6 +309,9 @@ def main() -> None:
     filters.add_argument("--volatility-failure-exit", action="store_true")
     filters.add_argument("--extension-cap", action="store_true")
     filters.add_argument("--trailing-exit", action="store_true")
+    filters.add_argument("--profit-trailing-exit", action="store_true")
+    filters.add_argument("--adaptive-trailing-exit", action="store_true")
+    filters.add_argument("--tr-expansion", action="store_true")
     for name in ("raw", "reference", "output"):
         parser.add_argument(f"--{name}", type=Path, required=True)
     args = parser.parse_args()
@@ -276,6 +327,9 @@ def main() -> None:
         volatility_failure_exit=args.volatility_failure_exit,
         extension_cap=args.extension_cap,
         trailing_exit=args.trailing_exit,
+        profit_trailing_exit=args.profit_trailing_exit,
+        adaptive_trailing_exit=args.adaptive_trailing_exit,
+        tr_expansion=args.tr_expansion,
     )
 
 

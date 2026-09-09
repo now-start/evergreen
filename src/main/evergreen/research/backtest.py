@@ -184,6 +184,8 @@ def run_backtest(
     breakout_failure_confirmations: int = 1,
     breakout_failure_buffer: bool = False,
     breakout_trailing_exit: bool = False,
+    breakout_trailing_profit_only: bool = False,
+    breakout_trailing_adaptive: bool = False,
 ) -> Result:
     start = utc_hour(start)
     if not capital.is_finite() or capital <= 0:
@@ -212,6 +214,10 @@ def run_backtest(
         raise ValueError("연구용 재진입 대기는 돌파 전략의 0/24시간만 지원합니다")
     if not candles:
         raise ValueError("empty dataset")
+    if breakout_trailing_profit_only and not breakout_trailing_exit:
+        raise ValueError("상승 후 활성 조건은 고점 추적 청산에만 적용합니다")
+    if breakout_trailing_adaptive and not breakout_trailing_profit_only:
+        raise ValueError("가변 추적 거리는 상승 후 활성 청산에만 적용합니다")
     if breakout_trailing_exit and (
         breakout_failure_exit
         or breakout_exit_lookback != 48
@@ -289,6 +295,7 @@ def run_backtest(
     entry_breakout_level: Decimal | None = None
     entry_true_range: Decimal | None = None
     trailing_peak: Decimal | None = None
+    entry_reference: Decimal | None = None
     router = RegimeRouter(regime_policy)
 
     def target(history: Sequence[Candle], holding: bool) -> Side | None:
@@ -307,10 +314,16 @@ def run_backtest(
             ):
                 return "sell"
         if holding and breakout_trailing_exit:
-            if entry_true_range is None or trailing_peak is None:
+            if entry_true_range is None or trailing_peak is None or entry_reference is None:
                 raise ValueError("고점 추적 청산의 진입 기준이 없습니다")
-            if entry_true_range > 0 and history[-1].close < trailing_peak - 3 * entry_true_range:
-                return "sell"
+            distance = 3 * entry_true_range
+            if entry_true_range > 0 and (
+                not breakout_trailing_profit_only or trailing_peak >= entry_reference + distance
+            ):
+                if breakout_trailing_adaptive:
+                    distance = 3 * max(entry_true_range, prior_mean_true_range(history))
+                if history[-1].close < trailing_peak - distance:
+                    return "sell"
         if holding and breakout_exit_lookback == 24:
             floor = min(bar.low for bar in history[-25:-1])
             return "sell" if history[-1].close < floor else None
@@ -380,8 +393,9 @@ def run_backtest(
                             bars[signal_index - 25 : signal_index + 1]
                         )
                         trailing_peak = bar.open
+                        entry_reference = bar.open
                     else:
-                        entry_true_range = trailing_peak = None
+                        entry_true_range = trailing_peak = entry_reference = None
                 if side == "sell":
                     last_exit = bar.open_time
             pending = None
