@@ -1,4 +1,4 @@
-"""Experiments 26-40: independent filters or exits; original breakout entry required."""
+"""Experiments 26-42: independent filters or exits; original breakout entry required."""
 
 import argparse
 import hashlib
@@ -100,6 +100,8 @@ def run_study(
     tr_compression: bool = False,
     rejection_latch: bool = False,
     entry_stop: bool = False,
+    entry_stop_floor: bool = False,
+    entry_stop_expansion: bool = False,
 ) -> None:
     if (
         sum(
@@ -118,6 +120,8 @@ def run_study(
                 tr_compression,
                 rejection_latch,
                 entry_stop,
+                entry_stop_floor,
+                entry_stop_expansion,
             )
         )
         > 1
@@ -206,6 +210,14 @@ def run_study(
         confirmation = "close_below_actual_entry_open_minus_3_frozen_entry_prior24_mean_true_range"
         models = ("expansion-rejection-latch", candidate)
         latch_models = ("expansion-rejection-latch",)
+    if entry_stop_floor:
+        candidate, experiment, reference_experiment = "entry-stop-tr-floor", "41", "40"
+        confirmation = "close_below_actual_entry_open_minus_3_frozen_max_prior24_prior168_tr"
+        models = ("entry-stop-tr24", candidate)
+    if entry_stop_expansion:
+        candidate, experiment, reference_experiment = "entry-stop-expansion", "42", "41"
+        confirmation = "fixed_entry_stop_enabled_only_when_signal_prior24_tr_gt_prior168_tr"
+        models = ("entry-stop-tr-floor", candidate)
     output.mkdir(parents=True, exist_ok=False)
     write_json(
         output / "protocol.json",
@@ -271,6 +283,8 @@ def run_study(
                 or trailing_exit
                 or profit_trailing_mode
                 or entry_stop
+                or entry_stop_floor
+                or entry_stop_expansion
                 else schedule(bars, start)
             )
             model_approvals = {candidate: approvals}
@@ -303,7 +317,17 @@ def run_study(
             trailing_profit_only_models=profit_models,
             trailing_adaptive_models=adaptive_models,
             rejection_latch_models=latch_models,
-            entry_stop_models=(candidate,) if entry_stop else (),
+            entry_stop_models=models
+            if entry_stop_floor or entry_stop_expansion
+            else (candidate,)
+            if entry_stop
+            else (),
+            entry_stop_floor_models=(candidate,)
+            if entry_stop_floor
+            else ("entry-stop-tr-floor",)
+            if entry_stop_expansion
+            else (),
+            entry_stop_expansion_models=(candidate,) if entry_stop_expansion else (),
         )
         generated = sorted((group / "continuous").glob("*/base.breakout-v1.json"))
         if len(generated) != len(baselines):
@@ -333,6 +357,10 @@ def run_study(
                     controls = ("breakout-v1", "tr-expansion-24-168", "tr-compression-24-168")
                 if entry_stop:
                     controls = ("breakout-v1", "expansion-rejection-latch")
+                if entry_stop_floor:
+                    controls = ("breakout-v1", "entry-stop-tr24")
+                if entry_stop_expansion:
+                    controls = ("breakout-v1", "entry-stop-tr-floor")
                 for control in controls:
                     filename = f"{scenario}.{control}.json"
                     if read(old.parent / filename) != read(new.parent / filename):
@@ -371,6 +399,8 @@ def main() -> None:
     filters.add_argument("--tr-compression", action="store_true")
     filters.add_argument("--rejection-latch", action="store_true")
     filters.add_argument("--entry-stop", action="store_true")
+    filters.add_argument("--entry-stop-floor", action="store_true")
+    filters.add_argument("--entry-stop-expansion", action="store_true")
     for name in ("raw", "reference", "output"):
         parser.add_argument(f"--{name}", type=Path, required=True)
     args = parser.parse_args()
@@ -392,6 +422,8 @@ def main() -> None:
         tr_compression=args.tr_compression,
         rejection_latch=args.rejection_latch,
         entry_stop=args.entry_stop,
+        entry_stop_floor=args.entry_stop_floor,
+        entry_stop_expansion=args.entry_stop_expansion,
     )
 
 

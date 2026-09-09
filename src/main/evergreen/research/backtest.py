@@ -188,6 +188,8 @@ def run_backtest(
     breakout_trailing_adaptive: bool = False,
     breakout_rejection_latch: bool = False,
     breakout_entry_stop: bool = False,
+    breakout_entry_stop_floor: bool = False,
+    breakout_entry_stop_expansion: bool = False,
 ) -> Result:
     start = utc_hour(start)
     if not capital.is_finite() or capital <= 0:
@@ -216,6 +218,10 @@ def run_backtest(
         raise ValueError("연구용 재진입 대기는 돌파 전략의 0/24시간만 지원합니다")
     if not candles:
         raise ValueError("empty dataset")
+    if breakout_entry_stop_floor and not breakout_entry_stop:
+        raise ValueError("장기 변동 폭 하한은 고정 손절에만 적용합니다")
+    if breakout_entry_stop_expansion and (not breakout_entry_stop or breakout_entry_stop_floor):
+        raise ValueError("확대 조건은 하한 없는 고정 손절에만 적용합니다")
     if breakout_entry_stop and (
         breakout_exit_lookback != 48
         or breakout_cooldown_hours != 0
@@ -287,9 +293,13 @@ def run_backtest(
     if not quality.valid or quality.duplicates or quality.incomplete:
         raise ValueError("candle quality failed")
     indices = {bar.open_time: index for index, bar in enumerate(bars)}
-    if start not in indices or indices[start] < warmup_bars(strategy):
+    required_warmup = max(
+        warmup_bars(strategy),
+        170 if breakout_entry_stop_floor or breakout_entry_stop_expansion else 0,
+    )
+    if start not in indices or indices[start] < required_warmup:
         raise ValueError(
-            f"evaluation requires {warmup_bars(strategy)} hours of warmup and a matching start"
+            f"evaluation requires {required_warmup} hours of warmup and a matching start"
         )
     first = indices[start]
     if strategy in REGIME_STRATEGIES:
@@ -321,6 +331,7 @@ def run_backtest(
     entry_true_range: Decimal | None = None
     trailing_peak: Decimal | None = None
     entry_reference: Decimal | None = None
+    entry_stop_active = False
     rejected_ceiling: Decimal | None = None
     router = RegimeRouter(regime_policy)
 
@@ -355,7 +366,7 @@ def run_backtest(
                     distance = 3 * max(entry_true_range, prior_mean_true_range(history))
                 if history[-1].close < trailing_peak - distance:
                     return "sell"
-        if holding and breakout_entry_stop:
+        if holding and breakout_entry_stop and entry_stop_active:
             if entry_true_range is None or entry_reference is None:
                 raise ValueError("고정 손절의 실제 매수 기준이 없습니다")
             if entry_true_range > 0 and history[-1].close < entry_reference - 3 * entry_true_range:
@@ -435,10 +446,20 @@ def run_backtest(
                         entry_true_range = prior_mean_true_range(
                             bars[signal_index - 25 : signal_index + 1]
                         )
+                        entry_stop_active = breakout_entry_stop
+                        if breakout_entry_stop_floor or breakout_entry_stop_expansion:
+                            slow_range = prior_mean_true_range(
+                                bars[signal_index - 169 : signal_index + 1], lookback=168
+                            )
+                            if breakout_entry_stop_floor:
+                                entry_true_range = max(entry_true_range, slow_range)
+                            else:
+                                entry_stop_active = entry_true_range > slow_range
                         trailing_peak = bar.open if breakout_trailing_exit else None
                         entry_reference = bar.open
                     else:
                         entry_true_range = trailing_peak = entry_reference = None
+                        entry_stop_active = False
                 if side == "sell":
                     last_exit = bar.open_time
             pending = None

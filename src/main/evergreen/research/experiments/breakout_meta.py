@@ -70,6 +70,8 @@ def evaluate(
     trailing_adaptive_models: tuple[str, ...] = (),
     rejection_latch_models: tuple[str, ...] = (),
     entry_stop_models: tuple[str, ...] = (),
+    entry_stop_floor_models: tuple[str, ...] = (),
+    entry_stop_expansion_models: tuple[str, ...] = (),
 ) -> None:
     candidates = ("breakout-v1", "cash", "prior", *models)
     if set(parts) != set(candidates):
@@ -98,6 +100,10 @@ def evaluate(
         raise ValueError("거절 기록은 명시된 연구 후보에만 허용합니다")
     if set(entry_stop_models) - set(models):
         raise ValueError("고정 손절은 명시된 연구 후보에만 허용합니다")
+    if set(entry_stop_floor_models) - set(entry_stop_models):
+        raise ValueError("장기 변동 폭 하한은 고정 손절 후보에만 허용합니다")
+    if set(entry_stop_expansion_models) - set(entry_stop_models):
+        raise ValueError("확대 조건은 고정 손절 후보에만 허용합니다")
     joined = {name: joined_evaluations(values) for name, values in parts.items()}
     ranges = [[(p.start, p.bars[-1].close_time) for p in rows] for rows in joined.values()]
     if not ranges[0] or any(r != ranges[0] for r in ranges):
@@ -133,6 +139,8 @@ def evaluate(
                     breakout_trailing_adaptive=name in trailing_adaptive_models,
                     breakout_rejection_latch=name in rejection_latch_models,
                     breakout_entry_stop=name in entry_stop_models,
+                    breakout_entry_stop_floor=name in entry_stop_floor_models,
+                    breakout_entry_stop_expansion=name in entry_stop_expansion_models,
                 )
                 write_json(directory / f"{scenario}.{name}.json", result.model_dump(mode="json"))
                 rows.append(
