@@ -1,4 +1,4 @@
-"""Experiments 26-32: independent filters or exits; original breakout entry required."""
+"""Experiments 26-34: independent filters or exits; original breakout entry required."""
 
 import argparse
 import hashlib
@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from evergreen.market import Candle, write_json
+from evergreen.research.breakout_features import prior_mean_true_range
 from evergreen.research.experiments.breakout_meta import costs, evaluate, summarize
 from evergreen.research.experiments.regime import SCENARIOS, Evaluation
 from evergreen.research.experiments.regime_data import contiguous_blocks
@@ -44,6 +45,18 @@ def wick_schedule(bars: list[Candle], start: datetime) -> dict[datetime, int]:
     }
 
 
+def extension_schedule(bars: list[Candle], start: datetime) -> dict[datetime, int]:
+    return {
+        b.close_time: 2
+        if i >= 168
+        and b.close - max(p.high for p in bars[i - 168 : i])
+        <= prior_mean_true_range(bars[i - 25 : i + 1])
+        else 0
+        for i, b in enumerate(bars)
+        if b.close_time >= start
+    }
+
+
 def run_study(
     raw: Path,
     reference: Path,
@@ -55,6 +68,8 @@ def run_study(
     failed_breakout_exit: bool = False,
     confirmed_failure_exit: bool = False,
     volatility_failure_exit: bool = False,
+    extension_cap: bool = False,
+    trailing_exit: bool = False,
 ) -> None:
     if (
         sum(
@@ -65,6 +80,8 @@ def run_study(
                 failed_breakout_exit,
                 confirmed_failure_exit,
                 volatility_failure_exit,
+                extension_cap,
+                trailing_exit,
             )
         )
         > 1
@@ -98,6 +115,19 @@ def run_study(
         confirmation = "close_below_frozen_entry_ceiling_minus_prior24_mean_true_range"
         models = ("failed-breakout", "failed-breakout-2h", candidate)
     failure_mode = failed_breakout_exit or confirmed_failure_exit or volatility_failure_exit
+    failure_models = models if failure_mode else ()
+    buffer_models = (candidate,) if volatility_failure_exit else ()
+    if extension_cap:
+        candidate, experiment, reference_experiment = "entry-cap-tr24", "33", "32"
+        confirmation = "close_minus_prior168_ceiling_le_prior24_mean_true_range"
+        schedule = extension_schedule
+        failure_models = ("failed-breakout", "failed-breakout-2h", "failed-breakout-tr24")
+        buffer_models = ("failed-breakout-tr24",)
+        models = (*failure_models, candidate)
+    if trailing_exit:
+        candidate, experiment, reference_experiment = "trailing-tr24", "34", "33"
+        confirmation = "close_below_held_close_peak_minus_3_frozen_entry_prior24_mean_true_range"
+        models = ("entry-cap-tr24", candidate)
     output.mkdir(parents=True, exist_ok=False)
     write_json(
         output / "protocol.json",
@@ -158,14 +188,15 @@ def run_study(
             bars = [b for b in matching[0] if start - timedelta(hours=200) <= b.open_time < end]
             approvals = (
                 dict.fromkeys((b.close_time for b in bars if b.close_time >= start), 2)
-                if risk_budget or failure_mode
+                if risk_budget or failure_mode or trailing_exit
                 else schedule(bars, start)
             )
+            model_approvals = {candidate: approvals}
+            if trailing_exit:
+                model_approvals["entry-cap-tr24"] = extension_schedule(bars, start)
             for name in parts:
                 parts[name].append(
-                    Evaluation(
-                        start, bars, approvals if name == candidate else dict.fromkeys(approvals, 2)
-                    )
+                    Evaluation(start, bars, model_approvals.get(name, dict.fromkeys(approvals, 2)))
                 )
         write_json(output / "intervals.json", intervals)
         group = output / "seed-17"
@@ -175,11 +206,12 @@ def run_study(
             group,
             models=models,
             risk_budget_models=(candidate,) if risk_budget else (),
-            failure_exit_models=models if failure_mode else (),
+            failure_exit_models=failure_models,
             failure_exit_confirmations={"failed-breakout-2h": 2}
-            if confirmed_failure_exit or volatility_failure_exit
+            if confirmed_failure_exit or volatility_failure_exit or extension_cap
             else None,
-            failure_exit_buffer_models=(candidate,) if volatility_failure_exit else (),
+            failure_exit_buffer_models=buffer_models,
+            trailing_exit_models=(candidate,) if trailing_exit else (),
         )
         generated = sorted((group / "continuous").glob("*/base.breakout-v1.json"))
         if len(generated) != len(baselines):
@@ -193,6 +225,10 @@ def run_study(
                 )
                 if volatility_failure_exit:
                     controls = ("breakout-v1", "failed-breakout", "failed-breakout-2h")
+                if extension_cap:
+                    controls = ("breakout-v1", *failure_models)
+                if trailing_exit:
+                    controls = ("breakout-v1", "entry-cap-tr24")
                 for control in controls:
                     filename = f"{scenario}.{control}.json"
                     if read(old.parent / filename) != read(new.parent / filename):
@@ -223,6 +259,8 @@ def main() -> None:
     filters.add_argument("--failed-breakout-exit", action="store_true")
     filters.add_argument("--confirmed-failure-exit", action="store_true")
     filters.add_argument("--volatility-failure-exit", action="store_true")
+    filters.add_argument("--extension-cap", action="store_true")
+    filters.add_argument("--trailing-exit", action="store_true")
     for name in ("raw", "reference", "output"):
         parser.add_argument(f"--{name}", type=Path, required=True)
     args = parser.parse_args()
@@ -236,6 +274,8 @@ def main() -> None:
         failed_breakout_exit=args.failed_breakout_exit,
         confirmed_failure_exit=args.confirmed_failure_exit,
         volatility_failure_exit=args.volatility_failure_exit,
+        extension_cap=args.extension_cap,
+        trailing_exit=args.trailing_exit,
     )
 
 

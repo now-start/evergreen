@@ -126,8 +126,9 @@ def test_new_fill_resets_the_ceiling_and_confirmation_window():
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-@pytest.mark.parametrize("buffered", [False, True])
-def test_confirmed_failure_requires_old_candidate_parity(tmp_path, monkeypatch, corrupt, buffered):
+@pytest.mark.parametrize("mode", ["confirmed", "buffered", "capped"])
+def test_confirmed_failure_requires_old_candidate_parity(tmp_path, monkeypatch, corrupt, mode):
+    buffered, capped = mode == "buffered", mode == "capped"
     bars = fixture()
     for i in (210, 211):
         bars[i] = bars[i].model_copy(update={"close": Decimal(100), "low": Decimal(99)})
@@ -140,6 +141,15 @@ def test_confirmed_failure_requires_old_candidate_parity(tmp_path, monkeypatch, 
     )
     candidate = "failed-breakout-tr24" if buffered else "failed-breakout-2h"
     options = {"volatility_failure_exit": True} if buffered else {"confirmed_failure_exit": True}
+    if capped:
+        controls = ("breakout-v1", "failed-breakout", "failed-breakout-2h", "failed-breakout-tr24")
+        candidate, options = "entry-cap-tr24", {"extension_cap": True}
+        # Reject first excessive extension; allow a later entry with original exits only.
+        bars[199] = bars[199].model_copy(
+            update={"close": Decimal("104.5"), "high": Decimal("104.6")}
+        )
+        bars[220] = bars[220].model_copy(update={"close": Decimal(106), "high": Decimal(107)})
+        bars[223] = bars[223].model_copy(update={"close": Decimal(100), "low": Decimal(99)})
     start = bars[200].open_time
 
     def blocks(raw, out):
@@ -153,7 +163,9 @@ def test_confirmed_failure_requires_old_candidate_parity(tmp_path, monkeypatch, 
     directory.mkdir(parents=True)
     (reference / "datasets").mkdir()
     write_json(reference / "datasets/coverage.json", {"fixture": True})
-    write_json(reference / "protocol.json", {"experiment": "31" if buffered else "30"})
+    write_json(
+        reference / "protocol.json", {"experiment": "32" if capped else "31" if buffered else "30"}
+    )
     write_json(reference / "status.json", {"status": "completed_partial_coverage"})
     write_json(
         reference / "intervals.json",
@@ -171,6 +183,7 @@ def test_confirmed_failure_requires_old_candidate_parity(tmp_path, monkeypatch, 
                 extra_delay_bars=delay,
                 breakout_failure_exit=filtered,
                 breakout_failure_confirmations=2 if name == "failed-breakout-2h" else 1,
+                breakout_failure_buffer=name == "failed-breakout-tr24",
                 regimes={b.close_time: 2 for b in bars if b.close_time >= start}
                 if filtered
                 else None,
@@ -189,14 +202,20 @@ def test_confirmed_failure_requires_old_candidate_parity(tmp_path, monkeypatch, 
         result = json.loads(
             (output / f"seed-17/continuous/block-000/base.{candidate}.json").read_text()
         )
-        assert result["fills"][1]["time"] == bars[
-            215 if buffered else 212
-        ].open_time.isoformat().replace("+00:00", "Z")
+        if capped:
+            assert result["fills"][0]["time"] == bars[221].open_time.isoformat().replace(
+                "+00:00", "Z"
+            )
+            assert result["fills"][1]["reason"] == "settlement"
+        else:
+            assert result["fills"][1]["time"] == bars[
+                215 if buffered else 212
+            ].open_time.isoformat().replace("+00:00", "Z")
         status = json.loads((output / "status.json").read_text())
         assert status["baseline_parity"] and not status["live_enabled"]
         protocol = json.loads((output / "protocol.json").read_text())
-        assert protocol["experiment"] == ("32" if buffered else "31")
+        assert protocol["experiment"] == ("33" if capped else "32" if buffered else "31")
         assert protocol["candidate"] == candidate
         assert len(list((output / "seed-17/continuous/block-000").glob("*.json"))) == (
-            25 if buffered else 21
+            29 if capped else 25 if buffered else 21
         )

@@ -8,6 +8,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from evergreen.market import Candle, Nonnegative, Positive, utc_hour, validate_candles
+from evergreen.research.breakout_features import prior_mean_true_range
 from evergreen.strategies import (
     PREDICTIVE_STRATEGIES,
     STRATEGY_PARAMETERS,
@@ -182,6 +183,7 @@ def run_backtest(
     breakout_failure_exit: bool = False,
     breakout_failure_confirmations: int = 1,
     breakout_failure_buffer: bool = False,
+    breakout_trailing_exit: bool = False,
 ) -> Result:
     start = utc_hour(start)
     if not capital.is_finite() or capital <= 0:
@@ -210,6 +212,17 @@ def run_backtest(
         raise ValueError("연구용 재진입 대기는 돌파 전략의 0/24시간만 지원합니다")
     if not candles:
         raise ValueError("empty dataset")
+    if breakout_trailing_exit and (
+        breakout_failure_exit
+        or breakout_exit_lookback != 48
+        or breakout_cooldown_hours != 0
+        or breakout_risk_budget
+        or not (
+            strategy == "breakout-v1"
+            or (strategy in REGIME_STRATEGIES and regime_policy == "breakout-filter")
+        )
+    ):
+        raise ValueError("연구용 고점 추적 청산은 원래 돌파 전략에 단독 적용합니다")
     if breakout_failure_buffer and (
         not breakout_failure_exit or breakout_failure_confirmations != 1
     ):
@@ -274,6 +287,8 @@ def run_backtest(
     entry_time: datetime | None = None
     last_exit: datetime | None = None
     entry_breakout_level: Decimal | None = None
+    entry_true_range: Decimal | None = None
+    trailing_peak: Decimal | None = None
     router = RegimeRouter(regime_policy)
 
     def target(history: Sequence[Candle], holding: bool) -> Side | None:
@@ -290,6 +305,11 @@ def run_backtest(
                 b.open_time >= entry_time and b.close < entry_breakout_level
                 for b in history[-breakout_failure_confirmations:]
             ):
+                return "sell"
+        if holding and breakout_trailing_exit:
+            if entry_true_range is None or trailing_peak is None:
+                raise ValueError("고점 추적 청산의 진입 기준이 없습니다")
+            if entry_true_range > 0 and history[-1].close < trailing_peak - 3 * entry_true_range:
                 return "sell"
         if holding and breakout_exit_lookback == 24:
             floor = min(bar.low for bar in history[-25:-1])
@@ -346,28 +366,32 @@ def run_backtest(
                             b.high for b in bars[signal_index - 168 : signal_index]
                         )
                         if breakout_failure_buffer:
-                            entry_breakout_level -= (
-                                sum(
-                                    (
-                                        max(
-                                            bars[j].high - bars[j].low,
-                                            abs(bars[j].high - bars[j - 1].close),
-                                            abs(bars[j].low - bars[j - 1].close),
-                                        )
-                                        for j in range(signal_index - 24, signal_index)
-                                    ),
-                                    ZERO,
-                                )
-                                / 24
+                            entry_breakout_level -= prior_mean_true_range(
+                                bars[signal_index - 25 : signal_index + 1]
                             )
                     else:
                         entry_breakout_level = None
+                if breakout_trailing_exit:
+                    if side == "buy":
+                        if signal_time is None:
+                            raise ValueError("고점 추적 청산의 진입 신호 시각이 없습니다")
+                        signal_index = indices[signal_time] - 1
+                        entry_true_range = prior_mean_true_range(
+                            bars[signal_index - 25 : signal_index + 1]
+                        )
+                        trailing_peak = bar.open
+                    else:
+                        entry_true_range = trailing_peak = None
                 if side == "sell":
                     last_exit = bar.open_time
             pending = None
         portfolio.mark(bar.open, bar.open_time, "open")
         exposure += int(portfolio.btc > 0)
         history.append(bar)
+        if breakout_trailing_exit and portfolio.btc > 0:
+            if trailing_peak is None:
+                raise ValueError("고점 추적 청산의 체결 기준이 없습니다")
+            trailing_peak = max(trailing_peak, bar.close)
         portfolio.mark(bar.close, bar.close_time, "close")
         if portfolio.halted:
             # Risk replaces strategy orders, but an existing risk order keeps its due bar.
