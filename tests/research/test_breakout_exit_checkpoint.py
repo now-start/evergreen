@@ -1,20 +1,30 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from test_breakout_entry_stop import setup
 from test_breakout_entry_stop_trend_confirmation import declining_path
 from test_breakout_entry_stop_trend_context import MODES, long_decline
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research import backtest
+from evergreen.research.backtest import Result
 from evergreen.research.experiments import breakout_exit_checkpoint as runner
 from evergreen.research.experiments.breakout_exit_extension import simulate as simulate_control
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
 
 
-def simulate(bars, *, checkpoint=True, delay=0, capital=Decimal(1000000)):
+def simulate(
+    bars: list[Candle],
+    *,
+    checkpoint: bool = True,
+    delay: int = 0,
+    capital: Decimal = Decimal(1000000),
+) -> Result:
     return backtest.run_backtest(
         bars,
         bars[200].open_time,
@@ -27,7 +37,7 @@ def simulate(bars, *, checkpoint=True, delay=0, capital=Decimal(1000000)):
     )
 
 
-def checkpoint_path():
+def checkpoint_path() -> list[Candle]:
     bars = declining_path()
     for i in range(205, len(bars)):
         bars[i] = bars[i].model_copy(
@@ -43,7 +53,9 @@ def checkpoint_path():
 
 @pytest.mark.parametrize("delay", [0, 1])
 @pytest.mark.parametrize("price", [102, 103])
-def test_checkpoint_uses_24h_closed_price_including_equality(monkeypatch, delay, price):
+def test_checkpoint_uses_24h_closed_price_including_equality(
+    monkeypatch: pytest.MonkeyPatch, delay: int, price: int
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = checkpoint_path()
     bars[228] = bars[228].model_copy(update={"close": Decimal(price), "low": Decimal(101)})
@@ -56,7 +68,9 @@ def test_checkpoint_uses_24h_closed_price_including_equality(monkeypatch, delay,
     assert result.fills[1].reason == "signal"
 
 
-def test_recovered_checkpoint_is_consumed_once_not_a_max_holding_limit(monkeypatch):
+def test_recovered_checkpoint_is_consumed_once_not_a_max_holding_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = checkpoint_path()
     bars[228] = bars[228].model_copy(update={"close": Decimal(104)})
@@ -65,14 +79,16 @@ def test_recovered_checkpoint_is_consumed_once_not_a_max_holding_limit(monkeypat
     assert result.fills[1].time == bars[-1].close_time
 
 
-def test_both_contexts_exit_without_extension(monkeypatch):
+def test_both_contexts_exit_without_extension(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = long_decline()
     assert simulate(bars) == simulate(bars, checkpoint=False)
 
 
 @pytest.mark.parametrize("kind", ["initial", "channel", "risk"])
-def test_earlier_safety_exit_is_not_delayed_by_checkpoint(monkeypatch, kind):
+def test_earlier_safety_exit_is_not_delayed_by_checkpoint(
+    monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = checkpoint_path()
     if kind == "initial":
@@ -92,7 +108,7 @@ def test_earlier_safety_exit_is_not_delayed_by_checkpoint(monkeypatch, kind):
     assert result.fills[1].reason == ("risk" if kind == "risk" else "signal")
 
 
-def test_future_price_cannot_move_checkpoint_reservation(monkeypatch):
+def test_future_price_cannot_move_checkpoint_reservation(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = checkpoint_path()
     before = simulate(bars)
@@ -104,7 +120,7 @@ def test_future_price_cannot_move_checkpoint_reservation(monkeypatch):
     assert before.fills[1].price != after.fills[1].price
 
 
-def test_checkpoint_rejects_incompatible_policy_or_manual_fork():
+def test_checkpoint_rejects_incompatible_policy_or_manual_fork() -> None:
     bars = setup()
     with pytest.raises(ValueError, match="중간 점검"):
         backtest.run_backtest(
@@ -128,7 +144,9 @@ def test_checkpoint_rejects_incompatible_policy_or_manual_fork():
         )
 
 
-def test_rejected_checkpoint_sell_retries_without_rechecking_recovery(monkeypatch):
+def test_rejected_checkpoint_sell_retries_without_rechecking_recovery(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = checkpoint_path()
     bars[229] = bars[229].model_copy(
@@ -141,7 +159,7 @@ def test_rejected_checkpoint_sell_retries_without_rechecking_recovery(monkeypatc
     assert result.fills[1].signal_time == bars[229].close_time
 
 
-def test_risk_replaces_delayed_checkpoint_order(monkeypatch):
+def test_risk_replaces_delayed_checkpoint_order(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = checkpoint_path()
     bars[229] = bars[229].model_copy(update={"close": Decimal(70), "low": Decimal(69)})
@@ -151,7 +169,9 @@ def test_risk_replaces_delayed_checkpoint_order(monkeypatch):
     assert result.fills[1].time == bars[231].open_time
 
 
-def test_next_actual_entry_clears_checkpoint_latch_but_preserves_account(monkeypatch):
+def test_next_actual_entry_clears_checkpoint_latch_but_preserves_account(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = checkpoint_path()
     bars[229] = bars[229].model_copy(update={"open": Decimal(110), "high": Decimal(111)})
@@ -174,7 +194,7 @@ def test_next_actual_entry_clears_checkpoint_latch_but_preserves_account(monkeyp
     assert result.max_drawdown > 0
 
 
-def test_evaluator_limits_checkpoint_to_short_context_budget_candidate(tmp_path):
+def test_evaluator_limits_checkpoint_to_short_context_budget_candidate(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="중간 점검"):
         evaluate(
             {name: [] for name in ("breakout-v1", "cash", "prior", "candidate")},
@@ -205,16 +225,16 @@ def test_evaluator_limits_checkpoint_to_short_context_budget_candidate(tmp_path)
     ],
 )
 def test_pipeline_checks_full_50_and_51_results(
-    tmp_path,
-    monkeypatch,
-    corrupt,
-    higher_low,
-    extension_floor,
-    liquidation_buffer,
-    liquidation_buffer_long,
-    entry_context,
-    entry_path_context,
-):
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    corrupt: bool,
+    higher_low: bool,
+    extension_floor: bool,
+    liquidation_buffer: bool,
+    liquidation_buffer_long: bool,
+    entry_context: bool,
+    entry_path_context: bool,
+) -> None:
     bars = checkpoint_path()
     if higher_low:
         bars[199] = bars[199].model_copy(update={"low": Decimal(99)})
@@ -227,7 +247,7 @@ def test_pipeline_checks_full_50_and_51_results(
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import Any, cast
 
 import pytest
 import torch
@@ -8,7 +11,7 @@ from evergreen.research.learning.breakout_meta import payoff_weights
 from evergreen.research.learning.models import Samples
 
 
-def fixture(intervals):
+def fixture(intervals: list[tuple[int, int]]) -> tuple[Samples, list[dict[str, Any]]]:
     origin = datetime(2020, 1, 1, tzinfo=UTC)
     signals = tuple(origin + timedelta(hours=a) for a, _ in intervals)
     ends = tuple(origin + timedelta(hours=b) for _, b in intervals)
@@ -27,21 +30,23 @@ def fixture(intervals):
     return samples, events
 
 
-def test_nonoverlap_and_touching_boundaries_preserve_payoff_weights():
+def test_nonoverlap_and_touching_boundaries_preserve_payoff_weights() -> None:
     sample, events = fixture([(0, 2), (2, 4), (5, 7)])
     raw, old = payoff_weights(events, [sample])
     adjusted, audit = payoff_weights(events, [sample], overlap_adjusted=True)
     assert torch.equal(raw, adjusted)
-    assert audit["weighted_prior"] == old["weighted_prior"]
-    assert audit["uniqueness"]["values"] == ["1", "1", "1"]
+    assert cast(str, audit["weighted_prior"]) == old["weighted_prior"]
+    assert cast(dict[str, Any], audit["uniqueness"])["values"] == ["1", "1", "1"]
 
 
-def test_partial_overlap_is_per_event_mean_inverse_concurrency():
+def test_partial_overlap_is_per_event_mean_inverse_concurrency() -> None:
     sample, events = fixture([(0, 4), (2, 5), (7, 8)])
     weights, audit = payoff_weights(events, [sample], overlap_adjusted=True)
     assert weights.tolist() == pytest.approx([0.075, 0.1 * 2 / 3, 0.1])
-    assert [float(x) for x in audit["uniqueness"]["values"]] == pytest.approx([0.75, 2 / 3, 1])
-    assert float(audit["weighted_prior"]) == pytest.approx(
+    assert [float(x) for x in cast(dict[str, Any], audit["uniqueness"])["values"]] == pytest.approx(
+        [0.75, 2 / 3, 1]
+    )
+    assert float(cast(str, audit["weighted_prior"])) == pytest.approx(
         (0.1 * 2 / 3) / (0.075 + 0.1 * 2 / 3 + 0.1)
     )
     # Reversing order reverses coefficients, not their meaning; blocks are not reset.
@@ -54,22 +59,22 @@ def test_partial_overlap_is_per_event_mean_inverse_concurrency():
     other, _ = payoff_weights(events[::-1], [reversed_sample], overlap_adjusted=True)
     assert torch.equal(weights.flip(0), other)
     assert audit["sample_sha256"]
-    assert audit["weight_sha256"] and audit["uniqueness"]["sha256"]
+    assert audit["weight_sha256"] and cast(dict[str, Any], audit["uniqueness"])["sha256"]
 
 
-def test_events_outside_purged_samples_cannot_change_coefficients():
+def test_events_outside_purged_samples_cannot_change_coefficients() -> None:
     sample, events = fixture([(0, 4), (2, 5), (7, 8)])
     subset = Samples(
         sample.features[:1], sample.labels[:1], sample.signal_times[:1], sample.label_times[:1]
     )
     weights, audit = payoff_weights(events, [subset], overlap_adjusted=True)
     assert weights.tolist() == pytest.approx([0.1])
-    assert audit["uniqueness"]["values"] == ["1"]
-    assert Decimal(audit["weighted_prior"]) == 0
+    assert cast(dict[str, Any], audit["uniqueness"])["values"] == ["1"]
+    assert Decimal(cast(str, audit["weighted_prior"])) == 0
 
 
 @pytest.mark.parametrize("intervals", [[(0, 0)], [(2, 1)], [(0, 1.5)], [(0, 2), (0, 3)]])
-def test_invalid_intervals_and_duplicates_are_rejected(intervals):
+def test_invalid_intervals_and_duplicates_are_rejected(intervals: list[tuple[int, int]]) -> None:
     sample, events = fixture(intervals)
     with pytest.raises(ValueError):
         payoff_weights(events, [sample], overlap_adjusted=True)

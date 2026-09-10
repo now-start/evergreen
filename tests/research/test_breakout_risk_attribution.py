@@ -1,6 +1,11 @@
+from __future__ import annotations
+
 import json
 import sys
 from decimal import Decimal
+from pathlib import Path
+from types import FrameType
+from typing import Never, TypedDict
 
 import pytest
 from test_breakout_entry_stop import setup
@@ -12,7 +17,18 @@ from evergreen.research.experiments.breakout_meta import costs as trading_costs
 from evergreen.research.experiments.breakout_risk_attribution import first_breach, observe
 
 
-def test_observer_matches_result_and_does_not_change_profile():
+class TrendOptions(TypedDict, total=False):
+    breakout_entry_stop: bool
+    breakout_entry_stop_adaptive_trail: bool
+    breakout_entry_stop_budget: bool
+    breakout_entry_stop_channel_reset: bool
+    breakout_entry_stop_confirmations: int
+    breakout_entry_stop_profit_trail: bool
+    breakout_entry_stop_trend_confirmation: bool
+    breakout_entry_stop_trend_lookback: int
+
+
+def test_observer_matches_result_and_does_not_change_profile() -> None:
     bars = setup()
     start, costs = bars[200].open_time, trading_costs()
     expected = run_backtest(bars, start, Decimal(1000000), costs, "breakout-v1")
@@ -29,8 +45,8 @@ def test_observer_matches_result_and_does_not_change_profile():
     )
 
 
-def test_observer_restores_profile_on_failure():
-    def fail():
+def test_observer_restores_profile_on_failure() -> None:
+    def fail() -> Never:
         raise ValueError("expected failure")
 
     before = sys.getprofile()
@@ -39,22 +55,25 @@ def test_observer_restores_profile_on_failure():
     assert sys.getprofile() is before
 
 
-def test_observer_refuses_existing_profiler():
-    def profiler(frame, event, arg):
+def test_observer_refuses_existing_profiler() -> None:
+    def profiler(frame: FrameType, event: str, arg: object) -> None:
         return None
+
+    def unexpected() -> Never:
+        raise AssertionError("callback must not run with an existing profiler")
 
     previous = sys.getprofile()
     try:
         sys.setprofile(profiler)
         with pytest.raises(ValueError, match="프로파일러"):
-            observe(lambda: None)
+            observe(unexpected)
         assert sys.getprofile() is profiler
     finally:
         sys.setprofile(previous)
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_risk_trace_retains_pending_and_fill_costs(delay):
+def test_risk_trace_retains_pending_and_fill_costs(delay: int) -> None:
     bars = setup()
     start, costs = bars[200].open_time, trading_costs()
     # A large fall after the buy crosses the account limit, independently of exit signals.
@@ -88,17 +107,20 @@ def test_risk_trace_retains_pending_and_fill_costs(delay):
     assert Decimal(fill_mark["btc"]) == 0
     if delay:
         assert any(m["pending"] and m["pending"][2] == "risk" for m in marks)
-    assert first_breach(result, marks)["classification"] == "holding_price_crossing"
+    first = first_breach(result, marks)
+    assert first is not None
+    assert first["classification"] == "holding_price_crossing"
 
 
 @pytest.mark.parametrize("side", ["buy", "sell"])
-def test_cost_only_breach_including_boundary_settlement(side):
+def test_cost_only_breach_including_boundary_settlement(side: str) -> None:
     bars = setup()
     costs = trading_costs().model_copy(update={f"{side}_fee": Decimal(".2")})
     result, marks = observe(
         lambda: run_backtest(bars, bars[200].open_time, Decimal(1000000), costs, "breakout-v1")
     )
     finding = first_breach(result, marks)
+    assert finding is not None
     assert finding["classification"] == "fill_cost_crossing"
     assert finding["first"]["fill"]["side"] == side
     if side == "sell":
@@ -106,7 +128,7 @@ def test_cost_only_breach_including_boundary_settlement(side):
         assert Decimal(finding["first"]["btc"]) == 0
 
 
-def test_trace_rejects_corrupt_curve_and_halted_flag():
+def test_trace_rejects_corrupt_curve_and_halted_flag() -> None:
     bars = setup()
     result, marks = observe(
         lambda: run_backtest(
@@ -122,13 +144,15 @@ def test_trace_rejects_corrupt_curve_and_halted_flag():
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_pipeline_replays_all_halted_cases_and_rejects_result_drift(tmp_path, monkeypatch, corrupt):
+def test_pipeline_replays_all_halted_cases_and_rejects_result_drift(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = setup()
     bars[202] = bars[202].model_copy(update={"close": Decimal(80), "low": Decimal(79)})
     start = bars[200].open_time
     source, output = tmp_path / "source", tmp_path / "output"
 
-    def save(name, value):
+    def save(name: str, value: object) -> None:
         path = source / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(value))
@@ -141,7 +165,7 @@ def test_pipeline_replays_all_halted_cases_and_rejects_result_drift(tmp_path, mo
     monkeypatch.setattr(runner, "load_dataset", lambda d: (bars, "fixture"))
     monkeypatch.setattr(runner, "SCENARIOS", [("base", 1, 1, 0)])
     for model in ("breakout-v1", "cash", "prior", *runner.MODELS):
-        options = {
+        options: TrendOptions = {
             **MODES,
             "breakout_entry_stop_trend_lookback": 168
             if model == "entry-stop-trend-context"

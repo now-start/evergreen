@@ -1,18 +1,22 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
 import pytest
 from test_breakout_exit import fixture
 
-from evergreen.market import write_json
-from evergreen.research.backtest import run_backtest
+from evergreen.market import Candle, write_json
+from evergreen.research.backtest import Result, run_backtest
 from evergreen.research.breakout_features import prior_mean_true_range
 from evergreen.research.experiments import breakout_confirmation as runner
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
 
 
-def setup():
+def setup() -> list[Candle]:
     bars = fixture()
     bars[180] = bars[180].model_copy(update={"low": Decimal(99)})
     bars[160] = bars[160].model_copy(update={"low": Decimal(80)})
@@ -21,7 +25,7 @@ def setup():
     return bars
 
 
-def simulate(bars, *, enabled=True, delay=0, **kwargs):
+def simulate(bars: list[Candle], *, enabled: bool = True, delay: int = 0, **kwargs: Any) -> Result:
     return run_backtest(
         bars,
         bars[200].open_time,
@@ -35,7 +39,7 @@ def simulate(bars, *, enabled=True, delay=0, **kwargs):
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_entry_stop_uses_signal_tr_actual_fill_and_strict_close(delay):
+def test_entry_stop_uses_signal_tr_actual_fill_and_strict_close(delay: int) -> None:
     bars = setup()
     if delay:
         bars[201] = bars[201].model_copy(update={"open": Decimal(108), "high": Decimal(109)})
@@ -52,7 +56,7 @@ def test_entry_stop_uses_signal_tr_actual_fill_and_strict_close(delay):
     assert simulate(bars, enabled=False, delay=delay).fills[1].reason == "settlement"
 
 
-def test_entry_stop_does_not_trail_price_or_recompute_distance():
+def test_entry_stop_does_not_trail_price_or_recompute_distance() -> None:
     bars = setup()
     bars[201] = bars[201].model_copy(update={"close": Decimal(110), "high": Decimal(111)})
     bars[202] = bars[202].model_copy(update={"open": Decimal(110), "high": Decimal(111)})
@@ -62,7 +66,7 @@ def test_entry_stop_does_not_trail_price_or_recompute_distance():
 
 
 @pytest.mark.parametrize("wide", [False, True])
-def test_zero_or_nonpositive_stop_does_not_add_exits(wide):
+def test_zero_or_nonpositive_stop_does_not_add_exits(wide: bool) -> None:
     bars = [
         b.model_copy(update=dict.fromkeys(("open", "high", "low", "close"), Decimal(100)))
         for b in fixture()
@@ -80,7 +84,7 @@ def test_zero_or_nonpositive_stop_does_not_add_exits(wide):
     assert simulate(bars) == simulate(bars, enabled=False)
 
 
-def test_new_fill_resets_fixed_entry_stop_and_risk_still_wins():
+def test_new_fill_resets_fixed_entry_stop_and_risk_still_wins() -> None:
     bars = setup()
     bars[204] = bars[204].model_copy(update={"close": Decimal(97), "low": Decimal(96)})
     bars[250] = bars[250].model_copy(update={"close": Decimal(110), "high": Decimal(111)})
@@ -115,12 +119,12 @@ def test_new_fill_resets_fixed_entry_stop_and_risk_still_wins():
         {"breakout_rejection_latch": True},
     ],
 )
-def test_entry_stop_rejects_other_modes(kwargs):
+def test_entry_stop_rejects_other_modes(kwargs: Any) -> None:
     with pytest.raises(ValueError, match="고정 손절"):
         simulate(setup(), **kwargs)
 
 
-def test_entry_stop_rejects_unknown_candidate_and_cli_mix(tmp_path):
+def test_entry_stop_rejects_unknown_candidate_and_cli_mix(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="고정 손절"):
         evaluate(
             {n: [] for n in ("cash", "breakout-v1", "prior")},
@@ -135,7 +139,7 @@ def test_entry_stop_rejects_unknown_candidate_and_cli_mix(tmp_path):
     assert not (tmp_path / "out").exists()
 
 
-def test_entry_stop_skips_unfilled_orders_and_rejects_unrelated_strategy():
+def test_entry_stop_skips_unfilled_orders_and_rejects_unrelated_strategy() -> None:
     bars = setup()
     args = (bars, bars[200].open_time, Decimal(1000), costs())
     result = run_backtest(*args, "breakout-v1", breakout_entry_stop=True)
@@ -145,12 +149,14 @@ def test_entry_stop_skips_unfilled_orders_and_rejects_unrelated_strategy():
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_entry_stop_pipeline_isolates_latch_control(tmp_path, monkeypatch, corrupt):
+def test_entry_stop_pipeline_isolates_latch_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = setup()
     bars[204] = bars[204].model_copy(update={"close": Decimal(97), "low": Decimal(96)})
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

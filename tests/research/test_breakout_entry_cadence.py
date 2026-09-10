@@ -1,16 +1,21 @@
+from __future__ import annotations
+
 import json
 from datetime import timedelta
 from decimal import Decimal as D
+from pathlib import Path
+from typing import Any
 
 import pytest
 from test_breakout_liquidation_buffer import path
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
+from evergreen.research.backtest import Result
 from evergreen.research.experiments.breakout_meta import costs
 from evergreen.research.experiments.strategy_family import CONTROLS, simulate
 
 
-def replay(bars, cadence=4, delay=0, **kwargs):
+def replay(bars: list[Candle], cadence: int = 4, delay: int = 0, **kwargs: Any) -> Result:
     return simulate(
         bars,
         bars[200].open_time,
@@ -25,7 +30,7 @@ def replay(bars, cadence=4, delay=0, **kwargs):
 @pytest.mark.parametrize(
     "shift,allowed", [(0, True), (1, False), (2, False), (3, False), (16, True)]
 )
-def test_initial_signal_uses_utc_close_boundary(shift, allowed):
+def test_initial_signal_uses_utc_close_boundary(shift: int, allowed: bool) -> None:
     bars = [
         b.model_copy(update={"open_time": b.open_time + timedelta(hours=shift)}) for b in path()
     ]
@@ -36,11 +41,17 @@ def test_initial_signal_uses_utc_close_boundary(shift, allowed):
         any(f.side == "buy" and f.signal_time == bars[199].close_time for f in result.fills)
         is allowed
     )
-    assert all(f.signal_time.hour % 4 == 0 for f in result.fills if f.side == "buy")
+    assert all(
+        f.signal_time is not None and f.signal_time.hour % 4 == 0
+        for f in result.fills
+        if f.side == "buy"
+    )
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_pending_fill_and_hourly_exit_are_unchanged(monkeypatch, delay):
+def test_pending_fill_and_hourly_exit_are_unchanged(
+    monkeypatch: pytest.MonkeyPatch, delay: int
+) -> None:
     from evergreen.research import backtest
 
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
@@ -57,7 +68,7 @@ def test_pending_fill_and_hourly_exit_are_unchanged(monkeypatch, delay):
     assert result.fills[1].time == bars[205 + delay].open_time
 
 
-def test_skipped_signal_is_not_queued_for_next_allowed_hour():
+def test_skipped_signal_is_not_queued_for_next_allowed_hour() -> None:
     bars = [b.model_copy(update={"open_time": b.open_time + timedelta(hours=1)}) for b in path()]
     # Initial 09 UTC breakout disappears before 12 UTC.
     for i in range(200, len(bars)):
@@ -68,7 +79,7 @@ def test_skipped_signal_is_not_queued_for_next_allowed_hour():
     assert not replay(bars).fills
 
 
-def test_default_parity_and_invalid_combinations():
+def test_default_parity_and_invalid_combinations() -> None:
     bars = path()
     assert replay(bars, 1) == simulate(bars, bars[200].open_time, "liquidation-buffer", costs(), 0)
     for cadence in (0, 2, 6):
@@ -80,7 +91,7 @@ def test_default_parity_and_invalid_combinations():
         simulate(bars, bars[200].open_time, "breakout-v1", costs(), 0, entry_cadence_hours=4)
 
 
-def test_next_allowed_entry_uses_new_signal_and_current_history():
+def test_next_allowed_entry_uses_new_signal_and_current_history() -> None:
     bars = [b.model_copy(update={"open_time": b.open_time + timedelta(hours=1)}) for b in path()]
     bars[202] = bars[202].model_copy(update={"close": D(110), "high": D(111)})
     result = replay(bars)
@@ -90,7 +101,7 @@ def test_next_allowed_entry_uses_new_signal_and_current_history():
     assert result.fills[0].time == bars[203].open_time
 
 
-def test_channel_reset_on_nonentry_hour_is_not_skipped(monkeypatch):
+def test_channel_reset_on_nonentry_hour_is_not_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
     from evergreen.research import backtest
 
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
@@ -112,14 +123,16 @@ def test_channel_reset_on_nonentry_hour_is_not_skipped(monkeypatch):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_study_replays_four_controls(tmp_path, monkeypatch, corrupt):
+def test_study_replays_four_controls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     from evergreen.research.experiments import breakout_entry_window as runner
     from evergreen.research.experiments.regime import SCENARIOS
 
     bars = path()
     start = bars[200].open_time
 
-    def blocks(raw, output):
+    def blocks(raw: Path, output: Path) -> list[list[Candle]]:
         output.mkdir()
         write_json(output / "coverage.json", {"fixture": True})
         return [bars]

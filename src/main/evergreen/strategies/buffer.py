@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from datetime import timedelta
 from decimal import ROUND_DOWN, Decimal
-from typing import Annotated, Literal
+from typing import Annotated, Final, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
@@ -11,7 +11,7 @@ from evergreen.market import Candle, Nonnegative, Positive
 from evergreen.strategies.breakout import target
 from evergreen.strategies.types import Side
 
-ID = "breakout-buffer-early3-v1"
+ID: Final = "breakout-buffer-early3-v1"
 ExecutionStrategy = Literal["breakout-v1", "breakout-buffer-early3-v1"]
 LIMIT = Decimal(".20")
 ONE = Decimal(1)

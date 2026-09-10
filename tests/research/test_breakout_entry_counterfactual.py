@@ -1,18 +1,27 @@
+from __future__ import annotations
+
 import json
 import sys
-from datetime import timedelta
+from datetime import datetime, timedelta
+from decimal import Decimal
 from decimal import Decimal as D
+from pathlib import Path
+from typing import Literal
 
 import pytest
 from test_breakout_entry_stop_trend_context import MODES
 from test_breakout_exit_checkpoint import checkpoint_path
 from test_breakout_liquidation_buffer import path
 
+from evergreen.market import Candle
 from evergreen.research import backtest
+from evergreen.research.backtest import Result
 from evergreen.research.experiments.breakout_meta import costs
 
 
-def simulate(bars, *, entry=None, delay=0, lookback=24):
+def simulate(
+    bars: list[Candle], *, entry: datetime | None = None, delay: int = 0, lookback: int = 24
+) -> Result:
     return backtest.run_backtest(
         bars,
         bars[200].open_time,
@@ -30,7 +39,9 @@ def simulate(bars, *, entry=None, delay=0, lookback=24):
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_target_first_entry_matches_long_control_and_keeps_entry_prefix(monkeypatch, delay):
+def test_target_first_entry_matches_long_control_and_keeps_entry_prefix(
+    monkeypatch: pytest.MonkeyPatch, delay: int
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
     bars = checkpoint_path()
     original = simulate(bars, delay=delay)
@@ -42,7 +53,7 @@ def test_target_first_entry_matches_long_control_and_keeps_entry_prefix(monkeypa
     ]
 
 
-def test_unmatched_or_mixed_entry_fork_fails_closed(monkeypatch):
+def test_unmatched_or_mixed_entry_fork_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
     bars = path()
     with pytest.raises(ValueError, match="진입 분기"):
@@ -51,7 +62,7 @@ def test_unmatched_or_mixed_entry_fork_fails_closed(monkeypatch):
         simulate(bars, entry=bars[199].close_time, lookback=168)
 
 
-def test_only_target_position_uses_long_context(monkeypatch):
+def test_only_target_position_uses_long_context(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
     bars = path()
     bars[204] = bars[204].model_copy(update={"open": D(110), "high": D(111)})
@@ -64,7 +75,12 @@ def test_only_target_position_uses_long_context(monkeypatch):
     seen = []
     mark = backtest._Portfolio.mark
 
-    def record(self, price, time, phase):
+    def record(
+        self: backtest._Portfolio,
+        price: D,
+        time: datetime,
+        phase: Literal["open", "close", "settlement"],
+    ) -> None:
         if (
             phase == "open"
             and self.fills
@@ -82,7 +98,7 @@ def test_only_target_position_uses_long_context(monkeypatch):
     assert changed.fills[2].price * changed.fills[2].quantity + changed.fills[2].fee > D(1000000)
 
 
-def test_pair_labels_censor_and_reject_changed_prefix(monkeypatch):
+def test_pair_labels_censor_and_reject_changed_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
     from evergreen.research.experiments.breakout_entry_counterfactual import pair_record
 
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
@@ -97,7 +113,7 @@ def test_pair_labels_censor_and_reject_changed_prefix(monkeypatch):
         pair_record(original, damaged, original.fills[0])
 
 
-def test_completed_tie_and_later_exit_label_time(monkeypatch):
+def test_completed_tie_and_later_exit_label_time(monkeypatch: pytest.MonkeyPatch) -> None:
     from evergreen.research.experiments.breakout_entry_counterfactual import pair_record
 
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
@@ -118,7 +134,9 @@ def test_completed_tie_and_later_exit_label_time(monkeypatch):
         (D("-0.0000011"), "short"),
     ],
 )
-def test_label_tolerance_is_symmetric(monkeypatch, delta, label):
+def test_label_tolerance_is_symmetric(
+    monkeypatch: pytest.MonkeyPatch, delta: Decimal, label: str
+) -> None:
     from evergreen.research.experiments.breakout_entry_counterfactual import pair_record
 
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
@@ -132,7 +150,7 @@ def test_label_tolerance_is_symmetric(monkeypatch, delta, label):
     assert record["label"] == label and D(record["pnl_delta"]) == delta
 
 
-def test_features_ignore_future_bars(monkeypatch):
+def test_features_ignore_future_bars(monkeypatch: pytest.MonkeyPatch) -> None:
     from evergreen.research.experiments.breakout_entry_counterfactual import entry_features
 
     bars = checkpoint_path()
@@ -144,7 +162,9 @@ def test_features_ignore_future_bars(monkeypatch):
         entry_features(bars, signal - timedelta(minutes=1))
 
 
-def test_completed_label_waits_for_both_exits_and_checks_curve(monkeypatch):
+def test_completed_label_waits_for_both_exits_and_checks_curve(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from evergreen.research.experiments.breakout_entry_counterfactual import pair_record
 
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
@@ -164,8 +184,8 @@ def test_completed_label_waits_for_both_exits_and_checks_curve(monkeypatch):
 
 @pytest.mark.parametrize("corrupt", [False, True])
 def test_pipeline_preserves_full_control_and_records_immutable_artifacts(
-    tmp_path, monkeypatch, corrupt
-):
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     from evergreen.market import write_json
     from evergreen.research.experiments import breakout_entry_counterfactual as study
     from evergreen.research.experiments.breakout_meta import evaluate

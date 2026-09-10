@@ -1,16 +1,19 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal as D
+from pathlib import Path
 
 import pytest
 from test_breakout_liquidation_buffer import path
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research.experiments.breakout_meta import costs
 from evergreen.research.experiments.strategy_family import simulate
 
 
 @pytest.mark.parametrize("fee,slip", [(1, 1), (0, 1), (1, 0), (0, 0)])
-def test_decomposition_keeps_fixed_fills_separate_from_rerun(fee, slip):
+def test_decomposition_keeps_fixed_fills_separate_from_rerun(fee: int, slip: int) -> None:
     from evergreen.research.experiments.cost_path import compare
 
     bars = path()
@@ -38,13 +41,15 @@ def test_decomposition_keeps_fixed_fills_separate_from_rerun(fee, slip):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_pipeline_frozen_baseline_and_no_promotion(tmp_path, monkeypatch, corrupt):
+def test_pipeline_frozen_baseline_and_no_promotion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     from evergreen.research.experiments import cost_path as runner
 
     bars = path()
     start = bars[200].open_time
 
-    def blocks(raw, output):
+    def blocks(raw: Path, output: Path) -> list[list[Candle]]:
         output.mkdir()
         write_json(output / "coverage.json", {"fixture": True})
         return [bars]
@@ -85,7 +90,7 @@ def test_pipeline_frozen_baseline_and_no_promotion(tmp_path, monkeypatch, corrup
             runner.run_study(tmp_path, ref, out)
 
 
-def test_sizing_effect_is_not_misreported_as_schedule_change():
+def test_sizing_effect_is_not_misreported_as_schedule_change() -> None:
     from evergreen.research.experiments.cost_path import compare, summarize
 
     bars = path()

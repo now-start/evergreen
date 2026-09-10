@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -7,7 +11,7 @@ from evergreen.research.experiments import breakout_errors
 from evergreen.research.experiments.breakout_errors import analyze, event_metrics, trade_pnl
 
 
-def test_event_metrics_separates_missed_winners_and_avoided_losses():
+def test_event_metrics_separates_missed_winners_and_avoided_losses() -> None:
     rows = [
         {"score": ".8", "threshold": ".5", "prior": ".5", "net_return": ".2"},
         {"score": ".1", "threshold": ".5", "prior": ".5", "net_return": ".1"},
@@ -25,7 +29,7 @@ def test_event_metrics_separates_missed_winners_and_avoided_losses():
     assert event_metrics(rows, strict=False)["tp"] == 1
 
 
-def test_empty_events_do_not_imply_perfect_score():
+def test_empty_events_do_not_imply_perfect_score() -> None:
     assert event_metrics([], strict=True)["brier"] is None
 
 
@@ -43,14 +47,14 @@ def test_empty_events_do_not_imply_perfect_score():
     ],
 )
 def test_analysis_checks_prediction_coverage_and_legacy_fixed_protocol(
-    tmp_path, monkeypatch, experiment, mode
-):
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, experiment: str, mode: str | None
+) -> None:
     monkeypatch.setattr(breakout_errors, "SEEDS", (17,))
     model = "linear-v1" if experiment == "20" else "mlp-v1"
     monkeypatch.setattr(breakout_errors, "MODELS", (model,))
     source = tmp_path / "source"
 
-    def save(name, value):
+    def save(name: str, value: object) -> None:
         path = source / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(value))
@@ -86,7 +90,7 @@ def test_analysis_checks_prediction_coverage_and_legacy_fixed_protocol(
     )
     prediction = f"seed-17/folds/2022-01-01/scores.{model}.json"
     save(prediction, {start: ".8", end: ".9"})
-    result = {
+    result: dict[str, Any] = {
         "start": start,
         "end": end,
         "costs": {},
@@ -111,15 +115,15 @@ def test_analysis_checks_prediction_coverage_and_legacy_fixed_protocol(
 
 
 @pytest.mark.parametrize("score", ("NaN", "1.1", "-.1"))
-def test_event_metrics_rejects_invalid_scores(score):
+def test_event_metrics_rejects_invalid_scores(score: str) -> None:
     with pytest.raises(ValueError):
         event_metrics(
             [{"score": score, "threshold": ".5", "prior": ".5", "net_return": ".1"}], strict=True
         )
 
 
-def test_trade_pnl_reconciles_fees_and_settlement():
-    result = {
+def test_trade_pnl_reconciles_fees_and_settlement() -> None:
+    result: dict[str, Any] = {
         "initial_capital": "100",
         "final_equity": "108",
         "btc": "0",

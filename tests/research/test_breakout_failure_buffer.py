@@ -1,13 +1,25 @@
+from __future__ import annotations
+
+from datetime import datetime
 from decimal import Decimal
+from typing import TypedDict
 
 import pytest
 from test_breakout_exit import fixture
 
-from evergreen.research.backtest import run_backtest
+from evergreen.market import Candle
+from evergreen.research.backtest import Costs, run_backtest
 from evergreen.research.experiments.breakout_meta import costs
+from evergreen.strategies import Strategy
 
 
-def test_buffer_uses_prior_true_range_and_is_frozen_with_delayed_fills():
+class FailureOptions(TypedDict):
+    breakout_failure_buffer: bool
+    breakout_failure_exit: bool
+    extra_delay_bars: int
+
+
+def test_buffer_uses_prior_true_range_and_is_frozen_with_delayed_fills() -> None:
     bars = fixture()
     bars[180] = bars[180].model_copy(update={"low": Decimal(99)})
     bars[174] = bars[174].model_copy(update={"close": Decimal(90), "low": Decimal(89)})
@@ -99,23 +111,29 @@ def test_buffer_uses_prior_true_range_and_is_frozen_with_delayed_fills():
     ]
 
 
-def test_zero_range_matches_unbuffered_exit():
+def test_zero_range_matches_unbuffered_exit() -> None:
     bars = fixture()
     for i in range(199):
         bars[i] = bars[i].model_copy(
             update=dict.fromkeys(("open", "high", "low", "close"), Decimal(100))
         )
     bars[210] = bars[210].model_copy(update={"close": Decimal("99.9"), "low": Decimal(99)})
-    args = (bars, bars[200].open_time, Decimal(1000000), costs(), "breakout-v1")
+    args: tuple[list[Candle], datetime, Decimal, Costs, Strategy] = (
+        bars,
+        bars[200].open_time,
+        Decimal(1000000),
+        costs(),
+        "breakout-v1",
+    )
     original = run_backtest(*args, breakout_failure_exit=True)
     assert original == run_backtest(*args, breakout_failure_exit=True, breakout_failure_buffer=True)
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_buffer_does_not_suppress_channel_exit_or_risk(delay):
+def test_buffer_does_not_suppress_channel_exit_or_risk(delay: int) -> None:
     bars = fixture()
     bars[250] = bars[250].model_copy(update={"close": Decimal(100), "low": Decimal(99)})
-    options = {
+    options: FailureOptions = {
         "breakout_failure_exit": True,
         "breakout_failure_buffer": True,
         "extra_delay_bars": delay,
@@ -134,7 +152,7 @@ def test_buffer_does_not_suppress_channel_exit_or_risk(delay):
 
 
 @pytest.mark.parametrize("enabled, confirmations", [(False, 1), (True, 2)])
-def test_buffer_rejects_disabled_or_combined_modes(enabled, confirmations):
+def test_buffer_rejects_disabled_or_combined_modes(enabled: bool, confirmations: int) -> None:
     bars = fixture()
     with pytest.raises(ValueError, match="변동 폭"):
         run_backtest(

@@ -1,16 +1,40 @@
-from datetime import timedelta
+from __future__ import annotations
+
+from datetime import datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
+from typing import TypedDict
 
 import pytest
 from test_breakout_exit import fixture
 from test_breakout_trailing import trailing_bars
 
-from evergreen.research.backtest import run_backtest
+from evergreen.market import Candle
+from evergreen.research.backtest import Costs, run_backtest
 from evergreen.research.experiments import breakout_confirmation
 from evergreen.research.experiments.breakout_meta import costs, evaluate
+from evergreen.strategies import Strategy
 
 
-def profit_bars():
+class TrailingOptions(TypedDict):
+    breakout_trailing_exit: bool
+    extra_delay_bars: int
+
+
+class DelayedAdaptiveOptions(TypedDict):
+    breakout_trailing_adaptive: bool
+    breakout_trailing_exit: bool
+    breakout_trailing_profit_only: bool
+    extra_delay_bars: int
+
+
+class AdaptiveOptions(TypedDict):
+    breakout_trailing_exit: bool
+    breakout_trailing_profit_only: bool
+    breakout_trailing_adaptive: bool
+
+
+def profit_bars() -> list[Candle]:
     bars = trailing_bars()
     # Buy104 + distance7.125: equality activates; close104 is then exit equality.
     bars[230] = bars[230].model_copy(update={"close": Decimal("111.125"), "high": Decimal(112)})
@@ -20,12 +44,18 @@ def profit_bars():
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_profit_activation_boundary_persists_after_pullback_and_is_causal(delay):
+def test_profit_activation_boundary_persists_after_pullback_and_is_causal(delay: int) -> None:
     bars = profit_bars()
     if delay:
         bars[200] = bars[200].model_copy(update={"close": Decimal(120)})
-    args = (bars, bars[200].open_time, Decimal(1000000), costs(), "breakout-v1")
-    options = {"breakout_trailing_exit": True, "extra_delay_bars": delay}
+    args: tuple[list[Candle], datetime, Decimal, Costs, Strategy] = (
+        bars,
+        bars[200].open_time,
+        Decimal(1000000),
+        costs(),
+        "breakout-v1",
+    )
+    options: TrailingOptions = {"breakout_trailing_exit": True, "extra_delay_bars": delay}
     original = run_backtest(*args, **options)
     assert original == run_backtest(*args, **options, breakout_trailing_profit_only=False)
     result = run_backtest(*args, **options, breakout_trailing_profit_only=True)
@@ -40,7 +70,7 @@ def test_profit_activation_boundary_persists_after_pullback_and_is_causal(delay)
     )
 
 
-def test_profit_activation_uses_actual_delayed_entry_price_not_signal_or_prior_open():
+def test_profit_activation_uses_actual_delayed_entry_price_not_signal_or_prior_open() -> None:
     bars = profit_bars()
     bars[201] = bars[201].model_copy(update={"open": Decimal(105)})
     result = run_backtest(
@@ -59,7 +89,7 @@ def test_profit_activation_uses_actual_delayed_entry_price_not_signal_or_prior_o
 
 
 @pytest.mark.parametrize("adaptive", [False, True])
-def test_profit_activation_resets_after_new_buy(adaptive):
+def test_profit_activation_resets_after_new_buy(adaptive: bool) -> None:
     bars = profit_bars()
     if adaptive:
         # Keep current range below the entry floor so both modes sell at233.
@@ -103,12 +133,18 @@ def test_profit_activation_resets_after_new_buy(adaptive):
 
 @pytest.mark.parametrize("delay", [0, 1])
 @pytest.mark.parametrize("adaptive", [False, True])
-def test_unarmed_profit_trailing_keeps_channel_exit_and_risk(delay, adaptive):
+def test_unarmed_profit_trailing_keeps_channel_exit_and_risk(delay: int, adaptive: bool) -> None:
     bars = fixture()
     bars[180] = bars[180].model_copy(update={"low": Decimal(1)})
     bars[250] = bars[250].model_copy(update={"close": Decimal(100), "low": Decimal(99)})
-    args = (bars, bars[200].open_time, Decimal(1000000), costs(), "breakout-v1")
-    options = {
+    args: tuple[list[Candle], datetime, Decimal, Costs, Strategy] = (
+        bars,
+        bars[200].open_time,
+        Decimal(1000000),
+        costs(),
+        "breakout-v1",
+    )
+    options: DelayedAdaptiveOptions = {
         "breakout_trailing_exit": True,
         "breakout_trailing_profit_only": True,
         "extra_delay_bars": delay,
@@ -128,15 +164,21 @@ def test_unarmed_profit_trailing_keeps_channel_exit_and_risk(delay, adaptive):
 
 
 @pytest.mark.parametrize("adaptive", [False, True])
-def test_profit_trailing_zero_range_and_rejected_buy(adaptive):
+def test_profit_trailing_zero_range_and_rejected_buy(adaptive: bool) -> None:
     bars = fixture()
     for i in range(199):
         bars[i] = bars[i].model_copy(
             update=dict.fromkeys(("open", "high", "low", "close"), Decimal(100))
         )
     bars[250] = bars[250].model_copy(update={"close": Decimal(99), "low": Decimal(98)})
-    args = (bars, bars[200].open_time, Decimal(1000000), costs(), "breakout-v1")
-    options = {
+    args: tuple[list[Candle], datetime, Decimal, Costs, Strategy] = (
+        bars,
+        bars[200].open_time,
+        Decimal(1000000),
+        costs(),
+        "breakout-v1",
+    )
+    options: AdaptiveOptions = {
         "breakout_trailing_exit": True,
         "breakout_trailing_profit_only": True,
         "breakout_trailing_adaptive": adaptive,
@@ -148,7 +190,7 @@ def test_profit_trailing_zero_range_and_rejected_buy(adaptive):
     assert small.rejections and not small.fills and small.cash == 1000
 
 
-def test_profit_trailing_requires_trailing_mode_and_cannot_mix_runner_modes(tmp_path):
+def test_profit_trailing_requires_trailing_mode_and_cannot_mix_runner_modes(tmp_path: Path) -> None:
     bars = fixture()
     with pytest.raises(ValueError, match="활성"):
         run_backtest(

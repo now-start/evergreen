@@ -1,18 +1,33 @@
+from __future__ import annotations
+
 import json
+from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
 import pytest
 from test_breakout_exit import fixture
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research import backtest
-from evergreen.research.backtest import run_backtest
+from evergreen.research.backtest import Result, run_backtest
 from evergreen.research.experiments import breakout_confirmation as runner
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
+from evergreen.strategies import Strategy, signal_target
+from evergreen.strategies.types import Side
 
 
-def simulate(bars, scores, *, latch=True, delay=0, capital=1000000, **kwargs):
+def simulate(
+    bars: list[Candle],
+    scores: dict[datetime, int],
+    *,
+    latch: bool = True,
+    delay: int = 0,
+    capital: Decimal | int = 1000000,
+    **kwargs: Any,
+) -> Result:
     return run_backtest(
         bars,
         bars[200].open_time,
@@ -27,7 +42,7 @@ def simulate(bars, scores, *, latch=True, delay=0, capital=1000000, **kwargs):
     )
 
 
-def setup():
+def setup() -> tuple[list[Candle], dict[datetime, int]]:
     bars = fixture()
     bars[180] = bars[180].model_copy(update={"low": Decimal(99)})
     bars[220] = bars[220].model_copy(update={"close": Decimal(106), "high": Decimal(107)})
@@ -38,7 +53,7 @@ def setup():
 
 @pytest.mark.parametrize("delay", [0, 1])
 @pytest.mark.parametrize("reset", [Decimal(101), Decimal("101.001"), Decimal(103)])
-def test_latch_freezes_prior_ceiling_until_close_at_or_below(delay, reset):
+def test_latch_freezes_prior_ceiling_until_close_at_or_below(delay: int, reset: Decimal) -> None:
     bars, scores = setup()
     bars[225] = bars[225].model_copy(update={"close": reset, "low": Decimal(100)})
     bars[240] = bars[240].model_copy(update={"close": Decimal(110), "high": Decimal(111)})
@@ -51,7 +66,7 @@ def test_latch_freezes_prior_ceiling_until_close_at_or_below(delay, reset):
         assert not result.fills  # Signal-bar high104 and later ceiling107 cannot reset101.
 
 
-def test_filter_denial_without_raw_breakout_does_not_latch():
+def test_filter_denial_without_raw_breakout_does_not_latch() -> None:
     bars, scores = setup()
     bars[199] = bars[199].model_copy(update={"close": Decimal(100)})
     result = simulate(bars, scores)
@@ -59,12 +74,16 @@ def test_filter_denial_without_raw_breakout_does_not_latch():
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_accepted_entry_pending_and_holding_do_not_change_control(delay, monkeypatch):
+def test_accepted_entry_pending_and_holding_do_not_change_control(
+    delay: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
     bars, scores = setup()
     calls = []
-    original_target = backtest.signal_target
+    original_target = signal_target
 
-    def tracked(history, holding, strategy, **kwargs):
+    def tracked(
+        history: list[Candle], holding: bool, strategy: Strategy, **kwargs: Any
+    ) -> Side | None:
         calls.append(history[-1].close_time)
         return original_target(history, holding, strategy, **kwargs)
 
@@ -86,7 +105,7 @@ def test_accepted_entry_pending_and_holding_do_not_change_control(delay, monkeyp
     assert small.rejections and not small.fills
 
 
-def test_reset_can_reject_again_and_each_account_starts_without_latch():
+def test_reset_can_reject_again_and_each_account_starts_without_latch() -> None:
     bars, scores = setup()
     bars[225] = bars[225].model_copy(update={"close": Decimal(101), "low": Decimal(100)})
     bars[230] = bars[230].model_copy(update={"close": Decimal(110), "high": Decimal(111)})
@@ -109,13 +128,13 @@ def test_reset_can_reject_again_and_each_account_starts_without_latch():
         {"breakout_risk_budget": True},
     ],
 )
-def test_latch_rejects_other_experiments(kwargs):
+def test_latch_rejects_other_experiments(kwargs: Any) -> None:
     bars, scores = setup()
     with pytest.raises(ValueError, match="거절"):
         simulate(bars, scores, **kwargs)
 
 
-def test_latch_rejects_nonfilter_strategy_and_unknown_candidate(tmp_path):
+def test_latch_rejects_nonfilter_strategy_and_unknown_candidate(tmp_path: Path) -> None:
     bars, _ = setup()
     with pytest.raises(ValueError, match="거절"):
         run_backtest(
@@ -141,11 +160,13 @@ def test_latch_rejects_nonfilter_strategy_and_unknown_candidate(tmp_path):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_latch_pipeline_preserves_both_filter_controls(tmp_path, monkeypatch, corrupt):
+def test_latch_pipeline_preserves_both_filter_controls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars, _ = setup()
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from decimal import Decimal as D
 
 import pytest
@@ -11,7 +13,7 @@ from evergreen.research.experiments.relaxed_exits import simulate
 
 @pytest.mark.parametrize("delay", [0, 1])
 @pytest.mark.parametrize("fee,slip", [(1, 1), (1, 2), (2, 2)])
-def test_shared_policy_reproduces_frozen_research_path(delay, fee, slip):
+def test_shared_policy_reproduces_frozen_research_path(delay: int, fee: int, slip: int) -> None:
     bars = path()
     c = costs(fee, slip)
     old = simulate(
@@ -21,7 +23,7 @@ def test_shared_policy_reproduces_frozen_research_path(delay, fee, slip):
     assert actual == old
 
 
-def test_unsellable_residual_is_included_in_final_equity():
+def test_unsellable_residual_is_included_in_final_equity() -> None:
     bars = path()
     for i in range(201, len(bars)):
         bars[i] = bars[i].model_copy(

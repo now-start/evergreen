@@ -1,17 +1,22 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from test_breakout_entry_stop import setup
 
-from evergreen.market import write_json
-from evergreen.research.backtest import run_backtest
+from evergreen.market import Candle, write_json
+from evergreen.research.backtest import Result, run_backtest
 from evergreen.research.experiments import breakout_confirmation as runner
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
 
 
-def simulate(bars, *, enabled=True, delay=0, capital=1000000):
+def simulate(
+    bars: list[Candle], *, enabled: bool = True, delay: int = 0, capital: Decimal | int = 1000000
+) -> Result:
     return run_backtest(
         bars,
         bars[200].open_time,
@@ -26,7 +31,7 @@ def simulate(bars, *, enabled=True, delay=0, capital=1000000):
     )
 
 
-def profit_path():
+def profit_path() -> list[Candle]:
     bars = setup()
     bars[202] = bars[202].model_copy(update={"close": Decimal(110), "high": Decimal(111)})
     for i in (203, 204):
@@ -35,7 +40,7 @@ def profit_path():
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_exact_activation_two_closes_and_pending_rebound(delay):
+def test_exact_activation_two_closes_and_pending_rebound(delay: int) -> None:
     bars = profit_path()
     result = simulate(bars, delay=delay)
     assert result.fills[1].signal_time == bars[204].close_time
@@ -47,7 +52,7 @@ def test_exact_activation_two_closes_and_pending_rebound(delay):
 
 
 @pytest.mark.parametrize("reset", [Decimal(104), Decimal("104.01")])
-def test_equality_or_recovery_resets_breaches_without_lowering_peak(reset):
+def test_equality_or_recovery_resets_breaches_without_lowering_peak(reset: Decimal) -> None:
     bars = profit_path()
     bars[204] = bars[204].model_copy(update={"close": reset})
     for i in (205, 206):
@@ -57,7 +62,7 @@ def test_equality_or_recovery_resets_breaches_without_lowering_peak(reset):
     assert result.fills[1].time == bars[207].open_time
 
 
-def test_delayed_entry_excludes_prebuy_peak_and_uses_original_signal_tr():
+def test_delayed_entry_excludes_prebuy_peak_and_uses_original_signal_tr() -> None:
     bars = setup()
     bars[200] = bars[200].model_copy(update={"close": Decimal(500), "high": Decimal(501)})
     bars[201] = bars[201].model_copy(
@@ -77,7 +82,7 @@ def test_delayed_entry_excludes_prebuy_peak_and_uses_original_signal_tr():
 
 
 @pytest.mark.parametrize("risk", [False, True])
-def test_channel_or_risk_bypasses_confirmation(risk):
+def test_channel_or_risk_bypasses_confirmation(risk: bool) -> None:
     bars = setup()
     bars[160] = bars[160].model_copy(update={"low": Decimal(98)})
     bars[199] = bars[199].model_copy(update={"low": Decimal(99)})
@@ -90,7 +95,7 @@ def test_channel_or_risk_bypasses_confirmation(risk):
     assert result.halted == risk
 
 
-def test_extra_trailing_sell_locks_and_new_buy_resets_peak():
+def test_extra_trailing_sell_locks_and_new_buy_resets_peak() -> None:
     bars = profit_path()
     bars[210] = bars[210].model_copy(update={"close": Decimal(112), "high": Decimal(113)})
     locked = simulate(bars)
@@ -106,7 +111,7 @@ def test_extra_trailing_sell_locks_and_new_buy_resets_peak():
     assert not simulate(bars, capital=1000).fills
 
 
-def test_rejected_sell_preserves_peak_for_retry():
+def test_rejected_sell_preserves_peak_for_retry() -> None:
     bars = profit_path()
     bars[205] = bars[205].model_copy(update={"open": Decimal(102), "low": Decimal(101)})
     for i in (208, 209):
@@ -117,7 +122,7 @@ def test_rejected_sell_preserves_peak_for_retry():
     assert result.fills[1].time == bars[210].open_time
 
 
-def test_zero_tr_never_activates_and_new_high_resets_breaches():
+def test_zero_tr_never_activates_and_new_high_resets_breaches() -> None:
     bars = profit_path()
     bars[204] = bars[204].model_copy(update={"close": Decimal(111), "high": Decimal(112)})
     for i in (205, 206):
@@ -132,7 +137,7 @@ def test_zero_tr_never_activates_and_new_high_resets_breaches():
     assert simulate(flat) == simulate(flat, enabled=False)
 
 
-def test_profit_trail_requires_channel_reset_and_declared_models(tmp_path):
+def test_profit_trail_requires_channel_reset_and_declared_models(tmp_path: Path) -> None:
     bars = setup()
     with pytest.raises(ValueError, match="상승 후 추적"):
         run_backtest(
@@ -162,11 +167,13 @@ def test_profit_trail_requires_channel_reset_and_declared_models(tmp_path):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_pipeline_preserves_channel_reset_control(tmp_path, monkeypatch, corrupt):
+def test_pipeline_preserves_channel_reset_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = profit_path()
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

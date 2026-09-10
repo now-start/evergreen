@@ -1,4 +1,9 @@
+from __future__ import annotations
+
+from datetime import datetime
+from decimal import Decimal
 from decimal import Decimal as D
+from pathlib import Path
 
 import pytest
 from test_breakout_entry_stop import setup
@@ -6,11 +11,21 @@ from test_breakout_entry_stop_trend_context import MODES
 from test_breakout_exit_checkpoint import checkpoint_path
 from test_breakout_liquidation_buffer import path
 
+from evergreen.market import Candle
 from evergreen.research import backtest
+from evergreen.research.backtest import Result
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 
 
-def simulate(bars, *, dynamic=True, lookback=24, delay=0, capital=D(1000000), start=None):
+def simulate(
+    bars: list[Candle],
+    *,
+    dynamic: bool = True,
+    lookback: int = 24,
+    delay: int = 0,
+    capital: Decimal = D(1000000),
+    start: datetime | None = None,
+) -> Result:
     return backtest.run_backtest(
         bars,
         start or bars[200].open_time,
@@ -28,7 +43,7 @@ def simulate(bars, *, dynamic=True, lookback=24, delay=0, capital=D(1000000), st
 @pytest.mark.parametrize(
     "last,expected", [(D(100), 24), (D(99), 24), (D(104), 24), (D("104.00000001"), 168)]
 )
-def test_path_strict_half_boundary_and_nonpositive_advance(last, expected):
+def test_path_strict_half_boundary_and_nonpositive_advance(last: Decimal, expected: int) -> None:
     bars = setup()[:25]
     # 100 -> 98 -> 100 -> last; at last=104, advance=4 and travel=8.
     bars[1] = bars[1].model_copy(update={"close": D(98), "low": D(97)})
@@ -36,7 +51,7 @@ def test_path_strict_half_boundary_and_nonpositive_advance(last, expected):
     assert backtest._entry_path_context(bars) == expected
 
 
-def test_flat_and_monotonic_paths_and_exact_window():
+def test_flat_and_monotonic_paths_and_exact_window() -> None:
     bars = setup()[:26]
     assert backtest._entry_path_context(bars) == 24
     bars[0] = bars[0].model_copy(update={"close": D(1)})
@@ -49,7 +64,9 @@ def test_flat_and_monotonic_paths_and_exact_window():
 
 @pytest.mark.parametrize("strong", [False, True])
 @pytest.mark.parametrize("delay", [0, 1])
-def test_original_signal_path_is_frozen_until_exit(monkeypatch, strong, delay):
+def test_original_signal_path_is_frozen_until_exit(
+    monkeypatch: pytest.MonkeyPatch, strong: bool, delay: int
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
     bars = checkpoint_path()
     if strong:
@@ -57,7 +74,7 @@ def test_original_signal_path_is_frozen_until_exit(monkeypatch, strong, delay):
     choose = backtest._entry_path_context
     seen = []
 
-    def record(history):
+    def record(history: list[Candle]) -> int:
         selected = choose(history)
         seen.append((history[-1].close_time, selected))
         return selected
@@ -72,7 +89,9 @@ def test_original_signal_path_is_frozen_until_exit(monkeypatch, strong, delay):
 
 
 @pytest.mark.parametrize("capital,tr", [(D(4999), D(2)), (D(1000000), D(4))])
-def test_rejected_buy_never_creates_path_context(monkeypatch, capital, tr):
+def test_rejected_buy_never_creates_path_context(
+    monkeypatch: pytest.MonkeyPatch, capital: Decimal, tr: Decimal
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: tr)
     monkeypatch.setattr(
         backtest, "_entry_path_context", lambda h: pytest.fail("거절된 매수의 상태 생성")
@@ -81,7 +100,7 @@ def test_rejected_buy_never_creates_path_context(monkeypatch, capital, tr):
     assert not result.fills and result.rejections
 
 
-def test_path_keeps_preemptive_sell_retry(monkeypatch):
+def test_path_keeps_preemptive_sell_retry(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
     bars = path()
     bars[204] = bars[204].model_copy(update={"open": D(102), "low": D(101)})
@@ -91,7 +110,9 @@ def test_path_keeps_preemptive_sell_retry(monkeypatch):
     assert result.fills[1].time == bars[205].open_time
 
 
-def test_next_fill_reselects_context_with_preserved_capital(monkeypatch):
+def test_next_fill_reselects_context_with_preserved_capital(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
     bars = path()
     bars[204] = bars[204].model_copy(update={"open": D(110), "high": D(111)})
@@ -104,7 +125,7 @@ def test_next_fill_reselects_context_with_preserved_capital(monkeypatch):
     choose = backtest._entry_path_context
     seen = []
 
-    def record(history):
+    def record(history: list[Candle]) -> int:
         selected = choose(history)
         seen.append((history[-1].close_time, selected))
         return selected
@@ -117,7 +138,7 @@ def test_next_fill_reselects_context_with_preserved_capital(monkeypatch):
     assert buy.price * buy.quantity + buy.fee > D(1000000)
 
 
-def test_path_policy_rejects_mixed_mode_and_insufficient_warmup(tmp_path):
+def test_path_policy_rejects_mixed_mode_and_insufficient_warmup(tmp_path: Path) -> None:
     bars = setup()
     with pytest.raises(ValueError, match="192 hours"):
         simulate(bars, start=bars[191].open_time)

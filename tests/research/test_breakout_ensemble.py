@@ -1,17 +1,22 @@
+from __future__ import annotations
+
 import hashlib
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from itertools import pairwise
+from pathlib import Path
 
 import pytest
 from test_learning import candles
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research.experiments import breakout_ensemble as ensemble
+from evergreen.research.experiments.breakout_errors import analyze
+from evergreen.research.experiments.breakout_meta import costs
 from evergreen.research.learning.models import ModelMetadata
 
 
-def test_equal_scores_not_majority_vote_or_best_seed():
+def test_equal_scores_not_majority_vote_or_best_seed() -> None:
     t = datetime(2022, 1, 1, tzinfo=UTC)
     members = [{t: Decimal(p)} for p in (".9", ".4", ".4")]
     assert ensemble.mean_scores(members, {t})[t] == sum((m[t] for m in members), Decimal(0)) / 3
@@ -28,7 +33,9 @@ def test_equal_scores_not_majority_vote_or_best_seed():
 
 
 @pytest.mark.parametrize("missing", [False, True])
-def test_frozen_pipeline_and_missing_member_fail_closed(tmp_path, monkeypatch, missing):
+def test_frozen_pipeline_and_missing_member_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing: bool
+) -> None:
     dates = [datetime(2020 + i // 4, i % 4 * 3 + 1, 1, tzinfo=UTC) for i in range(10)]
     periods = list(pairwise(dates))
     start = dates[8]
@@ -42,7 +49,7 @@ def test_frozen_pipeline_and_missing_member_fail_closed(tmp_path, monkeypatch, m
         for i, b in enumerate(candles(320))
     ]
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]
@@ -69,7 +76,7 @@ def test_frozen_pipeline_and_missing_member_fail_closed(tmp_path, monkeypatch, m
                 "training_quarters": 6,
                 "validation_quarters": 2,
                 "entry_threshold": ".5",
-                "base_costs": ensemble.costs().model_dump(mode="json"),
+                "base_costs": costs().model_dump(mode="json"),
             },
         )
         audit = {
@@ -131,7 +138,7 @@ def test_frozen_pipeline_and_missing_member_fail_closed(tmp_path, monkeypatch, m
         assert (output / "candidate/errors/results.json").exists()
         assert len(list((output / "candidate/seed-17/continuous/block-000").glob("*.json"))) == 17
         standalone = tmp_path / "standalone-errors"
-        ensemble.analyze(output / "candidate", standalone)
+        analyze(output / "candidate", standalone)
         assert json.loads((standalone / "results.json").read_text()) == json.loads(
             (output / "candidate/errors/results.json").read_text()
         )

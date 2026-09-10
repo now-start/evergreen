@@ -1,18 +1,24 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from test_breakout_entry_stop import setup
 from test_breakout_entry_stop_profit_trail_reset import profit_path
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research import backtest
+from evergreen.research.backtest import Result
 from evergreen.research.experiments import breakout_confirmation as runner
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
 
 
-def simulate(bars, *, enabled=True, delay=0, capital=1000000):
+def simulate(
+    bars: list[Candle], *, enabled: bool = True, delay: int = 0, capital: Decimal | int = 1000000
+) -> Result:
     return backtest.run_backtest(
         bars,
         bars[200].open_time,
@@ -30,14 +36,16 @@ def simulate(bars, *, enabled=True, delay=0, capital=1000000):
     )
 
 
-def profitable_sale():
+def profitable_sale() -> list[Candle]:
     bars = profit_path()
     bars[205] = bars[205].model_copy(update={"open": Decimal(105), "high": Decimal(106)})
     return bars
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_two_independent_breakouts_and_pending_fallback(monkeypatch, delay):
+def test_two_independent_breakouts_and_pending_fallback(
+    monkeypatch: pytest.MonkeyPatch, delay: int
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profitable_sale()
     if delay:
@@ -52,7 +60,9 @@ def test_two_independent_breakouts_and_pending_fallback(monkeypatch, delay):
 
 
 @pytest.mark.parametrize("close", [Decimal(112), Decimal("113.113")])
-def test_second_bar_uses_own_ceiling_and_equality_resets(monkeypatch, close):
+def test_second_bar_uses_own_ceiling_and_equality_resets(
+    monkeypatch: pytest.MonkeyPatch, close: Decimal
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profitable_sale()
     bars[210] = bars[210].model_copy(update={"close": Decimal(112), "high": Decimal(113)})
@@ -64,7 +74,9 @@ def test_second_bar_uses_own_ceiling_and_equality_resets(monkeypatch, close):
     assert result.fills[2].signal_time == bars[213].close_time
 
 
-def test_pre_sell_bar_is_not_confirmation_and_actual_sell_bar_can_count(monkeypatch):
+def test_pre_sell_bar_is_not_confirmation_and_actual_sell_bar_can_count(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profitable_sale()
     for i, price in ((205, 112), (206, 114), (207, 116)):
@@ -78,7 +90,9 @@ def test_pre_sell_bar_is_not_confirmation_and_actual_sell_bar_can_count(monkeypa
 
 
 @pytest.mark.parametrize("reset", [False, True])
-def test_strict_channel_reset_restores_single_bar_entry(monkeypatch, reset):
+def test_strict_channel_reset_restores_single_bar_entry(
+    monkeypatch: pytest.MonkeyPatch, reset: bool
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profitable_sale()
     bars[249] = bars[249].model_copy(
@@ -92,7 +106,9 @@ def test_strict_channel_reset_restores_single_bar_entry(monkeypatch, reset):
         assert len(result.fills) == 2
 
 
-def test_net_loss_keeps_full_lock_but_channel_sale_needs_no_confirmation(monkeypatch):
+def test_net_loss_keeps_full_lock_but_channel_sale_needs_no_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profitable_sale()
     bars[205] = bars[205].model_copy(update={"open": Decimal("104.1")})
@@ -109,7 +125,9 @@ def test_net_loss_keeps_full_lock_but_channel_sale_needs_no_confirmation(monkeyp
     assert simulate(bars) == simulate(bars, enabled=False)
 
 
-def test_rejected_sale_waits_for_actual_sale_before_confirming_and_risk_wins(monkeypatch):
+def test_rejected_sale_waits_for_actual_sale_before_confirming_and_risk_wins(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profitable_sale()
     bars[205] = bars[205].model_copy(update={"open": Decimal(102), "low": Decimal(101)})
@@ -128,7 +146,7 @@ def test_rejected_sale_waits_for_actual_sale_before_confirming_and_risk_wins(mon
     assert result.halted and len(result.fills) == 2 and result.fills[1].reason == "risk"
 
 
-def test_confirmation_requires_loss_reset_and_declared_models(tmp_path):
+def test_confirmation_requires_loss_reset_and_declared_models(tmp_path: Path) -> None:
     bars = profit_path()
     with pytest.raises(ValueError, match="수익 재진입"):
         backtest.run_backtest(
@@ -158,14 +176,16 @@ def test_confirmation_requires_loss_reset_and_declared_models(tmp_path):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_pipeline_preserves_loss_reset_control(tmp_path, monkeypatch, corrupt):
+def test_pipeline_preserves_loss_reset_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profitable_sale()
     start = bars[200].open_time
     for i, price in ((210, 112), (211, 114)):
         bars[i] = bars[i].model_copy(update={"close": Decimal(price), "high": Decimal(price + 1)})
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

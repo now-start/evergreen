@@ -1,19 +1,30 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
 import pytest
 from test_breakout_entry_stop import setup
 from test_breakout_exit import fixture
 
-from evergreen.market import write_json
-from evergreen.research.backtest import run_backtest
+from evergreen.market import Candle, write_json
+from evergreen.research.backtest import Result, run_backtest
 from evergreen.research.breakout_features import prior_mean_true_range
 from evergreen.research.experiments import breakout_confirmation as runner
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
 
 
-def simulate(bars, *, floor=True, delay=0, capital=1000000, **kwargs):
+def simulate(
+    bars: list[Candle],
+    *,
+    floor: bool = True,
+    delay: int = 0,
+    capital: Decimal | int = 1000000,
+    **kwargs: Any,
+) -> Result:
     return run_backtest(
         bars,
         bars[200].open_time,
@@ -28,7 +39,7 @@ def simulate(bars, *, floor=True, delay=0, capital=1000000, **kwargs):
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_floor_uses_frozen_prior168_tr_and_actual_delayed_open(delay):
+def test_floor_uses_frozen_prior168_tr_and_actual_delayed_open(delay: int) -> None:
     bars = setup()
     if delay:
         bars[201] = bars[201].model_copy(update={"open": Decimal(108), "high": Decimal(109)})
@@ -54,7 +65,7 @@ def test_floor_uses_frozen_prior168_tr_and_actual_delayed_open(delay):
     assert simulate(bars, delay=delay).fills[:2] == actual.fills[:2]
 
 
-def test_short_tr_larger_than_slow_keeps_experiment40_behavior():
+def test_short_tr_larger_than_slow_keeps_experiment40_behavior() -> None:
     bars = fixture()
     assert prior_mean_true_range(bars[:200]) > prior_mean_true_range(bars[:200], lookback=168)
     bars[203] = bars[203].model_copy(update={"close": Decimal(95), "low": Decimal(94)})
@@ -62,7 +73,7 @@ def test_short_tr_larger_than_slow_keeps_experiment40_behavior():
 
 
 @pytest.mark.parametrize("slow_positive", [False, True])
-def test_zero_short_tr_uses_nonzero_slow_or_disables_when_both_zero(slow_positive):
+def test_zero_short_tr_uses_nonzero_slow_or_disables_when_both_zero(slow_positive: bool) -> None:
     bars = setup()
     for i in range(199):
         if not slow_positive or i >= 175:
@@ -84,7 +95,7 @@ def test_zero_short_tr_uses_nonzero_slow_or_disables_when_both_zero(slow_positiv
         assert result.fills[1].reason == "settlement"
 
 
-def test_nonpositive_threshold_does_not_force_exit():
+def test_nonpositive_threshold_does_not_force_exit() -> None:
     bars = setup()
     for i in range(31, 199):
         bars[i] = bars[i].model_copy(update={"high": Decimal(200), "low": Decimal(1)})
@@ -103,7 +114,7 @@ def test_nonpositive_threshold_does_not_force_exit():
     assert simulate(bars) == simulate(bars, floor=False)
 
 
-def test_new_actual_entry_resets_floor_and_risk_has_priority():
+def test_new_actual_entry_resets_floor_and_risk_has_priority() -> None:
     bars = setup()
     bars[204] = bars[204].model_copy(update={"close": Decimal(97), "low": Decimal(96)})
     bars[250] = bars[250].model_copy(update={"close": Decimal(110), "high": Decimal(111)})
@@ -132,7 +143,7 @@ def test_new_actual_entry_resets_floor_and_risk_has_priority():
     assert unfilled.rejections and not unfilled.fills
 
 
-def test_floor_requires_entry_stop_and_candidate_subset(tmp_path):
+def test_floor_requires_entry_stop_and_candidate_subset(tmp_path: Path) -> None:
     bars = setup()
     with pytest.raises(ValueError, match="하한"):
         run_backtest(
@@ -159,7 +170,7 @@ def test_floor_requires_entry_stop_and_candidate_subset(tmp_path):
         simulate(bars, breakout_cooldown_hours=24)
 
 
-def test_floor_requires_170_warmup_bars_before_any_order():
+def test_floor_requires_170_warmup_bars_before_any_order() -> None:
     bars = setup()
     with pytest.raises(ValueError, match="170 hours of warmup"):
         run_backtest(
@@ -183,7 +194,9 @@ def test_floor_requires_170_warmup_bars_before_any_order():
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_floor_pipeline_keeps_experiment40_control(tmp_path, monkeypatch, corrupt):
+def test_floor_pipeline_keeps_experiment40_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = setup()
     slow = prior_mean_true_range(bars[:200], lookback=168)
     bars[203] = bars[203].model_copy(
@@ -194,7 +207,7 @@ def test_floor_pipeline_keeps_experiment40_control(tmp_path, monkeypatch, corrup
     )
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

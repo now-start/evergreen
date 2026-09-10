@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal as D
 
@@ -7,7 +9,7 @@ from evergreen.market import Candle
 from evergreen.strategies.buffer import BufferState, Protection, prior_mean_true_range
 
 
-def bars():
+def bars() -> list[Candle]:
     start = datetime(2026, 1, 1, tzinfo=UTC)
     return [
         Candle(
@@ -24,17 +26,18 @@ def bars():
     ]
 
 
-def test_prior_range_excludes_current_bar():
+def test_prior_range_excludes_current_bar() -> None:
     rows = bars()
     rows[-1] = rows[-1].model_copy(update={"high": D(150)})
     assert prior_mean_true_range(rows) == 2
 
 
-def test_early_activation_and_two_breaches_survive_serialization():
+def test_early_activation_and_two_breaches_survive_serialization() -> None:
     rows = bars()
     state = BufferState(protection=Protection.open(D(104), D(2)))
     rows[-1] = rows[-1].model_copy(update={"close": D(110), "high": D(111)})
     state.observe(rows, D(0), D(1), D(110), D(0), D(0))
+    assert state.protection is not None
     assert state.protection.threshold == 98
     for i in (1, 2):
         rows.append(
@@ -51,11 +54,12 @@ def test_early_activation_and_two_breaches_survive_serialization():
             rows[j] = rows[j].model_copy(update={"close": D(105), "high": D(106)})
         state = BufferState.model_validate_json(state.model_dump_json())
         state.observe(rows, D(0), D(1), D(110), D(0), D(0))
+        assert state.protection is not None
         assert state.protection.breaches == i
     assert state.signal(rows, True) == "sell"
 
 
-def test_buffer_exit_latches_and_reset_consumes_bar():
+def test_buffer_exit_latches_and_reset_consumes_bar() -> None:
     rows = bars()
     state = BufferState(protection=Protection.open(D(100), D(2)))
     state.observe(rows, D(0), D(1), D(130), D(0), D(0))
@@ -67,6 +71,6 @@ def test_buffer_exit_latches_and_reset_consumes_bar():
 
 
 @pytest.mark.parametrize("value", ["NaN", "Infinity", "-1"])
-def test_invalid_position_rejected(value):
+def test_invalid_position_rejected(value: str) -> None:
     with pytest.raises(ValueError):
         Protection.open(D(100), D(value))

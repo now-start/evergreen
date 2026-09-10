@@ -1,17 +1,28 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from test_breakout_entry_stop_profit_trail_reset import profit_path
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research import backtest
+from evergreen.research.backtest import Costs, Result
 from evergreen.research.experiments import breakout_confirmation as runner
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
 
 
-def simulate(bars, *, enabled=True, delay=0, capital=1000000, charges=None):
+def simulate(
+    bars: list[Candle],
+    *,
+    enabled: bool = True,
+    delay: int = 0,
+    capital: Decimal | int = 1000000,
+    charges: Costs | None = None,
+) -> Result:
     return backtest.run_backtest(
         bars,
         bars[200].open_time,
@@ -39,7 +50,9 @@ def simulate(bars, *, enabled=True, delay=0, capital=1000000, charges=None):
         ("104.01", True, True),
     ],
 )
-def test_only_strict_net_profit_removes_lock(monkeypatch, price, free, allow):
+def test_only_strict_net_profit_removes_lock(
+    monkeypatch: pytest.MonkeyPatch, price: str, free: bool, allow: bool
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profit_path()
     bars[205] = bars[205].model_copy(update={"open": Decimal(price), "high": Decimal(106)})
@@ -58,7 +71,9 @@ def test_only_strict_net_profit_removes_lock(monkeypatch, price, free, allow):
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_actual_fill_profit_not_signal_close_and_same_sell_bar_breakout(monkeypatch, delay):
+def test_actual_fill_profit_not_signal_close_and_same_sell_bar_breakout(
+    monkeypatch: pytest.MonkeyPatch, delay: int
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profit_path()
     fill = 205 + delay
@@ -73,7 +88,9 @@ def test_actual_fill_profit_not_signal_close_and_same_sell_bar_breakout(monkeypa
     assert len(simulate(bars, enabled=False, delay=delay).fills) == 2
 
 
-def test_new_loss_trade_locks_again_despite_positive_account_pnl(monkeypatch):
+def test_new_loss_trade_locks_again_despite_positive_account_pnl(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profit_path()
     bars[205] = bars[205].model_copy(update={"open": Decimal(108), "high": Decimal(109)})
@@ -87,7 +104,9 @@ def test_new_loss_trade_locks_again_despite_positive_account_pnl(monkeypatch):
     assert result.final_equity > result.initial_capital and not result.halted
 
 
-def test_rejection_preserves_state_until_real_sale_and_risk_stays_halted(monkeypatch):
+def test_rejection_preserves_state_until_real_sale_and_risk_stays_halted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profit_path()
     bars[205] = bars[205].model_copy(update={"open": Decimal(102), "low": Decimal(101)})
@@ -108,7 +127,7 @@ def test_rejection_preserves_state_until_real_sale_and_risk_stays_halted(monkeyp
     assert not simulate(bars, capital=1000).fills
 
 
-def test_loss_reset_requires_adaptive_trail_and_declared_models(tmp_path):
+def test_loss_reset_requires_adaptive_trail_and_declared_models(tmp_path: Path) -> None:
     bars = profit_path()
     with pytest.raises(ValueError, match="손실 리셋"):
         backtest.run_backtest(
@@ -138,11 +157,13 @@ def test_loss_reset_requires_adaptive_trail_and_declared_models(tmp_path):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_pipeline_preserves_adaptive_trail_control(tmp_path, monkeypatch, corrupt):
+def test_pipeline_preserves_adaptive_trail_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = profit_path()
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

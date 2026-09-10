@@ -1,17 +1,44 @@
+from __future__ import annotations
+
 import json
+from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
+from typing import TypedDict
 
 import pytest
 from test_breakout_entry_stop import setup
 from test_breakout_entry_stop_trend_confirmation import declining_path
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research import backtest
+from evergreen.research.backtest import Result
 from evergreen.research.experiments import breakout_confirmation as runner
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
 
-MODES = dict(
+
+class ModeOptions(TypedDict):
+    breakout_entry_stop: bool
+    breakout_entry_stop_confirmations: int
+    breakout_entry_stop_channel_reset: bool
+    breakout_entry_stop_profit_trail: bool
+    breakout_entry_stop_adaptive_trail: bool
+    breakout_entry_stop_trend_confirmation: bool
+    breakout_entry_stop_budget: bool
+
+
+class OptionalModeOptions(TypedDict, total=False):
+    breakout_entry_stop: bool
+    breakout_entry_stop_confirmations: int
+    breakout_entry_stop_channel_reset: bool
+    breakout_entry_stop_profit_trail: bool
+    breakout_entry_stop_adaptive_trail: bool
+    breakout_entry_stop_trend_confirmation: bool
+    breakout_entry_stop_budget: bool
+
+
+MODES: ModeOptions = dict(
     breakout_entry_stop=True,
     breakout_entry_stop_confirmations=2,
     breakout_entry_stop_channel_reset=True,
@@ -22,7 +49,9 @@ MODES = dict(
 )
 
 
-def simulate(bars, *, lookback=168, delay=0, start=None):
+def simulate(
+    bars: list[Candle], *, lookback: int = 168, delay: int = 0, start: datetime | None = None
+) -> Result:
     return backtest.run_backtest(
         bars,
         start or bars[200].open_time,
@@ -35,7 +64,7 @@ def simulate(bars, *, lookback=168, delay=0, start=None):
     )
 
 
-def long_decline():
+def long_decline() -> list[Candle]:
     bars = declining_path()
     for i in range(11, 179):
         bars[i] = bars[i].model_copy(update={"close": Decimal(102), "high": Decimal(102)})
@@ -43,7 +72,9 @@ def long_decline():
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_context_defers_short_lived_weakness_without_changing_entry(monkeypatch, delay):
+def test_context_defers_short_lived_weakness_without_changing_entry(
+    monkeypatch: pytest.MonkeyPatch, delay: int
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = declining_path()
     control, result = simulate(bars, lookback=24, delay=delay), simulate(bars, delay=delay)
@@ -53,7 +84,9 @@ def test_context_defers_short_lived_weakness_without_changing_entry(monkeypatch,
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_nonrising_long_context_keeps_exit_and_pending_rebound(monkeypatch, delay):
+def test_nonrising_long_context_keeps_exit_and_pending_rebound(
+    monkeypatch: pytest.MonkeyPatch, delay: int
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = long_decline()
     bars[205] = bars[205].model_copy(update={"close": Decimal(112), "high": Decimal(113)})
@@ -62,7 +95,9 @@ def test_nonrising_long_context_keeps_exit_and_pending_rebound(monkeypatch, dela
     assert result.fills[1].time == bars[205 + delay].open_time
 
 
-def test_exact_mean_equality_window_edges_and_current_close_exclusion(monkeypatch):
+def test_exact_mean_equality_window_edges_and_current_close_exclusion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = declining_path()
     for i in range(11, 179):
@@ -82,7 +117,9 @@ def test_exact_mean_equality_window_edges_and_current_close_exclusion(monkeypatc
 
 
 @pytest.mark.parametrize("kind", ["initial", "channel", "risk"])
-def test_long_context_cannot_block_initial_channel_or_risk_exit(monkeypatch, kind):
+def test_long_context_cannot_block_initial_channel_or_risk_exit(
+    monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = setup()
     if kind == "initial":
@@ -101,7 +138,9 @@ def test_long_context_cannot_block_initial_channel_or_risk_exit(monkeypatch, kin
     assert result.fills[1].reason == ("risk" if kind == "risk" else "signal")
 
 
-def test_long_context_keeps_entry_budget_and_rejects_short_warmup(monkeypatch):
+def test_long_context_keeps_entry_budget_and_rejects_short_warmup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(4))
     bars = setup()
     result = simulate(bars)
@@ -111,7 +150,7 @@ def test_long_context_keeps_entry_budget_and_rejects_short_warmup(monkeypatch):
     assert simulate(bars, start=bars[192].open_time).start == bars[192].open_time
 
 
-def test_context_option_is_limited_to_budget_candidate(tmp_path):
+def test_context_option_is_limited_to_budget_candidate(tmp_path: Path) -> None:
     bars = setup()
     for lookback in (0, 48, 168):
         with pytest.raises(ValueError, match="추세 맥락"):
@@ -142,12 +181,14 @@ def test_context_option_is_limited_to_budget_candidate(tmp_path):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_pipeline_preserves_experiment50_control(tmp_path, monkeypatch, corrupt):
+def test_pipeline_preserves_experiment50_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = declining_path()
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]
@@ -176,7 +217,7 @@ def test_pipeline_preserves_experiment50_control(tmp_path, monkeypatch, corrupt)
                 extra_delay_bars=delay,
                 regimes={b.close_time: 2 for b in bars[199:]} if filtered else None,
                 regime_policy="breakout-filter" if filtered else "routing",
-                **(MODES if filtered else {}),
+                **(OptionalModeOptions(**MODES) if filtered else {}),
             ).model_dump(mode="json")
             if corrupt and filtered:
                 result["net_return"] = "123"

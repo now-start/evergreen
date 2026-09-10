@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from test_breakout_exit import fixture
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research.backtest import run_backtest
 from evergreen.research.experiments import breakout_confirmation as runner
 from evergreen.research.experiments.breakout_meta import costs
@@ -12,7 +15,7 @@ from evergreen.research.experiments.regime import SCENARIOS
 
 
 @pytest.mark.parametrize("low,expected", [(99, 2), (98, 0), (100, 2)])
-def test_compression_boundary_and_current_future_exclusion(low, expected):
+def test_compression_boundary_and_current_future_exclusion(low: int, expected: int) -> None:
     bars = fixture()
     bars[180] = bars[180].model_copy(update={"low": Decimal(99)})
     bars[198] = bars[198].model_copy(update={"low": Decimal(low)})
@@ -27,7 +30,7 @@ def test_compression_boundary_and_current_future_exclusion(low, expected):
     )
 
 
-def test_zero_range_approval_still_requires_original_breakout():
+def test_zero_range_approval_still_requires_original_breakout() -> None:
     bars = [
         b.model_copy(update=dict.fromkeys(("open", "high", "low", "close"), Decimal(100)))
         for b in fixture()
@@ -48,7 +51,7 @@ def test_zero_range_approval_still_requires_original_breakout():
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_compression_keeps_channel_exit_risk_and_minimum_order(delay):
+def test_compression_keeps_channel_exit_risk_and_minimum_order(delay: int) -> None:
     bars = fixture()
     bars[180] = bars[180].model_copy(update={"low": Decimal(99)})
     bars[210] = bars[210].model_copy(update={"close": Decimal(100), "low": Decimal(99)})
@@ -89,7 +92,7 @@ def test_compression_keeps_channel_exit_risk_and_minimum_order(delay):
     assert small.rejections and not small.fills
 
 
-def test_compression_rejects_combined_modes_before_output(tmp_path):
+def test_compression_rejects_combined_modes_before_output(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="동시"):
         runner.run_study(
             tmp_path, tmp_path, tmp_path / "out", tr_compression=True, tr_expansion=True
@@ -98,7 +101,9 @@ def test_compression_rejects_combined_modes_before_output(tmp_path):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_compression_pipeline_reproduces_expansion_control(tmp_path, monkeypatch, corrupt):
+def test_compression_pipeline_reproduces_expansion_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = fixture()
     # Recent TR pulse rejects the first breakout; once it ages out, a new one can pass.
     bars[180] = bars[180].model_copy(update={"low": Decimal(60)})
@@ -107,7 +112,7 @@ def test_compression_pipeline_reproduces_expansion_control(tmp_path, monkeypatch
     scores = runner.compression_schedule(bars, start)
     assert scores[start] == 0 and scores[bars[220].close_time] == 2
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

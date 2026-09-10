@@ -1,16 +1,20 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal as D
+from pathlib import Path
+from typing import Any
 
 import pytest
 from test_breakout_entry_stop_trend_context import MODES
 from test_strategies import from_closes
 
-from evergreen.market import write_json
-from evergreen.research.backtest import run_backtest
+from evergreen.market import Candle, write_json
+from evergreen.research.backtest import Result, run_backtest
 from evergreen.research.experiments.breakout_meta import costs
 
 
-def entry_path():
+def entry_path() -> list[Candle]:
     bars = from_closes([D(100)] * 199 + [D(102)] + [D(104)] * 10)
     bars[180] = bars[180].model_copy(update={"low": D(99)})
     bars[50] = bars[50].model_copy(update={"high": D(200)})
@@ -18,7 +22,9 @@ def entry_path():
     return bars
 
 
-def simulate(bars, lookback=84, delay=0, regime=2, **kwargs):
+def simulate(
+    bars: list[Candle], lookback: int = 84, delay: int = 0, regime: int = 2, **kwargs: Any
+) -> Result:
     return run_backtest(
         bars,
         bars[200].open_time,
@@ -36,7 +42,7 @@ def simulate(bars, lookback=84, delay=0, regime=2, **kwargs):
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_short_window_excludes_current_bar_and_executes_next_open(delay):
+def test_short_window_excludes_current_bar_and_executes_next_open(delay: int) -> None:
     bars = entry_path()
     short = simulate(bars, delay=delay)
     assert short.fills[0].signal_time == bars[199].close_time
@@ -46,7 +52,7 @@ def test_short_window_excludes_current_bar_and_executes_next_open(delay):
     assert simulate(bars, delay=delay).fills[0] == short.fills[0]
 
 
-def test_oldest_included_bar_and_strict_threshold():
+def test_oldest_included_bar_and_strict_threshold() -> None:
     bars = entry_path()
     bars[114] = bars[114].model_copy(update={"high": D(5000)})
     assert simulate(bars).fills
@@ -58,7 +64,7 @@ def test_oldest_included_bar_and_strict_threshold():
 
 
 @pytest.mark.parametrize("regime", [-1, 0, 1])
-def test_short_entry_still_obeys_regime_permission(regime):
+def test_short_entry_still_obeys_regime_permission(regime: int) -> None:
     assert not simulate(entry_path(), regime=regime).fills
 
 
@@ -69,13 +75,13 @@ def test_short_entry_still_obeys_regime_permission(regime):
         {"breakout_entry_lookback": 84},
     ],
 )
-def test_requires_frozen_buffer_policy(kwargs):
+def test_requires_frozen_buffer_policy(kwargs: Any) -> None:
     bars = entry_path()
     with pytest.raises(ValueError, match="진입 창"):
         run_backtest(bars, bars[200].open_time, D(1000000), costs(), "breakout-v1", **kwargs)
 
 
-def test_default_window_is_unchanged_and_no_context_mix():
+def test_default_window_is_unchanged_and_no_context_mix() -> None:
     from evergreen.research.experiments.strategy_family import simulate as previous
 
     bars = entry_path()
@@ -87,7 +93,9 @@ def test_default_window_is_unchanged_and_no_context_mix():
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_study_reproduces_controls_and_rejects_mismatch(tmp_path, monkeypatch, corrupt):
+def test_study_reproduces_controls_and_rejects_mismatch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     from evergreen.research.experiments import breakout_entry_window as runner
     from evergreen.research.experiments.regime import SCENARIOS
     from evergreen.research.experiments.strategy_family import CONTROLS
@@ -96,7 +104,7 @@ def test_study_reproduces_controls_and_rejects_mismatch(tmp_path, monkeypatch, c
     bars = entry_path()
     start = bars[200].open_time
 
-    def blocks(raw, output):
+    def blocks(raw: Path, output: Path) -> list[list[Candle]]:
         output.mkdir()
         write_json(output / "coverage.json", {"fixture": True})
         return [bars]

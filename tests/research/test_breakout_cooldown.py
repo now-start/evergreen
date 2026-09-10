@@ -1,14 +1,23 @@
+from __future__ import annotations
+
+from datetime import datetime
 from decimal import Decimal
+from typing import cast
 
 import pytest
 from test_breakout_exit import fixture
 
+from evergreen.market import Candle
 from evergreen.research import backtest
+from evergreen.research.backtest import Costs
 from evergreen.research.experiments.breakout_meta import costs
+from evergreen.strategies import Strategy
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_cooldown_starts_at_filled_sell_and_allows_exact_expiry(monkeypatch, delay):
+def test_cooldown_starts_at_filled_sell_and_allows_exact_expiry(
+    monkeypatch: pytest.MonkeyPatch, delay: int
+) -> None:
     bars = fixture()
     # Alternate signals isolate lifecycle timing from the channel entry rule.
     monkeypatch.setattr(
@@ -19,7 +28,13 @@ def test_cooldown_starts_at_filled_sell_and_allows_exact_expiry(monkeypatch, del
     free = costs().model_copy(
         update={k: Decimal(0) for k in ("buy_fee", "sell_fee", "buy_slippage", "sell_slippage")}
     )
-    args = (bars, bars[200].open_time, Decimal(1000000), free, "breakout-v1")
+    args: tuple[list[Candle], datetime, Decimal, Costs, Strategy] = (
+        bars,
+        bars[200].open_time,
+        Decimal(1000000),
+        free,
+        "breakout-v1",
+    )
     default = backtest.run_backtest(*args, extra_delay_bars=delay)
     assert default == backtest.run_backtest(
         *args, extra_delay_bars=delay, breakout_cooldown_hours=0
@@ -34,4 +49,6 @@ def test_cooldown_starts_at_filled_sell_and_allows_exact_expiry(monkeypatch, del
     assert result.fills[3].side == "sell"  # Existing exits are not suppressed.
     for strategy, hours in (("cash", 24), ("breakout-v1", 12)):
         with pytest.raises(ValueError, match="대기"):
-            backtest.run_backtest(*args[:-1], strategy, breakout_cooldown_hours=hours)
+            backtest.run_backtest(
+                *args[:-1], cast(Strategy, strategy), breakout_cooldown_hours=hours
+            )

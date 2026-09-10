@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal as D
+from pathlib import Path
 
 import pytest
 from test_breakout_entry_window import entry_path, simulate
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research.experiments.breakout_meta import costs
 
 
-def boundary_path():
+def boundary_path() -> list[Candle]:
     bars = entry_path()
     for i in range(31, 115):
         bars[i] = bars[i].model_copy(
@@ -18,7 +21,7 @@ def boundary_path():
 
 
 @pytest.mark.parametrize("price,buys", [("102", False), ("102.00001", True), ("101.99999", False)])
-def test_prior_mean_strict_boundary_and_current_exclusion(price, buys):
+def test_prior_mean_strict_boundary_and_current_exclusion(price: str, buys: bool) -> None:
     bars = boundary_path()
     value = D(price)
     bars[199] = bars[199].model_copy(update={"close": value, "low": min(value, D(102))})
@@ -26,7 +29,7 @@ def test_prior_mean_strict_boundary_and_current_exclusion(price, buys):
     assert simulate(bars).fills
 
 
-def test_mean_oldest_included_and_preceding_excluded():
+def test_mean_oldest_included_and_preceding_excluded() -> None:
     bars = boundary_path()
     bars[30] = bars[30].model_copy(update={"open": D(5000), "close": D(5000), "high": D(5000)})
     bars[31] = bars[31].model_copy(update={"close": D("103.99")})
@@ -36,7 +39,7 @@ def test_mean_oldest_included_and_preceding_excluded():
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_approved_entry_keeps_exit_and_signal_time(delay):
+def test_approved_entry_keeps_exit_and_signal_time(delay: int) -> None:
     bars = entry_path()
     base = simulate(bars, delay=delay)
     changed = simulate(bars, delay=delay, breakout_entry_trend_filter=True)
@@ -49,12 +52,12 @@ def test_approved_entry_keeps_exit_and_signal_time(delay):
     )
 
 
-def test_filter_requires_short_window():
+def test_filter_requires_short_window() -> None:
     with pytest.raises(ValueError, match="평균가격"):
         simulate(entry_path(), 168, breakout_entry_trend_filter=True)
 
 
-def test_holding_below_mean_does_not_add_an_exit():
+def test_holding_below_mean_does_not_add_an_exit() -> None:
     bars = entry_path()
     bars[199] = bars[199].model_copy(update={"high": D(103)})
     bars[201] = bars[201].model_copy(update={"close": D(99), "low": D(98)})
@@ -66,7 +69,9 @@ def test_holding_below_mean_does_not_add_an_exit():
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_trend_study_matches_all_five_frozen_controls(tmp_path, monkeypatch, corrupt):
+def test_trend_study_matches_all_five_frozen_controls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     from evergreen.research.experiments import breakout_entry_window as runner
     from evergreen.research.experiments.regime import SCENARIOS
     from evergreen.research.experiments.strategy_family import simulate as previous
@@ -74,7 +79,7 @@ def test_trend_study_matches_all_five_frozen_controls(tmp_path, monkeypatch, cor
     bars = entry_path()
     start = bars[200].open_time
 
-    def blocks(raw, output):
+    def blocks(raw: Path, output: Path) -> list[list[Candle]]:
         output.mkdir()
         write_json(output / "coverage.json", {"fixture": True})
         return [bars]

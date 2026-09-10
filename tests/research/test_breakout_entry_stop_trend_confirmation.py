@@ -1,18 +1,30 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal
+from pathlib import Path
+from typing import TypedDict
 
 import pytest
 from test_breakout_entry_stop import setup
 from test_breakout_entry_stop_profit_trail_reset import profit_path
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research import backtest
+from evergreen.research.backtest import Result
 from evergreen.research.experiments import breakout_confirmation as runner
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
 
 
-def simulate(bars, *, enabled=True, delay=0, capital=1000000):
+class InvalidOptions(TypedDict, total=False):
+    breakout_entry_stop_adaptive_trail: bool
+    breakout_entry_stop_loss_reset: bool
+
+
+def simulate(
+    bars: list[Candle], *, enabled: bool = True, delay: int = 0, capital: Decimal | int = 1000000
+) -> Result:
     return backtest.run_backtest(
         bars,
         bars[200].open_time,
@@ -29,7 +41,7 @@ def simulate(bars, *, enabled=True, delay=0, capital=1000000):
     )
 
 
-def declining_path():
+def declining_path() -> list[Candle]:
     bars = profit_path()
     for i in range(155, 179):
         bars[i] = bars[i].model_copy(update={"close": Decimal(102), "high": Decimal(102)})
@@ -37,7 +49,9 @@ def declining_path():
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_rising_trend_defers_profit_exit_but_not_entry(monkeypatch, delay):
+def test_rising_trend_defers_profit_exit_but_not_entry(
+    monkeypatch: pytest.MonkeyPatch, delay: int
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profit_path()
     control, candidate = simulate(bars, enabled=False, delay=delay), simulate(bars, delay=delay)
@@ -48,7 +62,9 @@ def test_rising_trend_defers_profit_exit_but_not_entry(monkeypatch, delay):
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_nonrising_trend_preserves_confirmed_exit_and_pending_order(monkeypatch, delay):
+def test_nonrising_trend_preserves_confirmed_exit_and_pending_order(
+    monkeypatch: pytest.MonkeyPatch, delay: int
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = declining_path()
     bars[205] = bars[205].model_copy(update={"close": Decimal(112), "high": Decimal(113)})
@@ -57,7 +73,7 @@ def test_nonrising_trend_preserves_confirmed_exit_and_pending_order(monkeypatch,
     assert result.fills[1].time == bars[205 + delay].open_time
 
 
-def test_current_high_is_not_a_trend_input(monkeypatch):
+def test_current_high_is_not_a_trend_input(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = declining_path()
     result = simulate(bars)
@@ -66,7 +82,7 @@ def test_current_high_is_not_a_trend_input(monkeypatch):
     assert simulate(bars).fills[:2] == result.fills[:2]
 
 
-def test_equal_trend_qualifies_and_intervening_rise_resets(monkeypatch):
+def test_equal_trend_qualifies_and_intervening_rise_resets(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profit_path()
     for i in range(155, 176):
@@ -88,7 +104,9 @@ def test_equal_trend_qualifies_and_intervening_rise_resets(monkeypatch):
 
 
 @pytest.mark.parametrize("activated", [False, True])
-def test_initial_stop_bypasses_rising_trend_even_after_profit(monkeypatch, activated):
+def test_initial_stop_bypasses_rising_trend_even_after_profit(
+    monkeypatch: pytest.MonkeyPatch, activated: bool
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(1 if activated else 2))
     bars = profit_path() if activated else setup()
     # Use a narrower initial stop to keep this distinct from the account risk rule.
@@ -102,7 +120,7 @@ def test_initial_stop_bypasses_rising_trend_even_after_profit(monkeypatch, activ
     assert result.fills[1].signal_time == bars[204].close_time
 
 
-def test_channel_bypasses_trend_and_new_buy_resets_peak(monkeypatch):
+def test_channel_bypasses_trend_and_new_buy_resets_peak(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = setup()
     bars[160] = bars[160].model_copy(update={"low": Decimal(99)})
@@ -119,7 +137,9 @@ def test_channel_bypasses_trend_and_new_buy_resets_peak(monkeypatch):
     assert result.fills[-1].reason == "settlement"
 
 
-def test_no_retroactive_breaches_and_ratchet_survives_trend_deferral(monkeypatch):
+def test_no_retroactive_breaches_and_ratchet_survives_trend_deferral(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profit_path()
     for i in range(203, 246):
@@ -136,7 +156,9 @@ def test_no_retroactive_breaches_and_ratchet_survives_trend_deferral(monkeypatch
     assert result.fills[1].time == bars[first + 2].open_time
 
 
-def test_rejected_sell_retains_state_zero_tr_and_risk_precedence(monkeypatch):
+def test_rejected_sell_retains_state_zero_tr_and_risk_precedence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = declining_path()
     # Keep the old window above the recent one through the retry signal.
@@ -157,12 +179,13 @@ def test_rejected_sell_retains_state_zero_tr_and_risk_precedence(monkeypatch):
     assert simulate(profit_path()) == simulate(profit_path(), enabled=False)
 
 
-def test_trend_requires_adaptive_mode_without_reentry_variants(tmp_path):
+def test_trend_requires_adaptive_mode_without_reentry_variants(tmp_path: Path) -> None:
     bars = setup()
-    for options in (
+    invalid_options: tuple[InvalidOptions, ...] = (
         {},
         {"breakout_entry_stop_adaptive_trail": True, "breakout_entry_stop_loss_reset": True},
-    ):
+    )
+    for options in invalid_options:
         with pytest.raises(ValueError, match="추세 확인"):
             backtest.run_backtest(
                 bars,
@@ -192,12 +215,14 @@ def test_trend_requires_adaptive_mode_without_reentry_variants(tmp_path):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_pipeline_preserves_experiment46_control(tmp_path, monkeypatch, corrupt):
+def test_pipeline_preserves_experiment46_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = profit_path()
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

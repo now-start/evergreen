@@ -1,18 +1,29 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from test_breakout_entry_stop import setup
 from test_breakout_entry_stop_trend_confirmation import declining_path
 from test_breakout_entry_stop_trend_context import MODES, long_decline
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research import backtest
+from evergreen.research.backtest import ExitDecision, Result
 from evergreen.research.experiments import breakout_exit_extension as runner
 from evergreen.research.experiments.breakout_meta import costs
 
 
-def simulate(bars, *, events=None, extend=None, delay=0, capital=Decimal(1000000)):
+def simulate(
+    bars: list[Candle],
+    *,
+    events: list[ExitDecision] | None = None,
+    extend: datetime | None = None,
+    delay: int = 0,
+    capital: Decimal = Decimal(1000000),
+) -> Result:
     return backtest.run_backtest(
         bars,
         bars[200].open_time,
@@ -27,17 +38,19 @@ def simulate(bars, *, events=None, extend=None, delay=0, capital=Decimal(1000000
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_fork_has_identical_prefix_and_keeps_long_counter(monkeypatch, delay):
+def test_fork_has_identical_prefix_and_keeps_long_counter(
+    monkeypatch: pytest.MonkeyPatch, delay: int
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = declining_path()
-    decisions = []
+    decisions: list[ExitDecision] = []
     original = simulate(bars, events=decisions, delay=delay)
     assert original == simulate(bars, delay=delay)
     decision = decisions[0]
     assert decision.signal_time == bars[204].close_time
     assert decision.short_breaches == 2
     assert decision.long_breaches == 0
-    replay = []
+    replay: list[ExitDecision] = []
     extended = simulate(bars, events=replay, extend=decision.signal_time, delay=delay)
     assert replay[0] == decision
     assert original.fills[0] == extended.fills[0] == decision.entry_fill
@@ -56,17 +69,20 @@ def test_fork_has_identical_prefix_and_keeps_long_counter(monkeypatch, delay):
     ]
 
 
-def test_no_disagreement_keeps_same_fills(monkeypatch):
+def test_no_disagreement_keeps_same_fills(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
-    bars, events = long_decline(), []
+    bars = long_decline()
+    events: list[ExitDecision] = []
     original = simulate(bars, events=events)
     assert events[0].long_breaches >= 2
     assert simulate(bars, extend=events[0].signal_time) == original
 
 
-def test_future_candles_cannot_change_decision_state(monkeypatch):
+def test_future_candles_cannot_change_decision_state(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
-    bars, before, after = declining_path(), [], []
+    bars = declining_path()
+    before: list[ExitDecision] = []
+    after: list[ExitDecision] = []
     simulate(bars, events=before)
     for i in range(205, len(bars)):
         bars[i] = bars[i].model_copy(
@@ -82,9 +98,12 @@ def test_future_candles_cannot_change_decision_state(monkeypatch):
 
 
 @pytest.mark.parametrize("kind", ["channel", "risk"])
-def test_channel_and_risk_are_not_extension_events(monkeypatch, kind):
+def test_channel_and_risk_are_not_extension_events(
+    monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
-    bars, events = setup(), []
+    bars = setup()
+    events: list[ExitDecision] = []
     if kind == "channel":
         bars[160] = bars[160].model_copy(update={"low": Decimal(99)})
         bars[199] = bars[199].model_copy(update={"low": Decimal(99)})
@@ -96,7 +115,7 @@ def test_channel_and_risk_are_not_extension_events(monkeypatch, kind):
     assert not events
 
 
-def test_fork_after_history_or_without_policy50_is_rejected():
+def test_fork_after_history_or_without_policy50_is_rejected() -> None:
     bars = setup()
     with pytest.raises(ValueError, match="청산 분기"):
         simulate(bars, extend=bars[-1].close_time + timedelta(hours=1))
@@ -111,9 +130,10 @@ def test_fork_after_history_or_without_policy50_is_rejected():
         )
 
 
-def test_first_decision_only_even_if_sell_rejected(monkeypatch):
+def test_first_decision_only_even_if_sell_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
-    bars, events = declining_path(), []
+    bars = declining_path()
+    events: list[ExitDecision] = []
     bars[205] = bars[205].model_copy(update={"open": Decimal(102), "low": Decimal(101)})
     result = simulate(bars, events=events, capital=Decimal(5100))
     assert result.rejections[0].side == "sell"
@@ -121,7 +141,9 @@ def test_first_decision_only_even_if_sell_rejected(monkeypatch):
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_collector_reconciles_current_position_cash_and_label_availability(monkeypatch, delay):
+def test_collector_reconciles_current_position_cash_and_label_availability(
+    monkeypatch: pytest.MonkeyPatch, delay: int
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = declining_path()
     # Finish the long branch naturally, well before boundary settlement.
@@ -141,7 +163,9 @@ def test_collector_reconciles_current_position_cash_and_label_availability(monke
     assert "label" not in event["features"] and "exit_time" not in event["features"]
 
 
-def test_boundary_and_identical_exits_are_not_training_examples(monkeypatch):
+def test_boundary_and_identical_exits_are_not_training_examples(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = declining_path()[:215]
     _, censored = runner.collect_events(bars, bars[200].open_time)
@@ -153,9 +177,10 @@ def test_boundary_and_identical_exits_are_not_training_examples(monkeypatch):
     assert runner.audit_folds(censored + identical)["completed_counts"]["samples"] == 0
 
 
-def test_cash_reconciliation_rejects_mismatched_branch(monkeypatch):
+def test_cash_reconciliation_rejects_mismatched_branch(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
-    bars, events = declining_path(), []
+    bars = declining_path()
+    events: list[ExitDecision] = []
     result = simulate(bars, events=events)
     tampered = result.model_copy(deep=True)
     tampered.fills[1].cash_after += 1
@@ -167,9 +192,12 @@ def test_cash_reconciliation_rejects_mismatched_branch(monkeypatch):
         runner.position_exit(tampered, events[0])
 
 
-def test_features_are_point_in_time_and_rejection_is_excluded(monkeypatch):
+def test_features_are_point_in_time_and_rejection_is_excluded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
-    bars, decisions = declining_path(), []
+    bars = declining_path()
+    decisions: list[ExitDecision] = []
     original = simulate(bars, events=decisions)
     decision = decisions[0]
     features = runner.decision_features(bars, decision)
@@ -190,8 +218,8 @@ def test_features_are_point_in_time_and_rejection_is_excluded(monkeypatch):
     )
 
 
-def test_time_splits_purge_boundary_labels_and_do_not_lower_eligibility():
-    def record(signal, end, label=1):
+def test_time_splits_purge_boundary_labels_and_do_not_lower_eligibility() -> None:
+    def record(signal: str, end: str, label: int = 1) -> dict[str, object]:
         return {"status": "completed", "signal_time": signal, "label_time": end, "label": label}
 
     records = [
@@ -212,7 +240,7 @@ def test_time_splits_purge_boundary_labels_and_do_not_lower_eligibility():
         runner.audit_folds(records + records[:1])
 
 
-def test_overlapping_events_do_not_inflate_independent_groups():
+def test_overlapping_events_do_not_inflate_independent_groups() -> None:
     records = []
     start = datetime(2020, 1, 2, tzinfo=UTC)
     for i in range(50):
@@ -234,7 +262,7 @@ def test_overlapping_events_do_not_inflate_independent_groups():
     assert audit["eligible_folds"] == 0
 
 
-def test_incomplete_reference_fails_closed_without_completed_status(tmp_path):
+def test_incomplete_reference_fails_closed_without_completed_status(tmp_path: Path) -> None:
     reference = tmp_path / "reference"
     reference.mkdir()
     write_json(reference / "protocol.json", {"experiment": "51"})

@@ -1,18 +1,24 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from test_breakout_entry_stop import setup
 from test_breakout_entry_stop_profit_trail_reset import profit_path
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research import backtest
+from evergreen.research.backtest import Result
 from evergreen.research.experiments import breakout_confirmation as runner
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
 
 
-def simulate(bars, *, enabled=True, delay=0, capital=1000000):
+def simulate(
+    bars: list[Candle], *, enabled: bool = True, delay: int = 0, capital: Decimal | int = 1000000
+) -> Result:
     return backtest.run_backtest(
         bars,
         bars[200].open_time,
@@ -29,14 +35,16 @@ def simulate(bars, *, enabled=True, delay=0, capital=1000000):
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_observed_larger_tr_delays_profit_exit_without_changing_control(delay):
+def test_observed_larger_tr_delays_profit_exit_without_changing_control(delay: int) -> None:
     bars = profit_path()
     assert simulate(bars, enabled=False, delay=delay).fills[1].time == bars[205 + delay].open_time
     assert simulate(bars, delay=delay).fills[1].time > bars[205 + delay].open_time
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_volatility_expansion_never_lowers_confirmed_threshold(monkeypatch, delay):
+def test_volatility_expansion_never_lowers_confirmed_threshold(
+    monkeypatch: pytest.MonkeyPatch, delay: int
+) -> None:
     bars = profit_path()
     # Isolate threshold state: 110 - 3*2 = 104 at 202, then TR jumps to 20.
     monkeypatch.setattr(
@@ -50,7 +58,7 @@ def test_volatility_expansion_never_lowers_confirmed_threshold(monkeypatch, dela
     assert not result.halted
 
 
-def test_current_bar_range_is_excluded_and_next_expansion_cannot_undo_breach():
+def test_current_bar_range_is_excluded_and_next_expansion_cannot_undo_breach() -> None:
     bars = profit_path()
     bars[199] = bars[199].model_copy(update={"low": Decimal(99)})
     bars[203] = bars[203].model_copy(update={"high": Decimal(500)})
@@ -58,7 +66,9 @@ def test_current_bar_range_is_excluded_and_next_expansion_cannot_undo_breach():
     assert result.fills[1].signal_time == bars[204].close_time
 
 
-def test_equality_resets_and_pre_activation_stop_stays_fixed(monkeypatch):
+def test_equality_resets_and_pre_activation_stop_stays_fixed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     bars = profit_path()
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars[204] = bars[204].model_copy(update={"close": Decimal(104)})
@@ -74,7 +84,9 @@ def test_equality_resets_and_pre_activation_stop_stays_fixed(monkeypatch):
     assert simulate(bars).fills[1].signal_time == bars[204].close_time
 
 
-def test_new_actual_buy_resets_ratchet_and_rejected_sell_preserves_it(monkeypatch):
+def test_new_actual_buy_resets_ratchet_and_rejected_sell_preserves_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = profit_path()
     bars[205] = bars[205].model_copy(update={"open": Decimal(102), "low": Decimal(101)})
@@ -94,7 +106,7 @@ def test_new_actual_buy_resets_ratchet_and_rejected_sell_preserves_it(monkeypatc
     assert not simulate(bars, capital=1000).fills
 
 
-def test_zero_tr_and_risk_order_precedence(monkeypatch):
+def test_zero_tr_and_risk_order_precedence(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(0))
     assert simulate(profit_path()) == simulate(profit_path(), enabled=False)
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
@@ -105,7 +117,7 @@ def test_zero_tr_and_risk_order_precedence(monkeypatch):
     assert result.fills[1].reason == "risk" and result.fills[1].time == bars[207].open_time
 
 
-def test_adaptation_requires_profit_trail_and_declared_models(tmp_path):
+def test_adaptation_requires_profit_trail_and_declared_models(tmp_path: Path) -> None:
     bars = setup()
     with pytest.raises(ValueError, match="적응 추적"):
         backtest.run_backtest(
@@ -135,11 +147,13 @@ def test_adaptation_requires_profit_trail_and_declared_models(tmp_path):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_pipeline_preserves_frozen_profit_trail_control(tmp_path, monkeypatch, corrupt):
+def test_pipeline_preserves_frozen_profit_trail_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = profit_path()
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

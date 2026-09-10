@@ -1,18 +1,29 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
 import pytest
 from test_breakout_entry_stop import setup
 
-from evergreen.market import write_json
-from evergreen.research.backtest import run_backtest
+from evergreen.market import Candle, write_json
+from evergreen.research.backtest import Result, run_backtest
 from evergreen.research.breakout_features import prior_mean_true_range
 from evergreen.research.experiments import breakout_confirmation as runner
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
 
 
-def simulate(bars, *, confirmations=2, delay=0, capital=1000000, **kwargs):
+def simulate(
+    bars: list[Candle],
+    *,
+    confirmations: int = 2,
+    delay: int = 0,
+    capital: Decimal | int = 1000000,
+    **kwargs: Any,
+) -> Result:
     return run_backtest(
         bars,
         bars[200].open_time,
@@ -28,7 +39,9 @@ def simulate(bars, *, confirmations=2, delay=0, capital=1000000, **kwargs):
 
 @pytest.mark.parametrize("delay", [0, 1])
 @pytest.mark.parametrize("reset", [Decimal(0), Decimal(".01")])
-def test_two_strict_closes_reset_and_pending_rebound_does_not_cancel(delay, reset):
+def test_two_strict_closes_reset_and_pending_rebound_does_not_cancel(
+    delay: int, reset: Decimal
+) -> None:
     bars = setup()
     if delay:
         bars[201] = bars[201].model_copy(update={"open": Decimal(108), "high": Decimal(109)})
@@ -43,7 +56,7 @@ def test_two_strict_closes_reset_and_pending_rebound_does_not_cancel(delay, rese
     assert simulate(bars, confirmations=1, delay=delay).fills[1].time == bars[204 + delay].open_time
 
 
-def test_delayed_buy_does_not_count_preentry_close():
+def test_delayed_buy_does_not_count_preentry_close() -> None:
     bars = setup()
     for i in (200, 201, 202):
         bars[i] = bars[i].model_copy(update={"close": Decimal(101), "low": Decimal(1)})
@@ -55,7 +68,7 @@ def test_delayed_buy_does_not_count_preentry_close():
 
 
 @pytest.mark.parametrize("risk", [False, True])
-def test_channel_and_risk_exit_do_not_wait_for_confirmation(risk):
+def test_channel_and_risk_exit_do_not_wait_for_confirmation(risk: bool) -> None:
     bars = setup()
     bars[160] = bars[160].model_copy(update={"low": Decimal(98)})
     bars[199] = bars[199].model_copy(update={"low": Decimal(99)})
@@ -68,7 +81,7 @@ def test_channel_and_risk_exit_do_not_wait_for_confirmation(risk):
     assert result.halted == risk
 
 
-def test_new_buy_resets_threshold_and_confirmation_window():
+def test_new_buy_resets_threshold_and_confirmation_window() -> None:
     bars = setup()
     for i in (203, 204):
         bars[i] = bars[i].model_copy(update={"close": Decimal(97), "low": Decimal(1)})
@@ -98,7 +111,7 @@ def test_new_buy_resets_threshold_and_confirmation_window():
 
 
 @pytest.mark.parametrize("wide", [False, True])
-def test_zero_tr_or_nonpositive_threshold_adds_no_stop(wide):
+def test_zero_tr_or_nonpositive_threshold_adds_no_stop(wide: bool) -> None:
     bars = [
         b.model_copy(update=dict.fromkeys(("open", "high", "low", "close"), Decimal(100)))
         for b in setup()
@@ -117,7 +130,7 @@ def test_zero_tr_or_nonpositive_threshold_adds_no_stop(wide):
     assert simulate(bars) == simulate(bars, confirmations=1)
 
 
-def test_confirmation_rejects_invalid_options_and_unbound_models(tmp_path):
+def test_confirmation_rejects_invalid_options_and_unbound_models(tmp_path: Path) -> None:
     bars = setup()
     for count in (0, 3):
         with pytest.raises(ValueError, match="고정 손절 확인"):
@@ -153,13 +166,15 @@ def test_confirmation_rejects_invalid_options_and_unbound_models(tmp_path):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_confirmation_pipeline_preserves_expansion_control(tmp_path, monkeypatch, corrupt):
+def test_confirmation_pipeline_preserves_expansion_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = setup()
     for i in (203, 204):
         bars[i] = bars[i].model_copy(update={"close": Decimal(97), "low": Decimal(1)})
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

@@ -1,16 +1,27 @@
+from __future__ import annotations
+
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
 from test_breakout_exit import fixture
 
+from evergreen.market import Candle
 from evergreen.research import backtest
 from evergreen.research.backtest import Costs, _Portfolio, run_backtest
 from evergreen.research.experiments.breakout_meta import costs
+from evergreen.strategies import Strategy
+from evergreen.strategies.types import Side
 
 
-def test_channel_budget_round_trip_costs_quantity_and_account_peak():
+def test_channel_budget_round_trip_costs_quantity_and_account_peak() -> None:
     free = Costs(
-        buy_fee=0, sell_fee=0, buy_slippage=0, sell_slippage=0, quantity_step=1, min_notional=1
+        buy_fee=Decimal(0),
+        sell_fee=Decimal(0),
+        buy_slippage=Decimal(0),
+        sell_slippage=Decimal(0),
+        quantity_step=Decimal(1),
+        min_notional=Decimal(1),
     )
     portfolio = _Portfolio(Decimal(1000), free, True)
     assert portfolio.channel_entry_fits(Decimal(10), Decimal(9))
@@ -35,10 +46,16 @@ def test_channel_budget_round_trip_costs_quantity_and_account_peak():
     assert not projected.channel_entry_fits(Decimal(11), Decimal(10))
 
 
-def test_budget_uses_previous_channel_preserves_timing_and_default():
+def test_budget_uses_previous_channel_preserves_timing_and_default() -> None:
     bars = fixture()
     start = bars[200].open_time
-    args = (bars, start, Decimal(1000000), costs(), "breakout-v1")
+    args: tuple[list[Candle], datetime, Decimal, Costs, Strategy] = (
+        bars,
+        start,
+        Decimal(1000000),
+        costs(),
+        "breakout-v1",
+    )
     assert run_backtest(*args) == run_backtest(*args, breakout_risk_budget=False)
     assert not run_backtest(*args, breakout_risk_budget=True).fills
     bars[180] = bars[180].model_copy(update={"low": Decimal(99)})
@@ -52,7 +69,7 @@ def test_budget_uses_previous_channel_preserves_timing_and_default():
     assert run_backtest(*args, breakout_risk_budget=True).fills[0] == first
 
 
-def test_budget_cannot_be_applied_to_unrelated_strategies_or_fast_exit():
+def test_budget_cannot_be_applied_to_unrelated_strategies_or_fast_exit() -> None:
     bars = fixture()
     with pytest.raises(ValueError, match="위험 여유"):
         run_backtest(
@@ -70,7 +87,7 @@ def test_budget_cannot_be_applied_to_unrelated_strategies_or_fast_exit():
         )
 
 
-def test_budget_retains_loss_and_peak_for_later_entry(monkeypatch):
+def test_budget_retains_loss_and_peak_for_later_entry(monkeypatch: pytest.MonkeyPatch) -> None:
     bars = [
         b.model_copy(
             update={
@@ -86,7 +103,9 @@ def test_budget_retains_loss_and_peak_for_later_entry(monkeypatch):
     bars[211] = bars[211].model_copy(update={"open": Decimal(94), "low": Decimal(94)})
     entries = {bars[199].close_time, bars[220].close_time}
 
-    def signals(history, holding, strategy, **kwargs):
+    def signals(
+        history: list[Candle], holding: bool, strategy: Strategy, **kwargs: object
+    ) -> Side | None:
         t = history[-1].close_time
         if not holding and t in entries:
             return "buy"
@@ -94,11 +113,11 @@ def test_budget_retains_loss_and_peak_for_later_entry(monkeypatch):
 
     monkeypatch.setattr(backtest, "signal_target", signals)
     free = Costs(
-        buy_fee=0,
-        sell_fee=0,
-        buy_slippage=0,
-        sell_slippage=0,
-        min_notional=1,
+        buy_fee=Decimal(0),
+        sell_fee=Decimal(0),
+        buy_slippage=Decimal(0),
+        sell_slippage=Decimal(0),
+        min_notional=Decimal(1),
         quantity_step=Decimal(".00000001"),
     )
     result = run_backtest(

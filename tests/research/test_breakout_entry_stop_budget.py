@@ -1,17 +1,28 @@
+from __future__ import annotations
+
 import json
 from decimal import ROUND_DOWN, Decimal
+from pathlib import Path
 
 import pytest
 from test_breakout_entry_stop import setup
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research import backtest
+from evergreen.research.backtest import Costs, Result
 from evergreen.research.experiments import breakout_confirmation as runner
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
 
 
-def simulate(bars, *, enabled=True, delay=0, capital=1000000, charges=None):
+def simulate(
+    bars: list[Candle],
+    *,
+    enabled: bool = True,
+    delay: int = 0,
+    capital: Decimal | int = 1000000,
+    charges: Costs | None = None,
+) -> Result:
     return backtest.run_backtest(
         bars,
         bars[200].open_time,
@@ -30,7 +41,7 @@ def simulate(bars, *, enabled=True, delay=0, capital=1000000, charges=None):
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_default_affordable_entry_preserves_control_and_frozen_signal_tr(delay):
+def test_default_affordable_entry_preserves_control_and_frozen_signal_tr(delay: int) -> None:
     bars = setup()
     # Low=1 in the signal bar would reject if incorrectly used in the entry TR.
     assert simulate(bars, delay=delay) == simulate(bars, enabled=False, delay=delay)
@@ -38,7 +49,9 @@ def test_default_affordable_entry_preserves_control_and_frozen_signal_tr(delay):
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_checks_actual_open_not_signal_close_or_future_range(monkeypatch, delay):
+def test_checks_actual_open_not_signal_close_or_future_range(
+    monkeypatch: pytest.MonkeyPatch, delay: int
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal("3.5"))
     bars = setup()
     assert simulate(bars, delay=delay).rejections[0].reason == "risk_budget"
@@ -51,7 +64,7 @@ def test_checks_actual_open_not_signal_close_or_future_range(monkeypatch, delay)
     assert simulate(bars, delay=delay).fills[0] == result.fills[0]
 
 
-def test_costs_change_budget_outcome(monkeypatch):
+def test_costs_change_budget_outcome(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal("3.4"))
     bars = setup()
     assert simulate(bars).rejections[0].reason == "risk_budget"
@@ -59,7 +72,7 @@ def test_costs_change_budget_outcome(monkeypatch):
     assert simulate(bars, charges=free).fills[0].time == bars[200].open_time
 
 
-def test_projected_liquidation_includes_rounding_cash_dust_and_old_peak():
+def test_projected_liquidation_includes_rounding_cash_dust_and_old_peak() -> None:
     c = costs().model_copy(update={"quantity_step": Decimal(".7")})
     portfolio = backtest._Portfolio(Decimal(10000), c, True)
     portfolio.cash = Decimal(9500)
@@ -86,7 +99,9 @@ def test_projected_liquidation_includes_rounding_cash_dust_and_old_peak():
     assert not equal.channel_entry_fits(Decimal(100), Decimal("89.9999"))
 
 
-def test_losing_trade_does_not_reset_account_peak_for_next_entry(monkeypatch):
+def test_losing_trade_does_not_reset_account_peak_for_next_entry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = setup()
     for i in (202, 203):
@@ -103,7 +118,9 @@ def test_losing_trade_does_not_reset_account_peak_for_next_entry(monkeypatch):
 
 
 @pytest.mark.parametrize("tr", [Decimal(0), Decimal(40)])
-def test_undefined_or_nonpositive_stop_rejects_without_mutating_account(monkeypatch, tr):
+def test_undefined_or_nonpositive_stop_rejects_without_mutating_account(
+    monkeypatch: pytest.MonkeyPatch, tr: Decimal
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: tr)
     result = simulate(setup())
     assert not result.fills and result.cash == 1000000 and result.btc == 0
@@ -111,7 +128,7 @@ def test_undefined_or_nonpositive_stop_rejects_without_mutating_account(monkeypa
     assert result.rejections and all(r.reason == "risk_budget" for r in result.rejections)
 
 
-def test_rejected_order_can_retry_without_phantom_position(monkeypatch):
+def test_rejected_order_can_retry_without_phantom_position(monkeypatch: pytest.MonkeyPatch) -> None:
     bars = setup()
     # First original signal TR rejects. A later fresh signal has affordable TR.
     monkeypatch.setattr(
@@ -129,7 +146,9 @@ def test_rejected_order_can_retry_without_phantom_position(monkeypatch):
     assert result.fills[0].quantity == simulate(bars, enabled=False).fills[0].quantity
 
 
-def test_delayed_budget_uses_original_tr_and_risk_sell_is_not_filtered(monkeypatch):
+def test_delayed_budget_uses_original_tr_and_risk_sell_is_not_filtered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     bars = setup()
     monkeypatch.setattr(
         backtest,
@@ -144,12 +163,12 @@ def test_delayed_budget_uses_original_tr_and_risk_sell_is_not_filtered(monkeypat
     assert not result.rejections
 
 
-def test_budget_does_not_hide_minimum_order_rejection():
+def test_budget_does_not_hide_minimum_order_rejection() -> None:
     result = simulate(setup(), capital=1000)
     assert not result.fills and result.rejections[0].reason == "below_minimum"
 
 
-def test_budget_requires_declared_trend_candidate(tmp_path):
+def test_budget_requires_declared_trend_candidate(tmp_path: Path) -> None:
     bars = setup()
     with pytest.raises(ValueError, match="손절 예산"):
         backtest.run_backtest(
@@ -179,12 +198,14 @@ def test_budget_requires_declared_trend_candidate(tmp_path):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_pipeline_preserves_experiment49_control(tmp_path, monkeypatch, corrupt):
+def test_pipeline_preserves_experiment49_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = setup()
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(4))
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

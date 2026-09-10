@@ -1,19 +1,23 @@
+from __future__ import annotations
+
 import hashlib
 import json
 from datetime import timedelta
 from decimal import Decimal as D
+from pathlib import Path
 
 import pytest
 from test_breakout_liquidation_buffer import path
 
 from evergreen.market import write_json
+from evergreen.research.backtest import Result
 from evergreen.research.experiments import account_sensitivity as runner
 from evergreen.research.experiments.breakout_meta import costs
 from evergreen.research.experiments.regime import SCENARIOS
 from evergreen.research.experiments.strategy_family import simulate, summarize
 
 
-def results(returns):
+def results(returns: list[str]) -> list[Result]:
     bars = path()
     base = simulate(bars, bars[200].open_time, "cash", costs(), 0)
     return [
@@ -29,7 +33,7 @@ def results(returns):
     ]
 
 
-def test_even_odd_paired_median_and_every_single_omission():
+def test_even_odd_paired_median_and_every_single_omission() -> None:
     candidate = results(["0.1", "0.3", "-0.2", "0.2"])
     control = results(["0", "0", "0", "0"])
     actual = runner.sensitivity(["a", "b", "c", "d"], candidate, control)
@@ -54,7 +58,7 @@ def test_even_odd_paired_median_and_every_single_omission():
     assert actual["rows"][0]["hours"] == 60
 
 
-def test_sign_change_including_zero_and_paired_not_difference_of_medians():
+def test_sign_change_including_zero_and_paired_not_difference_of_medians() -> None:
     candidate = results([".1", ".1", ".5"])
     control = results(["0", ".5", ".1"])
     actual = runner.sensitivity(["a", "b", "c"], candidate, control)
@@ -67,7 +71,7 @@ def test_sign_change_including_zero_and_paired_not_difference_of_medians():
 @pytest.mark.parametrize(
     "case", ["duplicate", "count", "one", "boundary", "cost", "delay", "order", "return"]
 )
-def test_invalid_account_pairs_fail(case):
+def test_invalid_account_pairs_fail(case: str) -> None:
     a, b = results(["0", ".1", ".2"]), results(["0", "0", "0"])
     ids = ["a", "b", "c"]
     if case == "duplicate":
@@ -91,13 +95,15 @@ def test_invalid_account_pairs_fail(case):
         runner.sensitivity(ids, a, b)
 
 
-def reference(tmp_path):
+def reference(tmp_path: Path) -> Path:
     ref = tmp_path / "reference"
     ref.mkdir()
     bars = path()
     intervals = []
     inputs = {}
-    groups = {s: {m: [] for m in runner.MODELS} for s, *_ in SCENARIOS}
+    groups: dict[str, dict[str, list[Result]]] = {
+        s: {m: [] for m in runner.MODELS} for s, *_ in SCENARIOS
+    }
     for i in range(3):
         shifted = [
             b.model_copy(update={"open_time": b.open_time + timedelta(days=i * 10)}) for b in bars
@@ -137,7 +143,7 @@ def reference(tmp_path):
 
 
 @pytest.mark.parametrize("damage", [None, "hash", "missing", "summary", "interval"])
-def test_pipeline_verifies_inputs_and_does_not_regate(tmp_path, damage):
+def test_pipeline_verifies_inputs_and_does_not_regate(tmp_path: Path, damage: str | None) -> None:
     ref = reference(tmp_path)
     if damage == "hash":
         with (ref / "seed-17/continuous/block-000/base.breakout-v1.json").open("a") as f:

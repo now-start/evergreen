@@ -1,18 +1,24 @@
+from __future__ import annotations
+
 import json
+from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
 import pytest
 from test_breakout_entry_stop import setup
 
-from evergreen.market import write_json
-from evergreen.research.backtest import run_backtest
+from evergreen.market import Candle, write_json
+from evergreen.research.backtest import Costs, Result, run_backtest
 from evergreen.research.breakout_features import prior_mean_true_range
 from evergreen.research.experiments import breakout_confirmation as runner
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
+from evergreen.strategies import Strategy
 
 
-def expanding():
+def expanding() -> list[Candle]:
     bars = setup()
     for i in range(175, 199):
         bars[i] = bars[i].model_copy(update={"low": Decimal(98)})
@@ -20,7 +26,14 @@ def expanding():
     return bars
 
 
-def simulate(bars, *, enabled=True, delay=0, capital=1000000, **kwargs):
+def simulate(
+    bars: list[Candle],
+    *,
+    enabled: bool = True,
+    delay: int = 0,
+    capital: Decimal | int = 1000000,
+    **kwargs: Any,
+) -> Result:
     return run_backtest(
         bars,
         bars[200].open_time,
@@ -35,7 +48,9 @@ def simulate(bars, *, enabled=True, delay=0, capital=1000000, **kwargs):
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_expanding_signal_enables_fixed_stop_with_delayed_entry_and_strict_close(delay):
+def test_expanding_signal_enables_fixed_stop_with_delayed_entry_and_strict_close(
+    delay: int,
+) -> None:
     bars = expanding()
     if delay:
         bars[201] = bars[201].model_copy(update={"open": Decimal(108), "high": Decimal(109)})
@@ -52,7 +67,7 @@ def test_expanding_signal_enables_fixed_stop_with_delayed_entry_and_strict_close
 
 
 @pytest.mark.parametrize("relation", ["less", "equal", "zero"])
-def test_nonexpanding_entry_is_kept_but_extra_stop_stays_disabled(relation):
+def test_nonexpanding_entry_is_kept_but_extra_stop_stays_disabled(relation: str) -> None:
     bars = setup()
     if relation != "less":
         for i in range(199):
@@ -72,7 +87,7 @@ def test_nonexpanding_entry_is_kept_but_extra_stop_stays_disabled(relation):
     assert actual.fills[1].reason == "settlement"
 
 
-def test_active_stop_does_not_turn_off_when_later_tr_contracts():
+def test_active_stop_does_not_turn_off_when_later_tr_contracts() -> None:
     bars = expanding()
     assert prior_mean_true_range(bars[:241]) < prior_mean_true_range(bars[:241], lookback=168)
     bars[240] = bars[240].model_copy(update={"close": Decimal("94.99"), "low": Decimal(1)})
@@ -80,7 +95,7 @@ def test_active_stop_does_not_turn_off_when_later_tr_contracts():
     assert result.fills[1].time == bars[241].open_time and result.fills[1].reason == "signal"
 
 
-def test_next_buy_can_disable_previous_active_stop():
+def test_next_buy_can_disable_previous_active_stop() -> None:
     bars = expanding()
     bars[204] = bars[204].model_copy(update={"close": Decimal(94), "low": Decimal(1)})
     bars[250] = bars[250].model_copy(update={"close": Decimal(110), "high": Decimal(111)})
@@ -100,7 +115,7 @@ def test_next_buy_can_disable_previous_active_stop():
     assert simulate(bars, enabled=False).fills[-1].time == bars[253].open_time
 
 
-def test_next_buy_can_enable_previous_inactive_stop_and_risk_still_wins():
+def test_next_buy_can_enable_previous_inactive_stop_and_risk_still_wins() -> None:
     bars = setup()
     bars[160] = bars[160].model_copy(update={"low": Decimal(98)})
     bars[199] = bars[199].model_copy(update={"low": Decimal(99)})
@@ -135,9 +150,15 @@ def test_next_buy_can_enable_previous_inactive_stop_and_risk_still_wins():
     assert not unfilled.fills and unfilled.rejections
 
 
-def test_expansion_requires_entry_stop_and_rejects_floor_and_short_history(tmp_path):
+def test_expansion_requires_entry_stop_and_rejects_floor_and_short_history(tmp_path: Path) -> None:
     bars = setup()
-    args = (bars, bars[200].open_time, Decimal(1000000), costs(), "breakout-v1")
+    args: tuple[list[Candle], datetime, Decimal, Costs, Strategy] = (
+        bars,
+        bars[200].open_time,
+        Decimal(1000000),
+        costs(),
+        "breakout-v1",
+    )
     with pytest.raises(ValueError, match="확대"):
         run_backtest(*args, breakout_entry_stop_expansion=True)
     with pytest.raises(ValueError, match="확대"):
@@ -167,12 +188,14 @@ def test_expansion_requires_entry_stop_and_rejects_floor_and_short_history(tmp_p
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_expansion_pipeline_preserves_floor_control(tmp_path, monkeypatch, corrupt):
+def test_expansion_pipeline_preserves_floor_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = setup()
     bars[203] = bars[203].model_copy(update={"close": Decimal(97), "low": Decimal(96)})
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

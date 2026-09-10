@@ -1,14 +1,32 @@
+from __future__ import annotations
+
 from decimal import Decimal
+from pathlib import Path
+from typing import TypedDict
 
 import pytest
 from test_breakout_entry_stop_trend_context import MODES, long_decline
 from test_breakout_exit_checkpoint import checkpoint_path
 
+from evergreen.market import Candle
 from evergreen.research import backtest
+from evergreen.research.backtest import Result
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 
 
-def simulate(bars, *, enabled=True, delay=0):
+class InvalidOptions(TypedDict, total=False):
+    breakout_entry_stop: bool
+    breakout_entry_stop_adaptive_trail: bool
+    breakout_entry_stop_budget: bool
+    breakout_entry_stop_channel_reset: bool
+    breakout_entry_stop_confirmations: int
+    breakout_entry_stop_profit_trail: bool
+    breakout_entry_stop_trend_confirmation: bool
+    breakout_entry_stop_trend_lookback: int
+    breakout_exit_checkpoint: bool
+
+
+def simulate(bars: list[Candle], *, enabled: bool = True, delay: int = 0) -> Result:
     return backtest.run_backtest(
         bars,
         bars[200].open_time,
@@ -21,14 +39,16 @@ def simulate(bars, *, enabled=True, delay=0):
     )
 
 
-def higher_lows():
+def higher_lows() -> list[Candle]:
     bars = checkpoint_path()
     bars[199] = bars[199].model_copy(update={"low": Decimal(99)})
     return bars
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_higher_low_extends_current_position_without_24h_checkpoint(monkeypatch, delay):
+def test_higher_low_extends_current_position_without_24h_checkpoint(
+    monkeypatch: pytest.MonkeyPatch, delay: int
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = higher_lows()
     control, result = simulate(bars, enabled=False, delay=delay), simulate(bars, delay=delay)
@@ -39,7 +59,9 @@ def test_higher_low_extends_current_position_without_24h_checkpoint(monkeypatch,
 
 
 @pytest.mark.parametrize("recent_low", [98, 99])
-def test_equal_or_lower_low_keeps_policy50_sell(monkeypatch, recent_low):
+def test_equal_or_lower_low_keeps_policy50_sell(
+    monkeypatch: pytest.MonkeyPatch, recent_low: int
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = higher_lows()
     bars[160] = bars[160].model_copy(update={"low": Decimal(99)})
@@ -47,7 +69,9 @@ def test_equal_or_lower_low_keeps_policy50_sell(monkeypatch, recent_low):
     assert simulate(bars) == simulate(bars, enabled=False)
 
 
-def test_nonoverlapping_window_edges_and_current_bar_exclusion(monkeypatch):
+def test_nonoverlapping_window_edges_and_current_bar_exclusion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = higher_lows()
     bars[160] = bars[160].model_copy(update={"low": Decimal(99)})
@@ -61,14 +85,14 @@ def test_nonoverlapping_window_edges_and_current_bar_exclusion(monkeypatch):
     assert simulate(bars).fills[1].time == bars[205].open_time
 
 
-def test_long_context_exit_still_takes_precedence(monkeypatch):
+def test_long_context_exit_still_takes_precedence(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = long_decline()
     bars[199] = bars[199].model_copy(update={"low": Decimal(99)})
     assert simulate(bars) == simulate(bars, enabled=False)
 
 
-def test_future_low_cannot_cancel_reserved_exit(monkeypatch):
+def test_future_low_cannot_cancel_reserved_exit(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = checkpoint_path()
     first = simulate(bars, delay=1)
@@ -79,7 +103,7 @@ def test_future_low_cannot_cancel_reserved_exit(monkeypatch):
     assert first.fills[:2] == second.fills[:2]
 
 
-def test_risk_during_extension_is_not_suppressed(monkeypatch):
+def test_risk_during_extension_is_not_suppressed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = higher_lows()
     bars[210] = bars[210].model_copy(update={"close": Decimal(70), "low": Decimal(69)})
@@ -88,13 +112,24 @@ def test_risk_during_extension_is_not_suppressed(monkeypatch):
     assert result.fills[1].time == bars[211].open_time
 
 
-def test_option_is_exclusive_and_requires_policy50(tmp_path):
+def test_option_is_exclusive_and_requires_policy50(tmp_path: Path) -> None:
     bars = higher_lows()
-    for extra in (
+    invalid_options: tuple[InvalidOptions, ...] = (
         {},
-        {**MODES, "breakout_exit_checkpoint": True},
-        {**MODES, "breakout_entry_stop_trend_lookback": 168},
-    ):
+        {"breakout_exit_checkpoint": True},
+        {"breakout_entry_stop_trend_lookback": 168},
+    )
+    for extra in invalid_options[1:]:
+        extra["breakout_entry_stop"] = MODES["breakout_entry_stop"]
+        extra["breakout_entry_stop_confirmations"] = MODES["breakout_entry_stop_confirmations"]
+        extra["breakout_entry_stop_channel_reset"] = MODES["breakout_entry_stop_channel_reset"]
+        extra["breakout_entry_stop_profit_trail"] = MODES["breakout_entry_stop_profit_trail"]
+        extra["breakout_entry_stop_adaptive_trail"] = MODES["breakout_entry_stop_adaptive_trail"]
+        extra["breakout_entry_stop_trend_confirmation"] = MODES[
+            "breakout_entry_stop_trend_confirmation"
+        ]
+        extra["breakout_entry_stop_budget"] = MODES["breakout_entry_stop_budget"]
+    for extra in invalid_options:
         with pytest.raises(ValueError, match="저점 상승"):
             backtest.run_backtest(
                 bars,
@@ -114,7 +149,9 @@ def test_option_is_exclusive_and_requires_policy50(tmp_path):
         )
 
 
-def test_rejected_first_exit_does_not_become_a_new_extension_event(monkeypatch):
+def test_rejected_first_exit_does_not_become_a_new_extension_event(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: Decimal(2))
     bars = higher_lows()
     bars[180] = bars[180].model_copy(update={"low": Decimal(80)})
@@ -134,7 +171,7 @@ def test_rejected_first_exit_does_not_become_a_new_extension_event(monkeypatch):
     assert result.fills[1].time == bars[206].open_time
 
 
-def test_long_context_history_is_required():
+def test_long_context_history_is_required() -> None:
     bars = higher_lows()
     with pytest.raises(ValueError, match="192 hours"):
         backtest.run_backtest(

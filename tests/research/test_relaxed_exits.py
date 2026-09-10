@@ -1,28 +1,50 @@
+from __future__ import annotations
+
 import hashlib
 import json
+from datetime import datetime
+from decimal import Decimal
 from decimal import Decimal as D
+from pathlib import Path
+from typing import Literal, TypedDict
 
 import pytest
 from test_breakout_entry_stop import setup
 from test_breakout_liquidation_buffer import path, simulate
 
+from evergreen.market import Candle
 from evergreen.market import write_json as save_json
 from evergreen.research import backtest
+from evergreen.research.backtest import Costs
 from evergreen.research.experiments import relaxed_exits as runner
 from evergreen.research.experiments.breakout_meta import costs
+from evergreen.research.experiments.regime import SCENARIOS
+from evergreen.strategies import Strategy
 
 
-def write_json(path, data):
+class EntryStopOptions(TypedDict):
+    breakout_entry_stop: bool
+    breakout_entry_stop_confirmations: int
+    extra_delay_bars: int
+
+
+def write_json(path: Path, data: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     save_json(path, data)
 
 
 @pytest.mark.parametrize("hours", [72, 96])
 @pytest.mark.parametrize("delay", [0, 1])
-def test_wider_channel_excludes_current_low_and_waits(hours, delay):
+def test_wider_channel_excludes_current_low_and_waits(hours: Literal[72, 96], delay: int) -> None:
     bars = setup()
     bars[249] = bars[249].model_copy(update={"close": D("100.5"), "low": D(1)})
-    args = (bars, bars[200].open_time, D(1000000), costs(), "breakout-v1")
+    args: tuple[list[Candle], datetime, Decimal, Costs, Strategy] = (
+        bars,
+        bars[200].open_time,
+        D(1000000),
+        costs(),
+        "breakout-v1",
+    )
     old = backtest.run_backtest(*args, extra_delay_bars=delay)
     wide = backtest.run_backtest(
         *args, extra_delay_bars=delay, exit_policy=backtest.ExitPolicy(channel_hours=hours)
@@ -32,7 +54,9 @@ def test_wider_channel_excludes_current_low_and_waits(hours, delay):
     assert old.fills[0] == wide.fills[0]
 
 
-def test_relaxed_buffer_moves_asset_floor_not_range_multiplier(monkeypatch):
+def test_relaxed_buffer_moves_asset_floor_not_range_multiplier(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from test_breakout_entry_stop_trend_context import MODES
 
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
@@ -52,7 +76,7 @@ def test_relaxed_buffer_moves_asset_floor_not_range_multiplier(monkeypatch):
     assert wide.fills[1].time > old.fills[1].time
 
 
-def test_wider_stop_changes_entry_budget_not_position_fraction():
+def test_wider_stop_changes_entry_budget_not_position_fraction() -> None:
     from test_breakout_entry_stop_trend_context import MODES
 
     bars = setup()
@@ -71,7 +95,7 @@ def test_wider_stop_changes_entry_budget_not_position_fraction():
 
 
 @pytest.mark.parametrize("damage", [None, "hash", "mean", "future", "missing"])
-def test_frozen_predictions_are_verified(tmp_path, damage):
+def test_frozen_predictions_are_verified(tmp_path: Path, damage: str | None) -> None:
     inputs = runner.Inputs()
     root = tmp_path
     original = root / "breakout-ensemble-23"
@@ -110,7 +134,7 @@ def test_frozen_predictions_are_verified(tmp_path, damage):
         assert list(runner.frozen_scores(root, inputs).values()) == [D(".6")]
 
 
-def test_model_never_silently_fills_missing_scores():
+def test_model_never_silently_fills_missing_scores() -> None:
     bars = setup()
     with pytest.raises(ValueError, match="누락"):
         runner.simulate(
@@ -118,7 +142,9 @@ def test_model_never_silently_fills_missing_scores():
         )
 
 
-def test_study_preserves_original_and_reports_each_domain(tmp_path, monkeypatch):
+def test_study_preserves_original_and_reports_each_domain(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     bars = setup()
     start, end = bars[200].open_time, bars[-1].close_time
     root = tmp_path / "inputs"
@@ -139,7 +165,7 @@ def test_study_preserves_original_and_reports_each_domain(tmp_path, monkeypatch)
         )
         write_json(root / reference / "datasets/block-000/quality.json", {})
     monkeypatch.setattr(runner, "load_dataset", lambda p: (bars, "test"))
-    for scenario, fee, slip, delay in runner.SCENARIOS:
+    for scenario, fee, slip, delay in SCENARIOS:
         for model, location in locations.items():
             r = runner.simulate(
                 bars, start, model, backtest.ExitPolicy(), costs(fee, slip), delay, scores
@@ -175,7 +201,7 @@ def test_study_preserves_original_and_reports_each_domain(tmp_path, monkeypatch)
     assert (bad / "failure.json").exists() and not (bad / "status.json").exists()
 
 
-def test_explicit_default_reproduces_buffer():
+def test_explicit_default_reproduces_buffer() -> None:
     from test_breakout_entry_stop_trend_context import MODES
 
     bars = path()
@@ -196,7 +222,7 @@ def test_explicit_default_reproduces_buffer():
 
 
 @pytest.mark.parametrize("limit", [".1", ".15", ".2"])
-def test_drawdown_boundary_and_budget_use_same_limit(limit):
+def test_drawdown_boundary_and_budget_use_same_limit(limit: str) -> None:
     p = backtest._Portfolio(D(1000000), costs(), True, drawdown_limit=D(limit))
     p.cash = D(1000000) * (1 - D(limit)) + D(1)
     p.mark(D(1), setup()[0].open_time, "close")
@@ -211,11 +237,11 @@ def test_drawdown_boundary_and_budget_use_same_limit(limit):
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_wider_fixed_stop_keeps_original_signal_range_and_delay(delay):
+def test_wider_fixed_stop_keeps_original_signal_range_and_delay(delay: int) -> None:
     bars = setup()
     for i in (203, 204):
         bars[i] = bars[i].model_copy(update={"close": D(97), "low": D(1)})
-    args = dict(
+    args: EntryStopOptions = dict(
         breakout_entry_stop=True, breakout_entry_stop_confirmations=2, extra_delay_bars=delay
     )
     narrow = backtest.run_backtest(
@@ -246,12 +272,12 @@ def test_wider_fixed_stop_keeps_original_signal_range_and_delay(delay):
         dict(channel_hours=49),
     ],
 )
-def test_invalid_policy_is_rejected(bad):
+def test_invalid_policy_is_rejected(bad: dict[str, object]) -> None:
     with pytest.raises(ValueError):
-        backtest.ExitPolicy(**bad)
+        backtest.ExitPolicy.model_validate(bad)
 
 
-def test_policy_rejected_for_non_breakout_strategy():
+def test_policy_rejected_for_non_breakout_strategy() -> None:
     bars = setup()
     with pytest.raises(ValueError, match="돌파"):
         backtest.run_backtest(

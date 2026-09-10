@@ -1,23 +1,28 @@
+from __future__ import annotations
+
 import hashlib
 import json
 from datetime import timedelta
 from decimal import Decimal as D
+from pathlib import Path
 
 import pytest
 from test_breakout_liquidation_buffer import path
 
 from evergreen.market import write_json
+from evergreen.research.backtest import Result
 from evergreen.research.experiments import delay_path as runner
+from evergreen.research.experiments.account_sensitivity import CADENCE, MODELS
 from evergreen.research.experiments.breakout_meta import costs
 from evergreen.research.experiments.strategy_family import simulate
 
 
-def pair():
+def pair() -> list[Result]:
     bars = path()
     return [simulate(bars, bars[200].open_time, "breakout-v1", costs(), d) for d in (0, 1)]
 
 
-def test_execution_delay_alone_is_not_signal_divergence():
+def test_execution_delay_alone_is_not_signal_divergence() -> None:
     base, delayed = pair()
     row = runner.compare(base, delayed)
     assert row["first_signal_divergence"] is None
@@ -27,10 +32,11 @@ def test_execution_delay_alone_is_not_signal_divergence():
 
 
 @pytest.mark.parametrize("change", ["time", "reason", "missing"])
-def test_first_changed_signal_or_missing_fill_is_reported(change):
+def test_first_changed_signal_or_missing_fill_is_reported(change: str) -> None:
     base, delayed = pair()
     fills = list(delayed.fills)
     if change == "time":
+        assert fills[0].signal_time is not None
         fills[0] = fills[0].model_copy(
             update={"signal_time": fills[0].signal_time + timedelta(hours=1)}
         )
@@ -52,13 +58,13 @@ def test_first_changed_signal_or_missing_fill_is_reported(change):
 @pytest.mark.parametrize(
     "change", [{"extra_delay_bars": 0}, {"costs": costs(2, 2)}, {"net_return": D(".9")}]
 )
-def test_pair_contract_rejects_invalid_delay_cost_or_equity(change):
+def test_pair_contract_rejects_invalid_delay_cost_or_equity(change: dict[str, object]) -> None:
     base, delayed = pair()
     with pytest.raises(ValueError):
         runner.compare(base, delayed.model_copy(update=change))
 
 
-def test_relative_delay_change_is_difference_of_two_paired_differences():
+def test_relative_delay_change_is_difference_of_two_paired_differences() -> None:
     groups = {
         name: [{"account": "a", "pnl_change": str(value)}]
         for name, value in (("breakout-v1", 30), ("liquidation-buffer", 10))
@@ -69,7 +75,7 @@ def test_relative_delay_change_is_difference_of_two_paired_differences():
         runner.relative_changes(groups)
 
 
-def reference(tmp_path, monkeypatch):
+def reference(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     bars = path()
     bars[200] = bars[200].model_copy(
         update={"open": D(120), "high": D(120), "close": D(100), "low": D(99)}
@@ -92,15 +98,15 @@ def reference(tmp_path, monkeypatch):
         source / "intervals.json",
         [{"start": bars[200].open_time.isoformat(), "end": bars[-1].close_time.isoformat()}],
     )
-    for name in runner.MODELS:
+    for name in MODELS:
         for s, delay in runner.SCENARIOS:
             result = simulate(
                 bars,
                 bars[200].open_time,
-                "liquidation-buffer" if name == runner.CADENCE else name,
+                "liquidation-buffer" if name == CADENCE else name,
                 costs(),
                 delay,
-                entry_cadence_hours=4 if name == runner.CADENCE else 1,
+                entry_cadence_hours=4 if name == CADENCE else 1,
             )
             f = directory / f"{s}.{name}.json"
             write_json(f, result.model_dump(mode="json"))
@@ -110,7 +116,9 @@ def reference(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("damage", [None, "hash", "missing", "replay"])
-def test_all_changed_halt_pairs_replayed_and_fail_closed(tmp_path, monkeypatch, damage):
+def test_all_changed_halt_pairs_replayed_and_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, damage: str | None
+) -> None:
     source = reference(tmp_path, monkeypatch)
     if damage == "hash":
         with (source / "seed-17/continuous/block-000/base.breakout-v1.json").open("a") as f:
@@ -118,7 +126,7 @@ def test_all_changed_halt_pairs_replayed_and_fail_closed(tmp_path, monkeypatch, 
     elif damage == "missing":
         (source / "seed-17/continuous/block-000/delay-1h.breakout-v1.json").unlink()
     elif damage == "replay":
-        original = runner.simulate
+        original = simulate
         monkeypatch.setattr(
             runner,
             "simulate",

@@ -1,22 +1,25 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal as D
+from pathlib import Path
 
 import pytest
 from test_breakout_entry_window import entry_path, simulate
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research.experiments.breakout_meta import costs
 
 
 @pytest.mark.parametrize("oldest,buys", [("99.99", True), ("100", False), ("100.01", False)])
-def test_prior_slope_strict_boundary(oldest, buys):
+def test_prior_slope_strict_boundary(oldest: str, buys: bool) -> None:
     bars = entry_path()
     bars[7] = bars[7].model_copy(update={"close": D(oldest), "low": D(99), "high": D(101)})
     assert bool(simulate(bars, breakout_entry_slope_filter=True).fills) is buys
     assert simulate(bars).fills
 
 
-def test_current_and_preceding_excluded_and_future_cannot_move_entry():
+def test_current_and_preceding_excluded_and_future_cannot_move_entry() -> None:
     bars = entry_path()
     bars[6] = bars[6].model_copy(update={"close": D(9000), "high": D(9000)})
     bars[199] = bars[199].model_copy(update={"close": D(110)})
@@ -30,7 +33,7 @@ def test_current_and_preceding_excluded_and_future_cannot_move_entry():
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_slope_only_on_entry_and_original_signal_time(delay):
+def test_slope_only_on_entry_and_original_signal_time(delay: int) -> None:
     bars = entry_path()
     bars[7] = bars[7].model_copy(update={"close": D(99), "low": D(99)})
     base = simulate(bars, delay=delay)
@@ -40,7 +43,7 @@ def test_slope_only_on_entry_and_original_signal_time(delay):
     assert result.fills[0].signal_time == bars[199].close_time
 
 
-def test_invalid_combinations_and_required_initial_history():
+def test_invalid_combinations_and_required_initial_history() -> None:
     with pytest.raises(ValueError, match="방향"):
         simulate(entry_path(), 168, breakout_entry_slope_filter=True)
     with pytest.raises(ValueError, match="방향"):
@@ -69,7 +72,7 @@ def test_invalid_combinations_and_required_initial_history():
     )
 
 
-def test_falling_mean_during_position_does_not_add_exit():
+def test_falling_mean_during_position_does_not_add_exit() -> None:
     bars = entry_path()
     bars[7] = bars[7].model_copy(update={"close": D(80), "low": D(80)})
     bars[9] = bars[9].model_copy(update={"close": D(110), "high": D(110)})
@@ -83,7 +86,9 @@ def test_falling_mean_during_position_does_not_add_exit():
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_study_replays_six_controls(tmp_path, monkeypatch, corrupt):
+def test_study_replays_six_controls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     from evergreen.research.experiments import breakout_entry_window as runner
     from evergreen.research.experiments.regime import SCENARIOS
     from evergreen.research.experiments.strategy_family import simulate as prior
@@ -91,7 +96,7 @@ def test_study_replays_six_controls(tmp_path, monkeypatch, corrupt):
     bars = entry_path()
     start = bars[200].open_time
 
-    def blocks(raw, output):
+    def blocks(raw: Path, output: Path) -> list[list[Candle]]:
         output.mkdir()
         write_json(output / "coverage.json", {"fixture": True})
         return [bars]

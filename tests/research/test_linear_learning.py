@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from pathlib import Path
+
 import torch
 from test_payoff_learning import samples
 
@@ -5,14 +9,14 @@ from evergreen.research.learning.models import ChartModel, load_model, train_mod
 from evergreen.strategies import STRATEGY_PARAMETERS
 
 
-def test_linear_shape_capacity_and_not_an_operating_strategy():
+def test_linear_shape_capacity_and_not_an_operating_strategy() -> None:
     model = ChartModel("linear-v1")
     assert sum(p.numel() for p in model.parameters()) == 161
     assert model(torch.zeros(3, 32, 5)).shape == (3,)
     assert "linear-v1" not in STRATEGY_PARAMETERS
 
 
-def test_linear_weighting_seed_restore(tmp_path):
+def test_linear_weighting_seed_restore(tmp_path: Path) -> None:
     train, valid = samples(), samples(10)
     fitted = []
     for index, (seed, weighted) in enumerate(((17, False), (29, False), (17, False), (17, True))):

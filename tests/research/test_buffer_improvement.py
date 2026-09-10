@@ -1,18 +1,26 @@
+from __future__ import annotations
+
 import hashlib
 import json
+from decimal import Decimal
 from decimal import Decimal as D
+from pathlib import Path
 
 import pytest
 from test_breakout_entry_stop_trend_context import MODES
 from test_breakout_liquidation_buffer import path
 
+from evergreen.market import Candle
 from evergreen.market import write_json as save_json
 from evergreen.research import backtest
+from evergreen.research.backtest import Result
 from evergreen.research.experiments import buffer_improvement as runner
 from evergreen.research.experiments.breakout_meta import costs
+from evergreen.research.experiments.regime import SCENARIOS
+from evergreen.research.experiments.relaxed_exits import simulate
 
 
-def replay(bars, activation=None, delay=0):
+def replay(bars: list[Candle], activation: Decimal | None = None, delay: int = 0) -> Result:
     return backtest.run_backtest(
         bars,
         bars[200].open_time,
@@ -32,14 +40,16 @@ def replay(bars, activation=None, delay=0):
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_explicit_original_activation_is_exactly_unchanged(delay):
+def test_explicit_original_activation_is_exactly_unchanged(delay: int) -> None:
     bars = path()
     assert replay(bars, delay=delay) == replay(bars, D(6), delay)
 
 
 @pytest.mark.parametrize("delay", [0, 1])
 @pytest.mark.parametrize("peak,early", [("109.999999", False), ("110", True)])
-def test_early_activation_exact_threshold_and_pending_rebound(monkeypatch, delay, peak, early):
+def test_early_activation_exact_threshold_and_pending_rebound(
+    monkeypatch: pytest.MonkeyPatch, delay: int, peak: str, early: bool
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
     bars = path()
     # Prior means are flat, so a trailing breach is not suppressed by an uptrend.
@@ -71,12 +81,12 @@ def test_early_activation_exact_threshold_and_pending_rebound(monkeypatch, delay
 
 
 @pytest.mark.parametrize("value", ["NaN", "Infinity", "2", "7"])
-def test_activation_range_is_bounded(value):
+def test_activation_range_is_bounded(value: str) -> None:
     with pytest.raises(ValueError):
         backtest.ExitPolicy(profit_activation_multiple=D(value))
 
 
-def test_activation_requires_profit_trailing():
+def test_activation_requires_profit_trailing() -> None:
     bars = path()
     with pytest.raises(ValueError, match="추적"):
         backtest.run_backtest(
@@ -89,7 +99,9 @@ def test_activation_requires_profit_trailing():
         )
 
 
-def test_initial_stop_still_exits_without_profit_activation(monkeypatch):
+def test_initial_stop_still_exits_without_profit_activation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
     bars = path()
     for i in (203, 204):
@@ -100,7 +112,7 @@ def test_initial_stop_still_exits_without_profit_activation(monkeypatch):
     assert r.fills[:2] == replay(bars, None).fills[:2]
 
 
-def test_rising_trend_defers_early_trailing(monkeypatch):
+def test_rising_trend_defers_early_trailing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
     bars = path()
     for i in range(155, 179):
@@ -112,7 +124,7 @@ def test_rising_trend_defers_early_trailing(monkeypatch):
     assert r.fills[1].time > bars[205].open_time
 
 
-def test_same_signal_diagnostic_reconciles_and_marks_settlement():
+def test_same_signal_diagnostic_reconciles_and_marks_settlement() -> None:
     bars = path()
     r = replay(bars)
     effect = runner.entry_effects(r, r)
@@ -126,13 +138,15 @@ def test_same_signal_diagnostic_reconciles_and_marks_settlement():
         runner.entry_effects(r.model_copy(update={"final_equity": r.final_equity + 1}), r)
 
 
-def write_json(path, data):
+def write_json(path: Path, data: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     save_json(path, data)
 
 
 @pytest.mark.parametrize("damage", [None, "result", "dataset"])
-def test_study_checks_pinned_sources_controls_and_keeps_domains(tmp_path, damage):
+def test_study_checks_pinned_sources_controls_and_keeps_domains(
+    tmp_path: Path, damage: str | None
+) -> None:
     bars = path()
     root = tmp_path / "inputs"
     reference = root / "relaxed-exits-71-verified"
@@ -165,15 +179,13 @@ def test_study_checks_pinned_sources_controls_and_keeps_domains(tmp_path, damage
             ],
             "evaluated_hours": 60,
         }
-        for scenario, fee, slip, delay in runner.SCENARIOS:
+        for scenario, fee, slip, delay in SCENARIOS:
             for name, model, policy in (
                 ("wide20", "liquidation-buffer", runner.WIDE),
                 ("original", "liquidation-buffer", backtest.ExitPolicy()),
                 ("wide20", "breakout-v1", runner.WIDE),
             ):
-                r = runner.simulate(
-                    bars, bars[200].open_time, model, policy, costs(fee, slip), delay, {}
-                )
+                r = simulate(bars, bars[200].open_time, model, policy, costs(fee, slip), delay, {})
                 write_json(
                     reference / domain / "block-000" / f"{name}.{scenario}.{model}.json",
                     r.model_dump(mode="json"),

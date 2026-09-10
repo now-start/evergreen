@@ -1,22 +1,33 @@
+from __future__ import annotations
+
 import json
+from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from test_breakout_exit import fixture
 
-from evergreen.market import write_json
-from evergreen.research.backtest import run_backtest
+from evergreen.market import Candle, write_json
+from evergreen.research.backtest import Costs, run_backtest
 from evergreen.research.experiments import breakout_confirmation
 from evergreen.research.experiments.breakout_meta import costs
 from evergreen.research.experiments.regime import SCENARIOS
+from evergreen.strategies import Strategy
 
 
-def test_two_closes_are_consecutive_and_keep_original_signal_anchor():
+def test_two_closes_are_consecutive_and_keep_original_signal_anchor() -> None:
     bars = fixture()
     bars[200] = bars[200].model_copy(update={"high": Decimal(200)})
     for i, close in ((210, 100), (211, 101), (212, 100), (213, 100)):
         bars[i] = bars[i].model_copy(update={"close": Decimal(close), "low": Decimal(99)})
-    args = (bars, bars[200].open_time, Decimal(1000000), costs(), "breakout-v1")
+    args: tuple[list[Candle], datetime, Decimal, Costs, Strategy] = (
+        bars,
+        bars[200].open_time,
+        Decimal(1000000),
+        costs(),
+        "breakout-v1",
+    )
     for delay in (0, 1):
         result = run_backtest(
             *args,
@@ -33,7 +44,7 @@ def test_two_closes_are_consecutive_and_keep_original_signal_anchor():
     assert before.fills[:2] == after.fills[:2]
 
 
-def test_confirmation_excludes_pre_fill_bar_and_does_not_delay_original_exit():
+def test_confirmation_excludes_pre_fill_bar_and_does_not_delay_original_exit() -> None:
     bars = fixture()
     # With +1h execution, bar200 is before the actual buy at201.
     for i in (200, 201, 202):
@@ -79,7 +90,7 @@ def test_confirmation_excludes_pre_fill_bar_and_does_not_delay_original_exit():
 
 
 @pytest.mark.parametrize("enabled,count", [(False, 2), (True, 0), (True, 3)])
-def test_invalid_confirmation_options_are_rejected(enabled, count):
+def test_invalid_confirmation_options_are_rejected(enabled: bool, count: int) -> None:
     bars = fixture()
     with pytest.raises(ValueError, match="확인"):
         run_backtest(
@@ -93,7 +104,7 @@ def test_invalid_confirmation_options_are_rejected(enabled, count):
         )
 
 
-def test_new_fill_resets_the_ceiling_and_confirmation_window():
+def test_new_fill_resets_the_ceiling_and_confirmation_window() -> None:
     bars = fixture()
     bars[200] = bars[200].model_copy(update={"high": Decimal(200)})
     for i in (210, 211):
@@ -127,14 +138,16 @@ def test_new_fill_resets_the_ceiling_and_confirmation_window():
 
 @pytest.mark.parametrize("corrupt", [False, True])
 @pytest.mark.parametrize("mode", ["confirmed", "buffered", "capped"])
-def test_confirmed_failure_requires_old_candidate_parity(tmp_path, monkeypatch, corrupt, mode):
+def test_confirmed_failure_requires_old_candidate_parity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool, mode: str
+) -> None:
     buffered, capped = mode == "buffered", mode == "capped"
     bars = fixture()
     for i in (210, 211):
         bars[i] = bars[i].model_copy(update={"close": Decimal(100), "low": Decimal(99)})
     if buffered:
         bars[214] = bars[214].model_copy(update={"close": Decimal(97), "low": Decimal(96)})
-    controls = (
+    controls: tuple[str, ...] = (
         ("breakout-v1", "failed-breakout", "failed-breakout-2h")
         if buffered
         else ("breakout-v1", "failed-breakout")
@@ -152,7 +165,7 @@ def test_confirmed_failure_requires_old_candidate_parity(tmp_path, monkeypatch, 
         bars[223] = bars[223].model_copy(update={"close": Decimal(100), "low": Decimal(99)})
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

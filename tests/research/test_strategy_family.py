@@ -1,31 +1,38 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal as D
+from pathlib import Path
+from typing import cast
 
 import pytest
-from test_breakout_entry_stop_trend_context import MODES
+from test_breakout_entry_stop_trend_context import MODES, OptionalModeOptions
 from test_breakout_liquidation_buffer import path
 from test_strategies import from_closes
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research.backtest import run_backtest
 from evergreen.research.experiments.breakout_meta import costs
 from evergreen.research.experiments.regime import SCENARIOS
+from evergreen.strategies import Strategy
 
 
 @pytest.mark.parametrize("name", ["rsi-rebound-v1", "band-reversion-v1"])
 @pytest.mark.parametrize("delay", [0, 1])
-def test_candidates_use_existing_signal_and_execution_without_breakout_guards(name, delay):
+def test_candidates_use_existing_signal_and_execution_without_breakout_guards(
+    name: str, delay: int
+) -> None:
     from evergreen.research.experiments.strategy_family import simulate
 
     bars = path()
     start = bars[200].open_time
     actual = simulate(bars, start, name, costs(2, 2), delay)
     assert actual == run_backtest(
-        bars, start, D(1000000), costs(2, 2), name, extra_delay_bars=delay
+        bars, start, D(1000000), costs(2, 2), cast(Strategy, name), extra_delay_bars=delay
     )
 
 
-def test_gate_uses_paired_median_and_all_risk_checks():
+def test_gate_uses_paired_median_and_all_risk_checks() -> None:
     from evergreen.research.experiments.strategy_family import summarize
 
     bars = path()
@@ -51,7 +58,7 @@ def test_gate_uses_paired_median_and_all_risk_checks():
 
 
 @pytest.mark.parametrize("name", ["rsi-rebound-v1", "band-reversion-v1"])
-def test_candidate_parity_contains_actual_delayed_round_trip(name):
+def test_candidate_parity_contains_actual_delayed_round_trip(name: str) -> None:
     from evergreen.research.experiments.strategy_family import simulate
 
     values = (
@@ -62,19 +69,23 @@ def test_candidate_parity_contains_actual_delayed_round_trip(name):
     bars = from_closes(values)
     start = bars[200].open_time
     result = simulate(bars, start, name, costs(), 1)
-    assert result == run_backtest(bars, start, D(1000000), costs(), name, extra_delay_bars=1)
+    assert result == run_backtest(
+        bars, start, D(1000000), costs(), cast(Strategy, name), extra_delay_bars=1
+    )
     assert len(result.fills) >= 2 and result.natural_exits >= 1
     assert result.fills[0].side == "buy" and result.fills[1].side == "sell"
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_pipeline_matches_all_controls_and_blocks_mutation(tmp_path, monkeypatch, corrupt):
+def test_pipeline_matches_all_controls_and_blocks_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     from evergreen.research.experiments import strategy_family as runner
 
     bars = path()
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]
@@ -99,12 +110,12 @@ def test_pipeline_matches_all_controls_and_blocks_mutation(tmp_path, monkeypatch
                 start,
                 D(1000000),
                 costs(fee, slip),
-                "regime-mlp-v1" if filtered else name,
+                "regime-mlp-v1" if filtered else cast(Strategy, name),
                 extra_delay_bars=delay,
                 regime_policy="breakout-filter" if filtered else "routing",
                 regimes={b.close_time: 2 for b in bars[199:]} if filtered else None,
                 breakout_liquidation_buffer=name == "liquidation-buffer",
-                **(MODES if filtered else {}),
+                **(OptionalModeOptions(**MODES) if filtered else {}),
             ).model_dump(mode="json")
             if corrupt and name == "entry-stop-budget":
                 expected["total_fees"] = "123"
@@ -123,8 +134,8 @@ def test_pipeline_matches_all_controls_and_blocks_mutation(tmp_path, monkeypatch
             actual = json.loads(
                 (out / f"seed-17/continuous/block-000/base.{name}.json").read_text()
             )
-            assert actual == run_backtest(bars, start, D(1000000), costs(), name).model_dump(
-                mode="json"
-            )
+            assert actual == run_backtest(
+                bars, start, D(1000000), costs(), cast(Strategy, name)
+            ).model_dump(mode="json")
         with pytest.raises(FileExistsError):
             runner.run_study(tmp_path, ref, out)

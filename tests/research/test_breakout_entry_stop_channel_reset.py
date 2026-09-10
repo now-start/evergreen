@@ -1,18 +1,30 @@
+from __future__ import annotations
+
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
 import pytest
 from test_breakout_entry_stop import setup
 
-from evergreen.market import write_json
-from evergreen.research.backtest import run_backtest
+from evergreen.market import Candle, write_json
+from evergreen.research.backtest import Costs, Result, run_backtest
 from evergreen.research.experiments import breakout_confirmation as runner
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
+from evergreen.strategies import Strategy
 
 
-def simulate(bars, *, enabled=True, delay=0, capital=1000000, **kwargs):
+def simulate(
+    bars: list[Candle],
+    *,
+    enabled: bool = True,
+    delay: int = 0,
+    capital: Decimal | int = 1000000,
+    **kwargs: Any,
+) -> Result:
     return run_backtest(
         bars,
         bars[200].open_time,
@@ -27,14 +39,14 @@ def simulate(bars, *, enabled=True, delay=0, capital=1000000, **kwargs):
     )
 
 
-def extra_stop():
+def extra_stop() -> list[Candle]:
     bars = setup()
     for i in (203, 204):
         bars[i] = bars[i].model_copy(update={"close": Decimal(97), "low": Decimal(96)})
     return bars
 
 
-def test_extra_stop_locks_until_strict_closed_channel_reset_then_new_breakout():
+def test_extra_stop_locks_until_strict_closed_channel_reset_then_new_breakout() -> None:
     bars = extra_stop()
     last = bars[-1]
     bars.extend(
@@ -61,7 +73,7 @@ def test_extra_stop_locks_until_strict_closed_channel_reset_then_new_breakout():
     assert locked.fills[2].signal_time == bars[263].close_time
 
 
-def test_no_reset_keeps_cash_even_after_multiple_breakouts():
+def test_no_reset_keeps_cash_even_after_multiple_breakouts() -> None:
     bars = extra_stop()
     for i, price in ((210, 110), (230, 112), (250, 114)):
         bars[i] = bars[i].model_copy(update={"close": Decimal(price), "high": Decimal(price + 1)})
@@ -70,7 +82,7 @@ def test_no_reset_keeps_cash_even_after_multiple_breakouts():
     assert simulate(bars, enabled=False).fills[2].time == bars[211].open_time
 
 
-def test_actual_sell_bar_can_release_but_pre_sell_delay_bar_cannot():
+def test_actual_sell_bar_can_release_but_pre_sell_delay_bar_cannot() -> None:
     bars = extra_stop()
     bars[160] = bars[160].model_copy(update={"low": Decimal(96)})
     bars[199] = bars[199].model_copy(update={"low": Decimal(98)})
@@ -86,7 +98,7 @@ def test_actual_sell_bar_can_release_but_pre_sell_delay_bar_cannot():
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_simultaneous_channel_and_stop_is_channel_exit_without_lock(delay):
+def test_simultaneous_channel_and_stop_is_channel_exit_without_lock(delay: int) -> None:
     bars = extra_stop()
     bars[160] = bars[160].model_copy(update={"low": Decimal(97)})
     bars[199] = bars[199].model_copy(update={"low": Decimal(98)})
@@ -99,7 +111,7 @@ def test_simultaneous_channel_and_stop_is_channel_exit_without_lock(delay):
     assert actual.fills[2].time == bars[209 + delay].open_time
 
 
-def test_risk_replaces_pending_extra_stop_without_resetting_halt():
+def test_risk_replaces_pending_extra_stop_without_resetting_halt() -> None:
     bars = extra_stop()
     bars[205] = bars[205].model_copy(update={"close": Decimal(70), "low": Decimal(69)})
     result = simulate(bars, delay=1)
@@ -109,7 +121,7 @@ def test_risk_replaces_pending_extra_stop_without_resetting_halt():
     assert not unfilled.fills and unfilled.rejections
 
 
-def test_failed_sell_does_not_discard_position_or_block_retry():
+def test_failed_sell_does_not_discard_position_or_block_retry() -> None:
     bars = extra_stop()
     bars[205] = bars[205].model_copy(update={"open": Decimal(97), "low": Decimal(96)})
     result = simulate(bars, capital=5100)
@@ -122,9 +134,15 @@ def test_failed_sell_does_not_discard_position_or_block_retry():
     assert result.fills[1].time == bars[210].open_time
 
 
-def test_reset_requires_confirmed_stop_and_binds_only_declared_models(tmp_path):
+def test_reset_requires_confirmed_stop_and_binds_only_declared_models(tmp_path: Path) -> None:
     bars = setup()
-    args = (bars, bars[200].open_time, Decimal(1000000), costs(), "breakout-v1")
+    args: tuple[list[Candle], datetime, Decimal, Costs, Strategy] = (
+        bars,
+        bars[200].open_time,
+        Decimal(1000000),
+        costs(),
+        "breakout-v1",
+    )
     for flags in ({}, {"breakout_entry_stop": True}, {"breakout_entry_stop_confirmations": 2}):
         with pytest.raises(ValueError, match="채널 리셋"):
             run_backtest(*args, breakout_entry_stop_channel_reset=True, **flags)
@@ -147,12 +165,14 @@ def test_reset_requires_confirmed_stop_and_binds_only_declared_models(tmp_path):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_reset_pipeline_preserves_confirm2_control(tmp_path, monkeypatch, corrupt):
+def test_reset_pipeline_preserves_confirm2_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = extra_stop()
     bars[210] = bars[210].model_copy(update={"close": Decimal(110), "high": Decimal(111)})
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

@@ -1,17 +1,23 @@
+from __future__ import annotations
+
 import json
+from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
+from typing import cast
 
 import pytest
 from test_learning import candles
 
-from evergreen.market import write_json
-from evergreen.research.backtest import run_backtest
+from evergreen.market import Candle, write_json
+from evergreen.research.backtest import Costs, run_backtest
 from evergreen.research.experiments import breakout_exit
 from evergreen.research.experiments.breakout_meta import costs
 from evergreen.research.experiments.regime import SCENARIOS
+from evergreen.strategies import Strategy
 
 
-def fixture():
+def fixture() -> list[Candle]:
     bars = [
         b.model_copy(
             update={
@@ -39,9 +45,15 @@ def fixture():
     return bars
 
 
-def test_fast_exit_excludes_current_low_and_preserves_default_and_delay():
+def test_fast_exit_excludes_current_low_and_preserves_default_and_delay() -> None:
     bars = fixture()
-    args = (bars, bars[200].open_time, Decimal(1000000), costs(), "breakout-v1")
+    args: tuple[list[Candle], datetime, Decimal, Costs, Strategy] = (
+        bars,
+        bars[200].open_time,
+        Decimal(1000000),
+        costs(),
+        "breakout-v1",
+    )
     original = run_backtest(*args)
     assert original == run_backtest(*args, breakout_exit_lookback=48)
     fast = run_backtest(*args, breakout_exit_lookback=24)
@@ -63,14 +75,16 @@ def test_fast_exit_excludes_current_low_and_preserves_default_and_delay():
     assert filtered.fills == fast.fills
     for strategy, lookback in (("cash", 24), ("breakout-v1", 12)):
         with pytest.raises(ValueError, match="청산"):
-            run_backtest(*args[:-1], strategy, breakout_exit_lookback=lookback)
+            run_backtest(*args[:-1], cast(Strategy, strategy), breakout_exit_lookback=lookback)
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_exit_study_requires_reference_parity(tmp_path, monkeypatch, corrupt):
+def test_exit_study_requires_reference_parity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = fixture()
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

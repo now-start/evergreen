@@ -1,17 +1,29 @@
+from __future__ import annotations
+
 import json
+from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
+from typing import TypedDict
 
 import pytest
 from test_breakout_profit_trailing import profit_bars
 
-from evergreen.market import write_json
-from evergreen.research.backtest import run_backtest
+from evergreen.market import Candle, write_json
+from evergreen.research.backtest import Costs, run_backtest
 from evergreen.research.experiments import breakout_confirmation
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 from evergreen.research.experiments.regime import SCENARIOS
+from evergreen.strategies import Strategy
 
 
-def adaptive_bars():
+class TrailingOptions(TypedDict):
+    breakout_trailing_exit: bool
+    breakout_trailing_profit_only: bool
+    extra_delay_bars: int
+
+
+def adaptive_bars() -> list[Candle]:
     bars = profit_bars()
     # Prior24 TR at232=3.263541666..., distance9.790625, peak111.125.
     bars[232] = bars[232].model_copy(update={"close": Decimal("101.334375"), "low": Decimal(101)})
@@ -23,12 +35,18 @@ def adaptive_bars():
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_adaptive_distance_excludes_current_bar_retains_activation_and_boundary(delay):
+def test_adaptive_distance_excludes_current_bar_retains_activation_and_boundary(delay: int) -> None:
     bars = adaptive_bars()
     if delay:
         bars[200] = bars[200].model_copy(update={"close": Decimal(120)})
-    args = (bars, bars[200].open_time, Decimal(1000000), costs(), "breakout-v1")
-    options = {
+    args: tuple[list[Candle], datetime, Decimal, Costs, Strategy] = (
+        bars,
+        bars[200].open_time,
+        Decimal(1000000),
+        costs(),
+        "breakout-v1",
+    )
+    options: TrailingOptions = {
         "breakout_trailing_exit": True,
         "breakout_trailing_profit_only": True,
         "extra_delay_bars": delay,
@@ -49,7 +67,7 @@ def test_adaptive_distance_excludes_current_bar_retains_activation_and_boundary(
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_adaptive_distance_never_shrinks_below_entry_range(delay):
+def test_adaptive_distance_never_shrinks_below_entry_range(delay: int) -> None:
     bars = profit_bars()
     for i in range(200, 230):
         bars[i] = bars[i].model_copy(
@@ -58,8 +76,14 @@ def test_adaptive_distance_never_shrinks_below_entry_range(delay):
     bars[230] = bars[230].model_copy(update={"high": Decimal("111.125"), "low": Decimal(104)})
     bars[231] = bars[231].model_copy(update={"high": Decimal(104), "low": Decimal(104)})
     bars[232] = bars[232].model_copy(update={"high": Decimal(104), "low": Decimal(103)})
-    args = (bars, bars[200].open_time, Decimal(1000000), costs(), "breakout-v1")
-    options = {
+    args: tuple[list[Candle], datetime, Decimal, Costs, Strategy] = (
+        bars,
+        bars[200].open_time,
+        Decimal(1000000),
+        costs(),
+        "breakout-v1",
+    )
+    options: TrailingOptions = {
         "breakout_trailing_exit": True,
         "breakout_trailing_profit_only": True,
         "extra_delay_bars": delay,
@@ -70,7 +94,7 @@ def test_adaptive_distance_never_shrinks_below_entry_range(delay):
     assert adaptive.fills[1].time == bars[233 + delay].open_time
 
 
-def test_adaptive_requires_profit_activation_and_explicit_candidate(tmp_path):
+def test_adaptive_requires_profit_activation_and_explicit_candidate(tmp_path: Path) -> None:
     bars = profit_bars()
     with pytest.raises(ValueError, match="가변"):
         run_backtest(
@@ -102,11 +126,13 @@ def test_adaptive_requires_profit_activation_and_explicit_candidate(tmp_path):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_adaptive_pipeline_preserves_profit_trailing_control(tmp_path, monkeypatch, corrupt):
+def test_adaptive_pipeline_preserves_profit_trailing_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = adaptive_bars()
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from typing import TypedDict, cast
 
 import pytest
 import torch
@@ -7,7 +11,14 @@ from evergreen.research.learning.breakout_meta import payoff_weights
 from evergreen.research.learning.models import Samples, load_model, train_model, validation_loss
 
 
-def samples(offset=0):
+class TrainingOptions(TypedDict):
+    epochs: int
+    validation: list[Samples]
+    patience: int
+    seed: int
+
+
+def samples(offset: int = 0) -> Samples:
     start = datetime(2020, 1, 1, tzinfo=UTC) + timedelta(days=offset)
     return Samples(
         torch.arange(8 * 32 * 5, dtype=torch.float32).reshape(8, 32, 5) / 100,
@@ -17,9 +28,9 @@ def samples(offset=0):
     )
 
 
-def test_payoff_alignment_and_weighted_prior():
+def test_payoff_alignment_and_weighted_prior() -> None:
     s = samples()
-    records = [
+    records: list[dict[str, object]] = [
         {
             "status": "completed",
             "signal_time": t.isoformat(),
@@ -31,8 +42,8 @@ def test_payoff_alignment_and_weighted_prior():
     ]
     weights, audit = payoff_weights(records, [s])
     assert torch.allclose(weights, torch.tensor([0.025, 0.1] * 4))
-    assert float(audit["weighted_prior"]) == 0.8
-    assert float(audit["top1_share"]) == 0.2
+    assert float(cast(str, audit["weighted_prior"])) == 0.8
+    assert float(cast(str, audit["top1_share"])) == 0.2
     assert audit["events"] == 8
     with pytest.raises(ValueError, match="일치"):
         payoff_weights([{**records[0], "label_time": records[1]["label_time"]}, *records[1:]], [s])
@@ -40,9 +51,9 @@ def test_payoff_alignment_and_weighted_prior():
         payoff_weights(records[1:], [s])
 
 
-def test_weighted_early_stop_restore_and_uniform_parity(tmp_path):
+def test_weighted_early_stop_restore_and_uniform_parity(tmp_path: Path) -> None:
     train, valid = samples(), samples(10)
-    options = dict(epochs=6, validation=[valid], patience=2, seed=17)
+    options: TrainingOptions = dict(epochs=6, validation=[valid], patience=2, seed=17)
     plain = train_model([train], "mlp-v1", tmp_path / "plain", **options)
     uniform = train_model(
         [train],
@@ -77,18 +88,18 @@ def test_weighted_early_stop_restore_and_uniform_parity(tmp_path):
 @pytest.mark.parametrize(
     "weights", [torch.zeros(8), -torch.ones(8), torch.ones(7), torch.full((8,), float("nan"))]
 )
-def test_invalid_weights_fail_before_artifact(tmp_path, weights):
+def test_invalid_weights_fail_before_artifact(tmp_path: Path, weights: torch.Tensor) -> None:
     with pytest.raises(ValueError, match="가중치"):
         train_model([samples()], "mlp-v1", tmp_path / "bad", sample_weights=weights)
     assert not (tmp_path / "bad").exists()
 
 
-def test_float32_weight_overflow_fails(tmp_path):
+def test_float32_weight_overflow_fails(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="가중치"):
         train_model([samples()], "mlp-v1", tmp_path / "bad", sample_weights=torch.full((8,), 1e38))
 
 
-def test_zero_weight_is_valid_and_no_weighted_validation_without_training(tmp_path):
+def test_zero_weight_is_valid_and_no_weighted_validation_without_training(tmp_path: Path) -> None:
     fitted = train_model(
         [samples()],
         "mlp-v1",
@@ -101,7 +112,7 @@ def test_zero_weight_is_valid_and_no_weighted_validation_without_training(tmp_pa
         train_model([samples()], "mlp-v1", tmp_path / "bad", validation_weights=torch.ones(8))
 
 
-def test_validation_weight_configuration_cannot_be_silent(tmp_path):
+def test_validation_weight_configuration_cannot_be_silent(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="가중치"):
         train_model(
             [samples()],

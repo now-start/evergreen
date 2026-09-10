@@ -1,4 +1,9 @@
+from __future__ import annotations
+
+from datetime import datetime
+from decimal import Decimal
 from decimal import Decimal as D
+from pathlib import Path
 
 import pytest
 from test_breakout_entry_stop import setup
@@ -6,11 +11,21 @@ from test_breakout_entry_stop_trend_context import MODES
 from test_breakout_exit_checkpoint import checkpoint_path
 from test_breakout_liquidation_buffer import path
 
+from evergreen.market import Candle
 from evergreen.research import backtest
+from evergreen.research.backtest import Result
 from evergreen.research.experiments.breakout_meta import costs, evaluate
 
 
-def simulate(bars, *, dynamic=True, lookback=24, delay=0, capital=D(1000000), start=None):
+def simulate(
+    bars: list[Candle],
+    *,
+    dynamic: bool = True,
+    lookback: int = 24,
+    delay: int = 0,
+    capital: Decimal = D(1000000),
+    start: datetime | None = None,
+) -> Result:
     return backtest.run_backtest(
         bars,
         start or bars[200].open_time,
@@ -28,20 +43,22 @@ def simulate(bars, *, dynamic=True, lookback=24, delay=0, capital=D(1000000), st
 @pytest.mark.parametrize(
     "advance,expected", [(D(-1), 24), (D(0), 24), (D(6), 24), (D("6.00000001"), 168)]
 )
-def test_context_strict_boundary_and_excludes_signal_tr(advance, expected):
+def test_context_strict_boundary_and_excludes_signal_tr(advance: Decimal, expected: int) -> None:
     bars = setup()[:26]
     bars[-1] = bars[-1].model_copy(update={"close": D(100) + advance, "high": D(1000), "low": D(1)})
     assert backtest._entry_trend_context(bars) == expected
 
 
-def test_context_rejects_missing_history():
+def test_context_rejects_missing_history() -> None:
     with pytest.raises(ValueError, match="진입 맥락"):
         backtest._entry_trend_context(setup()[:25])
 
 
 @pytest.mark.parametrize("delay", [0, 1])
 @pytest.mark.parametrize("strong", [False, True])
-def test_signal_context_is_fixed_through_holding_and_delayed_fill(monkeypatch, delay, strong):
+def test_signal_context_is_fixed_through_holding_and_delayed_fill(
+    monkeypatch: pytest.MonkeyPatch, delay: int, strong: bool
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
     bars = checkpoint_path()
     # Only the frozen signal's s-24 endpoint differs; later closes recover.
@@ -51,7 +68,7 @@ def test_signal_context_is_fixed_through_holding_and_delayed_fill(monkeypatch, d
     choose = backtest._entry_trend_context
     seen = []
 
-    def record(history):
+    def record(history: list[Candle]) -> int:
         result = choose(history)
         seen.append((history[-1].close_time, result))
         return result
@@ -68,7 +85,9 @@ def test_signal_context_is_fixed_through_holding_and_delayed_fill(monkeypatch, d
         assert result.fills[1].signal_time == bars[204].close_time
 
 
-def test_context_keeps_preemptive_guard_and_rejected_sell_latch(monkeypatch):
+def test_context_keeps_preemptive_guard_and_rejected_sell_latch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
     bars = path()
     bars[175] = bars[175].model_copy(update={"close": D(95), "low": D(94)})
@@ -79,7 +98,7 @@ def test_context_keeps_preemptive_guard_and_rejected_sell_latch(monkeypatch):
     assert result.fills[1].time == bars[205].open_time
 
 
-def test_context_requires_long_warmup_and_original_short_buffer_policy(tmp_path):
+def test_context_requires_long_warmup_and_original_short_buffer_policy(tmp_path: Path) -> None:
     bars = setup()
     with pytest.raises(ValueError, match="192 hours"):
         simulate(bars, start=bars[191].open_time)
@@ -103,7 +122,7 @@ def test_context_requires_long_warmup_and_original_short_buffer_policy(tmp_path)
         )
 
 
-def test_budget_rejection_does_not_override_initial_safety(monkeypatch):
+def test_budget_rejection_does_not_override_initial_safety(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(4))
     bars = setup()
     monkeypatch.setattr(
@@ -115,7 +134,7 @@ def test_budget_rejection_does_not_override_initial_safety(monkeypatch):
     assert result == simulate(bars, dynamic=False)
 
 
-def test_minimum_buy_rejection_does_not_create_context(monkeypatch):
+def test_minimum_buy_rejection_does_not_create_context(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
     monkeypatch.setattr(
         backtest, "_entry_trend_context", lambda h: pytest.fail("거절된 매수의 상태 생성")
@@ -124,7 +143,9 @@ def test_minimum_buy_rejection_does_not_create_context(monkeypatch):
     assert not result.fills and result.rejections
 
 
-def test_next_filled_entry_chooses_new_context_without_resetting_capital(monkeypatch):
+def test_next_filled_entry_chooses_new_context_without_resetting_capital(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(backtest, "prior_mean_true_range", lambda h: D(2))
     bars = path()
     bars[204] = bars[204].model_copy(update={"open": D(110), "high": D(111)})
@@ -137,7 +158,7 @@ def test_next_filled_entry_chooses_new_context_without_resetting_capital(monkeyp
     choose = backtest._entry_trend_context
     decisions = []
 
-    def record(history):
+    def record(history: list[Candle]) -> int:
         lookback = choose(history)
         decisions.append((history[-1].close_time, lookback))
         return lookback

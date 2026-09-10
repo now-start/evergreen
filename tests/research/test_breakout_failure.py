@@ -1,20 +1,32 @@
+from __future__ import annotations
+
+from datetime import datetime
 from decimal import Decimal
+from typing import cast
 
 import pytest
 from test_breakout_exit import fixture
 
-from evergreen.research.backtest import run_backtest
+from evergreen.market import Candle
+from evergreen.research.backtest import Costs, run_backtest
 from evergreen.research.experiments.breakout_meta import costs
+from evergreen.strategies import Strategy
 
 
-def test_failure_exit_is_anchored_excludes_signal_bar_and_respects_delay():
+def test_failure_exit_is_anchored_excludes_signal_bar_and_respects_delay() -> None:
     bars = fixture()
     bars[200] = bars[200].model_copy(update={"high": Decimal(200)})
     bars[205] = bars[205].model_copy(update={"close": Decimal(101), "low": Decimal(100)})
     bars[210] = bars[210].model_copy(update={"close": Decimal(100), "low": Decimal(99)})
     bars[211] = bars[211].model_copy(update={"open": Decimal(100), "low": Decimal(99)})
     start = bars[200].open_time
-    args = (bars, start, Decimal(1000000), costs(), "breakout-v1")
+    args: tuple[list[Candle], datetime, Decimal, Costs, Strategy] = (
+        bars,
+        start,
+        Decimal(1000000),
+        costs(),
+        "breakout-v1",
+    )
     assert run_backtest(*args) == run_backtest(*args, breakout_failure_exit=False)
     for delay in (0, 1):
         original = run_backtest(*args, extra_delay_bars=delay)
@@ -28,7 +40,7 @@ def test_failure_exit_is_anchored_excludes_signal_bar_and_respects_delay():
     assert run_backtest(*args, breakout_failure_exit=True).fills[:2] == before
 
 
-def test_failure_exit_resets_anchor_after_new_buy():
+def test_failure_exit_resets_anchor_after_new_buy() -> None:
     bars = fixture()
     bars[200] = bars[200].model_copy(update={"high": Decimal(200)})
     bars[210] = bars[210].model_copy(update={"close": Decimal(100), "low": Decimal(99)})
@@ -74,7 +86,7 @@ def test_failure_exit_resets_anchor_after_new_buy():
     ]
 
 
-def test_failure_exit_rejects_unrelated_and_combined_options():
+def test_failure_exit_rejects_unrelated_and_combined_options() -> None:
     bars = fixture()
     for strategy, extra in (
         ("cash", {}),
@@ -88,13 +100,13 @@ def test_failure_exit_rejects_unrelated_and_combined_options():
                 bars[200].open_time,
                 Decimal(1000000),
                 costs(),
-                strategy,
+                cast(Strategy, strategy),
                 breakout_failure_exit=True,
                 **extra,
             )
 
 
-def test_failure_exit_keeps_original_channel_exit_and_rejected_buys_flat():
+def test_failure_exit_keeps_original_channel_exit_and_rejected_buys_flat() -> None:
     bars = fixture()
     bars[225] = bars[224].model_copy(update={"open_time": bars[225].open_time})
     bars[226] = bars[224].model_copy(update={"open_time": bars[226].open_time})

@@ -1,15 +1,20 @@
-from datetime import timedelta
+from __future__ import annotations
+
+from datetime import datetime, timedelta
 from decimal import Decimal as D
+from typing import Any
 
 import pytest
 
+from evergreen.market import Candle
 from evergreen.strategies.buffer import ID, BufferState, Protection
 from evergreen.trading.config import TradingSettings
 from evergreen.trading.engine import Trader
+from evergreen.trading.upbit import Book, Order
 from test_trading_execution import NOW, FakeUpbit, MemoryStore, settings
 
 
-def candidate():
+def candidate() -> TradingSettings:
     data = {
         "live_enabled": True,
         "access_key": settings().access_key,
@@ -21,21 +26,22 @@ def candidate():
 
 
 class CandidateUpbit(FakeUpbit):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.now = NOW
 
-    async def book(self):
+    async def book(self) -> Book:
         book = await super().book()
         return book.model_copy(update={"timestamp": int(self.now.timestamp() * 1000)})
 
-    async def order(self, identifier):
+    async def order(self, identifier: str) -> Order:
         order = await super().order(identifier)
+        assert order.trades is not None
         return order.model_copy(
             update={"trades": [f.model_copy(update={"created_at": self.now}) for f in order.trades]}
         )
 
-    async def candles(self, end, now):
+    async def candles(self, end: datetime, now: datetime) -> list[Candle]:
         rows = await super().candles(end, now)
         return [
             rows[0].model_copy(update={"open_time": rows[0].open_time - timedelta(hours=i)})
@@ -43,7 +49,7 @@ class CandidateUpbit(FakeUpbit):
         ] + rows
 
 
-def test_strategy_and_risk_contract():
+def test_strategy_and_risk_contract() -> None:
     assert candidate().strategy == ID
     with pytest.raises(ValueError):
         TradingSettings(strategy="breakout-v1", max_drawdown=D(".20"))
@@ -52,7 +58,7 @@ def test_strategy_and_risk_contract():
 
 
 @pytest.mark.asyncio
-async def test_cash_transition_preserves_peak_and_does_not_order():
+async def test_cash_transition_preserves_peak_and_does_not_order() -> None:
     cfg = candidate()
     store = MemoryStore(cfg.identity)
     store.state.krw, store.state.btc, store.state.peak = D(100000), D(0), D(101000)
@@ -63,7 +69,7 @@ async def test_cash_transition_preserves_peak_and_does_not_order():
 
 
 @pytest.mark.asyncio
-async def test_legacy_position_is_not_adopted_by_candidate():
+async def test_legacy_position_is_not_adopted_by_candidate() -> None:
     cfg = candidate()
     store = MemoryStore(cfg.identity)
     api = CandidateUpbit()
@@ -74,7 +80,7 @@ async def test_legacy_position_is_not_adopted_by_candidate():
 
 
 @pytest.mark.asyncio
-async def test_halted_account_is_not_reset_during_promotion():
+async def test_halted_account_is_not_reset_during_promotion() -> None:
     cfg = candidate()
     store = MemoryStore(cfg.identity)
     store.state.krw, store.state.btc, store.state.halted = D(100000), D(0), True
@@ -83,20 +89,21 @@ async def test_halted_account_is_not_reset_during_promotion():
 
 
 @pytest.mark.asyncio
-async def test_candidate_buy_persists_signal_range_before_order():
+async def test_candidate_buy_persists_signal_range_before_order() -> None:
     cfg = candidate()
     store = MemoryStore(cfg.identity)
     store.state.strategy, store.state.buffer = ID, BufferState()
     store.state.krw, store.state.btc = D(100000), D(0)
     api = CandidateUpbit()
     assert await Trader(api, store, cfg, lambda: NOW).tick() == "submitted"
+    assert store.state.intent_context is not None
     assert store.state.intent_context.entry_tr == 2
     assert "entry_tr" not in api.sent[0]
     assert len(api.sent) == 1
 
 
 @pytest.mark.asyncio
-async def test_corrupt_candidate_position_blocks_new_orders():
+async def test_corrupt_candidate_position_blocks_new_orders() -> None:
     cfg = candidate()
     store = MemoryStore(cfg.identity)
     store.state.strategy, store.state.buffer = ID, BufferState()
@@ -109,7 +116,7 @@ async def test_corrupt_candidate_position_blocks_new_orders():
 
 
 @pytest.mark.asyncio
-async def test_ambiguous_buy_recovers_once_and_restores_protection():
+async def test_ambiguous_buy_recovers_once_and_restores_protection() -> None:
     from upbit import APITimeoutError
 
     cfg = candidate()
@@ -120,22 +127,28 @@ async def test_ambiguous_buy_recovers_once_and_restores_protection():
     api.timeout = True
     with pytest.raises(APITimeoutError):
         await Trader(api, store, cfg, lambda: api.now).tick()
+    assert store.state.intent_context is not None
     assert store.state.pending and store.state.intent_context.entry_tr == 2
     api.timeout = False
     # New Trader instance simulates a process restart with the same durable state.
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "pending"
     api.cash, api.btc, api.order_state = D(0), D(1000), "done"
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "reconciled"
+    assert store.state.buffer is not None
+    assert store.state.buffer.protection is not None
     assert store.state.buffer.protection.reference == D("99.95")
+    assert store.state.buffer is not None
+    assert store.state.buffer.protection is not None
     assert store.state.buffer.protection.entry_tr == 2
     assert store.state.pending is None and store.state.intent_context is None
     assert len(api.sent) == 1
     api.now += timedelta(hours=1)
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "no-signal"
+    assert store.state.buffer is not None
     assert store.state.buffer.last_bar == api.now.replace(minute=0, second=0, microsecond=0)
 
 
-def held():
+def held(monkeypatch: pytest.MonkeyPatch) -> tuple[TradingSettings, MemoryStore, CandidateUpbit]:
     cfg = candidate()
     store = MemoryStore(cfg.identity)
     api = CandidateUpbit()
@@ -151,34 +164,39 @@ def held():
     store.state.krw, store.state.btc, store.state.peak = api.cash, api.btc, D(130000)
     original = api.candles
 
-    async def candles(end, now):
+    async def candles(end: datetime, now: datetime) -> list[Candle]:
         bars = await original(end, now)
         bars[-1] = bars[-1].model_copy(update={"open": D(110)})
         return bars
 
-    api.candles = candles
+    monkeypatch.setattr(api, "candles", candles)
     return cfg, store, api
 
 
 @pytest.mark.asyncio
-async def test_terminal_partial_sell_retains_exit_then_clears_position():
-    cfg, store, api = held()
+async def test_terminal_partial_sell_retains_exit_then_clears_position(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cfg, store, api = held(monkeypatch)
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "submitted"
+    assert store.state.intent_context is not None
     assert store.state.intent_context.reset_after_sell
     api.cash, api.btc, api.order_state = D(54950), D(500), "cancel"
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "reconciled"
+    assert store.state.buffer is not None
     assert store.state.buffer.protection is not None and store.state.reserved_exit
     api.order_state = "wait"
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "submitted"
     assert len(api.sent) == 2 and api.sent[0]["identifier"] != api.sent[1]["identifier"]
     api.cash, api.btc, api.order_state = D(109900), D(0), "done"
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "reconciled"
+    assert store.state.buffer is not None
     assert store.state.buffer.protection is None and store.state.buffer.awaiting_reset
     assert store.state.reserved_exit is None
 
 
 @pytest.mark.asyncio
-async def test_zero_fill_buy_does_not_create_a_position():
+async def test_zero_fill_buy_does_not_create_a_position() -> None:
     cfg = candidate()
     store = MemoryStore(cfg.identity)
     store.state.strategy, store.state.buffer = ID, BufferState()
@@ -187,27 +205,35 @@ async def test_zero_fill_buy_does_not_create_a_position():
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "submitted"
     api.zero_fill, api.order_state = True, "cancel"
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "reconciled"
+    assert store.state.buffer is not None
     assert store.state.buffer.protection is None and store.state.pending is None
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "already-evaluated"
     assert len(api.sent) == 1
 
 
 @pytest.mark.asyncio
-async def test_missing_history_blocks_recovery_instead_of_resetting_position():
-    cfg, store, api = held()
+async def test_missing_history_blocks_recovery_instead_of_resetting_position(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cfg, store, api = held(monkeypatch)
+    assert store.state.buffer is not None
+    assert store.state.buffer.last_bar is not None
     store.state.buffer.last_bar -= timedelta(hours=40)
     with pytest.raises(ValueError):
         await Trader(api, store, cfg, lambda: api.now).tick()
+    assert store.state.buffer is not None
     assert not api.sent and store.state.buffer.protection is not None
 
 
 @pytest.mark.asyncio
-async def test_depth_rejection_keeps_durable_exit_reservation(monkeypatch):
+async def test_depth_rejection_keeps_durable_exit_reservation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import evergreen.trading.engine as module
 
-    cfg, store, api = held()
+    cfg, store, api = held(monkeypatch)
 
-    def reject(*args):
+    def reject(*args: Any) -> None:
         raise ValueError("depth")
 
     monkeypatch.setattr(module, "check_depth", reject)
@@ -217,7 +243,7 @@ async def test_depth_rejection_keeps_durable_exit_reservation(monkeypatch):
     assert not api.sent
 
 
-def test_legacy_payload_loads_without_changing_identity_or_peak():
+def test_legacy_payload_loads_without_changing_identity_or_peak() -> None:
     from evergreen.trading.state import State
 
     old = State.model_validate_json('{"identity":"old","peak":"120000","halted":true}')
@@ -226,63 +252,74 @@ def test_legacy_payload_loads_without_changing_identity_or_peak():
 
 
 @pytest.mark.asyncio
-async def test_recovered_bar_drawdown_permanently_halts_even_if_quote_recovers():
-    cfg, store, api = held()
+async def test_recovered_bar_drawdown_permanently_halts_even_if_quote_recovers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cfg, store, api = held(monkeypatch)
     store.state.peak = D(110000)
     original = api.candles
 
-    async def candles(end, now):
+    async def candles(end: datetime, now: datetime) -> list[Candle]:
         bars = await original(end, now)
         bars[-1] = bars[-1].model_copy(update={"open": D(150), "high": D(150)})
         return bars
 
-    api.candles = candles
+    monkeypatch.setattr(api, "candles", candles)
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "submitted"
     assert store.state.halted and store.state.peak == 150000
+    assert store.state.intent_context is not None
     assert store.state.intent_context.reason == "risk"
 
 
 @pytest.mark.asyncio
-async def test_pre_fill_open_does_not_become_owned_equity_peak():
-    cfg, store, api = held()
+async def test_pre_fill_open_does_not_become_owned_equity_peak(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cfg, store, api = held(monkeypatch)
     store.state.peak = D(110000)
+    assert store.state.buffer is not None
     store.state.buffer.protection = Protection.open(D(110), D(2))
+    assert store.state.buffer is not None
     store.state.buffer.position_since = NOW - timedelta(hours=1)
     original = api.candles
 
-    async def candles(end, now):
+    async def candles(end: datetime, now: datetime) -> list[Candle]:
         bars = await original(end, now)
         bars[-1] = bars[-1].model_copy(update={"open": D(150), "high": D(150)})
         return bars
 
-    api.candles = candles
+    monkeypatch.setattr(api, "candles", candles)
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "no-signal"
     assert not store.state.halted and store.state.peak == 110000 and not api.sent
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("recovered", [False, True])
-async def test_risk_fill_second_precision_is_not_rejected(recovered):
-    cfg, store, api = held()
+async def test_risk_fill_second_precision_is_not_rejected(
+    recovered: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cfg, store, api = held(monkeypatch)
     api.now = NOW.replace(microsecond=123456)
     if recovered:
         original = api.candles
 
-        async def candles(end, now):
+        async def candles(end: datetime, now: datetime) -> list[Candle]:
             bars = await original(end, now)
             bars[-1] = bars[-1].model_copy(update={"open": D(150), "high": D(150)})
             return bars
 
-        api.candles = candles
+        monkeypatch.setattr(api, "candles", candles)
     else:
         store.state.halted = True
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "submitted"
+    assert store.state.intent_context is not None
     assert store.state.intent_context.reason == "risk"
     api.cash, api.btc, api.order_state = D(109950), D(0), "done"
     original_order = api.order
 
-    async def order(identifier):
+    async def order(identifier: str) -> Order:
         result = await original_order(identifier)
+        assert result.trades is not None
         return result.model_copy(
             update={
                 "trades": [
@@ -292,29 +329,33 @@ async def test_risk_fill_second_precision_is_not_rejected(recovered):
             }
         )
 
-    api.order = order
+    monkeypatch.setattr(api, "order", order)
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "reconciled"
     assert store.state.pending is None and store.state.halted
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("timestamp", [None, NOW + timedelta(hours=1), NOW - timedelta(hours=1)])
-async def test_invalid_fill_time_preserves_pending_intent(timestamp):
-    cfg, store, api = held()
+async def test_invalid_fill_time_preserves_pending_intent(
+    timestamp: datetime | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cfg, store, api = held(monkeypatch)
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "submitted"
     api.cash, api.btc, api.order_state = D(109950), D(0), "done"
     original = api.order
 
-    async def order(identifier):
+    async def order(identifier: str) -> Order:
         result = await original(identifier)
+        assert result.trades is not None
         return result.model_copy(
             update={
                 "trades": [f.model_copy(update={"created_at": timestamp}) for f in result.trades]
             }
         )
 
-    api.order = order
+    monkeypatch.setattr(api, "order", order)
     with pytest.raises(ValueError):
         await Trader(api, store, cfg, lambda: api.now).tick()
+    assert store.state.buffer is not None
     assert store.state.pending and store.state.buffer.protection is not None
     assert store.state.btc == 1000 and len(api.sent) == 1

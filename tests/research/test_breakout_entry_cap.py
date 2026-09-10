@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from test_breakout_exit import fixture
@@ -8,7 +11,7 @@ from evergreen.research.experiments import breakout_confirmation
 from evergreen.research.experiments.breakout_meta import costs
 
 
-def test_prior_true_range_uses_previous_close_and_excludes_signal():
+def test_prior_true_range_uses_previous_close_and_excludes_signal() -> None:
     from evergreen.research.breakout_features import prior_mean_true_range
 
     bars = fixture()
@@ -22,7 +25,7 @@ def test_prior_true_range_uses_previous_close_and_excludes_signal():
         prior_mean_true_range(bars[:25])
 
 
-def test_extension_boundary_prior_ceiling_and_future_invariance():
+def test_extension_boundary_prior_ceiling_and_future_invariance() -> None:
     bars = fixture()
     bars[180] = bars[180].model_copy(update={"low": Decimal(99)})
     bars[174] = bars[174].model_copy(update={"close": Decimal(90), "low": Decimal(89)})
@@ -41,7 +44,7 @@ def test_extension_boundary_prior_ceiling_and_future_invariance():
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_entry_cap_preserves_fills_original_exit_and_risk(delay):
+def test_entry_cap_preserves_fills_original_exit_and_risk(delay: int) -> None:
     bars = fixture()
     # Failure exits would act at210; original48 floor still includes the low at180.
     bars[210] = bars[210].model_copy(update={"close": Decimal(100), "low": Decimal(99)})
@@ -75,7 +78,7 @@ def test_entry_cap_preserves_fills_original_exit_and_risk(delay):
     assert result.fills[1].time == bars[251 + delay].open_time
 
 
-def test_zero_range_and_approval_cannot_manufacture_entry():
+def test_zero_range_and_approval_cannot_manufacture_entry() -> None:
     bars = [
         b.model_copy(update=dict.fromkeys(("open", "high", "low", "close"), Decimal(100)))
         for b in fixture()
@@ -99,7 +102,7 @@ def test_zero_range_and_approval_cannot_manufacture_entry():
 
 
 @pytest.mark.parametrize("other", ["risk_budget", "volatility_failure_exit"])
-def test_entry_cap_cannot_combine_with_other_research_options(tmp_path, other):
+def test_entry_cap_cannot_combine_with_other_research_options(tmp_path: Path, other: str) -> None:
     with pytest.raises(ValueError, match="동시"):
         breakout_confirmation.run_study(
             tmp_path, tmp_path, tmp_path / "out", extension_cap=True, **{other: True}

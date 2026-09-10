@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
 import pytest
 from test_breakout_exit import fixture
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research.backtest import run_backtest
 from evergreen.research.experiments import breakout_confirmation
 from evergreen.research.experiments.breakout_confirmation import confirmation_schedule
@@ -12,7 +16,7 @@ from evergreen.research.experiments.breakout_meta import costs
 from evergreen.research.experiments.regime import SCENARIOS
 
 
-def test_wick_boundary_body_direction_and_future_invariance():
+def test_wick_boundary_body_direction_and_future_invariance() -> None:
     bars = fixture()
     start = bars[200].open_time
     bars[199] = bars[199].model_copy(update={"low": Decimal(100)})
@@ -37,7 +41,7 @@ def test_wick_boundary_body_direction_and_future_invariance():
     assert breakout_confirmation.wick_schedule(bars, start)[start] == 2
 
 
-def test_wick_filter_preserves_next_open_exit_and_ignores_volume():
+def test_wick_filter_preserves_next_open_exit_and_ignores_volume() -> None:
     bars = [b.model_copy(update={"volume": Decimal(0)}) for b in fixture()]
     start = bars[200].open_time
     # Both price exit and long-wick rejection at 250: rejection must not prevent a sell.
@@ -83,13 +87,13 @@ def test_wick_filter_preserves_next_open_exit_and_ignores_volume():
         {"confirmed_failure_exit": True, "volatility_failure_exit": True},
     ],
 )
-def test_confirmation_filters_cannot_be_combined(tmp_path, options):
+def test_confirmation_filters_cannot_be_combined(tmp_path: Path, options: Any) -> None:
     with pytest.raises(ValueError, match="동시"):
         breakout_confirmation.run_study(tmp_path, tmp_path, tmp_path / "out", **options)
     assert not (tmp_path / "out").exists()
 
 
-def test_volume_confirmation_is_causal_strict_and_does_not_delay_entry():
+def test_volume_confirmation_is_causal_strict_and_does_not_delay_entry() -> None:
     bars = [b.model_copy(update={"volume": Decimal(10)}) for b in fixture()]
     bars[199] = bars[199].model_copy(update={"volume": Decimal(11)})
     start = bars[200].open_time
@@ -135,7 +139,7 @@ def test_volume_confirmation_is_causal_strict_and_does_not_delay_entry():
     assert not result.fills
 
 
-def test_confirmation_uses_previous_bar_and_current_engine_condition():
+def test_confirmation_uses_previous_bar_and_current_engine_condition() -> None:
     bars = fixture()
     # First breakout at 199; second breakout at 200; fill at 201, not retrospectively at 200.
     bars[200] = bars[200].model_copy(update={"high": Decimal(106), "close": Decimal(105)})
@@ -184,7 +188,9 @@ def test_confirmation_uses_previous_bar_and_current_engine_condition():
 
 @pytest.mark.parametrize("corrupt", [False, True])
 @pytest.mark.parametrize("mode", ["time", "volume", "wick", "budget", "failure"])
-def test_confirmation_pipeline_requires_reference_parity(tmp_path, monkeypatch, corrupt, mode):
+def test_confirmation_pipeline_requires_reference_parity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool, mode: str
+) -> None:
     volume, wick = mode == "volume", mode == "wick"
     budget = mode == "budget"
     expected = {
@@ -199,7 +205,7 @@ def test_confirmation_pipeline_requires_reference_parity(tmp_path, monkeypatch, 
         bars[210] = bars[210].model_copy(update={"close": Decimal(100), "low": Decimal(99)})
         bars[211] = bars[211].model_copy(update={"open": Decimal(100), "low": Decimal(99)})
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]

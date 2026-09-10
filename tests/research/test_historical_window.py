@@ -1,18 +1,21 @@
+from __future__ import annotations
+
 import hashlib
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal as D
+from pathlib import Path
 
 import pytest
 from test_breakout_liquidation_buffer import path
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research.experiments import historical_window as runner
 from evergreen.research.experiments.breakout_meta import costs
 from evergreen.research.experiments.strategy_family import simulate
 
 
-def source(tmp_path, bars, start, end):
+def source(tmp_path: Path, bars: list[Candle], start: datetime, end: datetime) -> Path:
     root = tmp_path / "raw-input"
     (root / "raw").mkdir(parents=True)
     rows = [
@@ -51,7 +54,7 @@ def source(tmp_path, bars, start, end):
     return root
 
 
-def test_raw_gap_splits_blocks_without_filling(tmp_path):
+def test_raw_gap_splits_blocks_without_filling(tmp_path: Path) -> None:
     bars = path()
     start, end = bars[0].open_time, bars[-1].close_time
     raw = source(tmp_path, bars[:210] + bars[211:], start, end)
@@ -62,7 +65,7 @@ def test_raw_gap_splits_blocks_without_filling(tmp_path):
 
 
 @pytest.mark.parametrize("damage", ["hash", "http", "range", "conflict", "incomplete-run"])
-def test_invalid_raw_sources_fail_closed(tmp_path, damage):
+def test_invalid_raw_sources_fail_closed(tmp_path: Path, damage: str) -> None:
     bars = path()
     start, end = bars[0].open_time, bars[-1].close_time
     if damage == "conflict":
@@ -84,7 +87,9 @@ def test_invalid_raw_sources_fail_closed(tmp_path, damage):
 
 
 @pytest.mark.parametrize("gap", [False, True])
-def test_study_uses_all_post_warmup_hours_and_frozen_strategy(tmp_path, monkeypatch, gap):
+def test_study_uses_all_post_warmup_hours_and_frozen_strategy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, gap: bool
+) -> None:
     bars = path()
     start, end = bars[200].open_time, bars[-1].close_time
     monkeypatch.setattr(runner, "START", start)
@@ -111,7 +116,9 @@ def test_study_uses_all_post_warmup_hours_and_frozen_strategy(tmp_path, monkeypa
         runner.run_study(raw, output)
 
 
-def test_no_post_warmup_account_is_not_a_pass(tmp_path, monkeypatch):
+def test_no_post_warmup_account_is_not_a_pass(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     bars = path()
     start, end = bars[200].open_time, bars[-1].close_time
     monkeypatch.setattr(runner, "START", start)

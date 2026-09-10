@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import json
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from test_breakout_exit import fixture
 
-from evergreen.market import write_json
+from evergreen.market import Candle, write_json
 from evergreen.research.backtest import run_backtest
 from evergreen.research.breakout_features import prior_mean_true_range
 from evergreen.research.experiments import breakout_confirmation
@@ -12,7 +15,7 @@ from evergreen.research.experiments.breakout_meta import costs
 from evergreen.research.experiments.regime import SCENARIOS
 
 
-def test_weekly_true_range_includes_first_previous_close_and_excludes_signal():
+def test_weekly_true_range_includes_first_previous_close_and_excludes_signal() -> None:
     bars = fixture()
     bars[180] = bars[180].model_copy(update={"low": Decimal(99)})
     bars[30] = bars[30].model_copy(update={"close": Decimal(90), "low": Decimal(89)})
@@ -32,7 +35,9 @@ def test_weekly_true_range_includes_first_previous_close_and_excludes_signal():
 @pytest.mark.parametrize(
     "last_low,expected", [(Decimal(99), 0), (Decimal(98), 2), (Decimal(100), 0)]
 )
-def test_expansion_strict_boundary_and_current_future_exclusion(last_low, expected):
+def test_expansion_strict_boundary_and_current_future_exclusion(
+    last_low: Decimal, expected: int
+) -> None:
     bars = fixture()
     bars[180] = bars[180].model_copy(update={"low": Decimal(99)})
     bars[198] = bars[198].model_copy(update={"low": last_low})
@@ -48,7 +53,7 @@ def test_expansion_strict_boundary_and_current_future_exclusion(last_low, expect
 
 
 @pytest.mark.parametrize("delay", [0, 1])
-def test_expansion_preserves_original_exit_risk_and_order_size(delay):
+def test_expansion_preserves_original_exit_risk_and_order_size(delay: int) -> None:
     bars = fixture()
     bars[210] = bars[210].model_copy(update={"close": Decimal(100), "low": Decimal(99)})
     bars[250] = bars[250].model_copy(update={"close": Decimal(98), "low": Decimal(97)})
@@ -88,7 +93,7 @@ def test_expansion_preserves_original_exit_risk_and_order_size(delay):
     assert small.rejections and not small.fills
 
 
-def test_expansion_zero_range_and_approval_do_not_manufacture_breakout():
+def test_expansion_zero_range_and_approval_do_not_manufacture_breakout() -> None:
     bars = [
         b.model_copy(update=dict.fromkeys(("open", "high", "low", "close"), Decimal(100)))
         for b in fixture()
@@ -110,7 +115,7 @@ def test_expansion_zero_range_and_approval_do_not_manufacture_breakout():
     assert not result.fills
 
 
-def test_expansion_rejects_combined_runner_modes(tmp_path):
+def test_expansion_rejects_combined_runner_modes(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="동시"):
         breakout_confirmation.run_study(
             tmp_path, tmp_path, tmp_path / "out", tr_expansion=True, adaptive_trailing_exit=True
@@ -120,8 +125,8 @@ def test_expansion_rejects_combined_runner_modes(tmp_path):
 
 @pytest.mark.parametrize("corrupt", [False, True])
 def test_expansion_pipeline_delays_entry_and_keeps_adaptive_only_in_control(
-    tmp_path, monkeypatch, corrupt
-):
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corrupt: bool
+) -> None:
     bars = fixture()
     bars[180] = bars[180].model_copy(update={"low": Decimal(99)})
     bars[220] = bars[220].model_copy(update={"close": Decimal(106), "high": Decimal(107)})
@@ -140,7 +145,7 @@ def test_expansion_pipeline_delays_entry_and_keeps_adaptive_only_in_control(
     bars[231] = bars[231].model_copy(update={"open": Decimal(120), "high": Decimal(121)})
     start = bars[200].open_time
 
-    def blocks(raw, out):
+    def blocks(raw: Path, out: Path) -> list[list[Candle]]:
         out.mkdir()
         write_json(out / "coverage.json", {"fixture": True})
         return [bars]
