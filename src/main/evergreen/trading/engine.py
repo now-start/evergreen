@@ -9,6 +9,8 @@ from uuid import NAMESPACE_URL, uuid5
 from evergreen.market import validate_candles
 from evergreen.observability import operation
 from evergreen.strategies.breakout import target
+from evergreen.strategies.buffer import ID, LIMIT, BufferState, IntentContext, entry_budget
+from evergreen.trading import buffer_execution
 from evergreen.trading.config import TradingSettings
 from evergreen.trading.state import State, Store
 from evergreen.trading.upbit import Book, Chance, Order, Upbit
@@ -118,7 +120,10 @@ class Trader:
                 "주문 체결 후 예상 잔고와 실제 잔고가 다릅니다. 수동 확인 필요",
             )
         state.krw, state.btc = chance.bid_account.balance, chance.ask_account.balance
+        if state.strategy == ID:
+            buffer_execution.settled(state, order, self.clock())
         state.pending = None
+        state.intent_context = None
         await self.store.save(state, "order-terminal", order.model_dump(mode="json"))
         logger.info(
             "event=order_reconciled order_sequence=%d state=%s", state.order_sequence, order.state
@@ -141,7 +146,15 @@ class Trader:
             raise _reject("live_disabled", "실거래 비활성화 상태입니다")
         with operation(logger, "execution_state_load"):
             saved = await self.store.load_for_start(self.settings.identity)
-        state = saved if saved is not None else State(identity=self.settings.identity)
+        state = (
+            saved
+            if saved is not None
+            else State(
+                identity=self.settings.identity,
+                strategy=self.settings.strategy,
+                buffer=BufferState() if self.settings.strategy == ID else None,
+            )
+        )
         if state.identity != self.settings.identity:
             raise _reject("account_identity_mismatch", "실행 계정과 DB 상태가 다릅니다")
         if state.pending is not None:
@@ -163,7 +176,7 @@ class Trader:
         bid = book.orderbook_units[0].bid_price
         cash, btc = chance.bid_account.balance, chance.ask_account.balance
         if state.krw is None or state.btc is None:
-            if btc * bid >= chance.market.ask.min_total:
+            if btc * bid >= chance.market.ask.min_total or (state.strategy == ID and btc > STEP):
                 raise _reject(
                     "initial_position_exists",
                     "첫 실행은 원화 전용 계정으로 시작해야 합니다. 기존 BTC 자동 인수 금지",
@@ -176,12 +189,14 @@ class Trader:
                 "unexpected_balance", "외부 입출금·수동 거래로 잔고가 변경됐습니다. 수동 확인 필요"
             )
         equity = cash + btc * bid * (1 - chance.ask_fee)
+        prior_peak = state.peak
         state.peak = max(state.peak, equity)
         if saved is None:
             await self.store.initialize(state)
             # The first cycle only establishes a verified baseline; it never submits an order.
             return "initialized"
-        if state.peak > 0 and equity <= state.peak * (1 - self.settings.max_drawdown):
+        limit = min(self.settings.max_drawdown, LIMIT if state.strategy == ID else Decimal(".10"))
+        if state.peak > 0 and equity <= state.peak * (1 - limit):
             if not state.halted:
                 logger.warning("event=trading_halted reason=max_drawdown")
             state.halted = True
@@ -191,20 +206,46 @@ class Trader:
         if now.utcoffset() is None:
             raise _reject("invalid_clock", "실행 시각에 시간대가 필요합니다")
         hour = now.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
+        if state.strategy != self.settings.strategy and btc <= STEP and not state.halted:
+            previous = state.strategy
+            state.strategy = self.settings.strategy
+            state.buffer = BufferState(last_bar=hour) if state.strategy == ID else None
+            state.intent_context = state.reserved_exit = None
+            state.last_signal = hour.isoformat()
+            await self.store.save(
+                state, "strategy-transition", {"from": previous, "to": state.strategy}
+            )
+            logger.info("event=strategy_transition from=%s to=%s", previous, state.strategy)
+            return "strategy-transitioned"
+        if state.strategy == ID and (
+            state.buffer is None or ((state.buffer.protection is not None) != (btc > STEP))
+        ):
+            raise _reject(
+                "buffer_position_mismatch", "후보의 보유 상태와 보호 상태를 확인해야 합니다"
+            )
+        context: IntentContext | None = None
         reason = "risk" if state.halted else "signal"
         if state.halted:
             if not holding:
                 return "halted"
             side = "ask"
+            if state.strategy == ID:
+                # Exchange fills can have second precision; use the evaluated hour as a lower bound.
+                context = IntentContext(signal_time=hour, reason="risk")
+                state.reserved_exit = context
         else:
-            if state.last_signal == hour.isoformat():
+            reserved = state.strategy == ID and state.reserved_exit is not None
+            if state.last_signal == hour.isoformat() and not reserved:
                 return "already-evaluated"
-            if not 0 <= (now - hour).total_seconds() <= self.settings.max_signal_age_seconds:
+            if (
+                not reserved
+                and not 0 <= (now - hour).total_seconds() <= self.settings.max_signal_age_seconds
+            ):
                 return "outside-signal-window"
             with operation(logger, "candles_fetch"):
                 candles = await self.api.candles(hour, now)
             ordered, quality = validate_candles(
-                candles, hour - timedelta(hours=169), hour, as_of=now
+                candles, hour - timedelta(hours=self.settings.candle_count), hour, as_of=now
             )
             if (
                 not quality.valid
@@ -213,14 +254,36 @@ class Trader:
                 or quality.outside_range
                 or ordered != candles
             ):
-                raise _reject("invalid_candles", "169개 연속 확정 봉 품질 검사가 실패했습니다")
-            signal = target(candles, holding)
+                raise _reject("invalid_candles", "연속 확정 봉 품질 검사가 실패했습니다")
+            if state.strategy == ID:
+                signal, context = buffer_execution.signal(
+                    state, candles, chance, self.settings.max_slippage, prior_peak=prior_peak
+                )
+                if state.peak > 0 and equity <= state.peak * (1 - limit):
+                    state.halted = True
+                if state.halted:
+                    logger.warning("event=trading_halted reason=recovered_max_drawdown")
+                    if btc > STEP:
+                        signal = "sell"
+                        context = IntentContext(signal_time=hour, reason="risk")
+                        state.reserved_exit = context
+                    else:
+                        signal = None
+                    reason = "risk"
+                # Preserve a sell reservation even if later depth/freshness checks reject submission.
+                await self.store.save(state, "strategy-evaluated")
+            else:
+                signal = target(candles, holding)
+                if state.strategy != self.settings.strategy and signal == "buy":
+                    signal = None
             if signal is None:
                 state.last_signal = hour.isoformat()
                 await self.store.save(state, "no-signal")
                 return "no-signal"
             side = "bid" if signal == "buy" else "ask"
-        logger.info("event=trading_signal strategy=breakout-v1 side=%s reason=%s", side, reason)
+        logger.info(
+            "event=trading_signal strategy=%s side=%s reason=%s", state.strategy, side, reason
+        )
         if side == "bid":
             amount = (cash / (1 + chance.bid_fee) - 1).quantize(Decimal(1), rounding=ROUND_DOWN)
             minimum = chance.market.bid.min_total
@@ -235,8 +298,25 @@ class Trader:
             )
         book = await self._book()
         check_depth(book, side, amount, self.settings.max_slippage)
+        if side == "bid" and state.strategy == ID:
+            if context is None or not entry_budget(
+                cash,
+                state.peak,
+                book.orderbook_units[0].ask_price,
+                context.entry_tr,
+                chance.bid_fee,
+                chance.ask_fee,
+                self.settings.max_slippage,
+                self.settings.max_slippage,
+                STEP,
+            ):
+                state.last_signal = hour.isoformat()
+                await self.store.save(state, "entry-budget-rejected")
+                logger.info("event=trading_rejected reason=risk_budget strategy=%s", state.strategy)
+                return "risk-budget-rejected"
+        fresh_signal = reason == "signal" and not (state.strategy == ID and side == "ask")
         if (
-            reason == "signal"
+            fresh_signal
             and (self.clock() - hour).total_seconds() > self.settings.max_signal_age_seconds
         ):
             raise _reject("stale_signal", "주문 준비 중 신호 유효 시간이 지났습니다")
@@ -245,7 +325,7 @@ class Trader:
             "eg-"
             + uuid5(
                 NAMESPACE_URL,
-                f"{state.identity}:KRW-BTC:breakout-v1:{hour.isoformat()}:{side}:{reason}:{state.order_sequence}",
+                f"{state.identity}:KRW-BTC:{state.strategy}:{hour.isoformat()}:{side}:{reason}:{state.order_sequence}",
             ).hex
         )
         state.pending = {
@@ -256,6 +336,7 @@ class Trader:
             "identifier": identifier,
         }
         state.last_signal = hour.isoformat()
+        state.intent_context = context
         # Commit intent BEFORE the network call. Any ambiguous result blocks new orders.
         await self.store.save(state, "order-intent")
         logger.info(
@@ -268,7 +349,7 @@ class Trader:
             quote_age = submission_time.timestamp() - book.timestamp / 1000
             signal_age = (submission_time - hour).total_seconds()
             if not 0 <= quote_age <= self.settings.max_quote_age_seconds or (
-                reason == "signal" and not 0 <= signal_age <= self.settings.max_signal_age_seconds
+                fresh_signal and not 0 <= signal_age <= self.settings.max_signal_age_seconds
             ):
                 raise _reject(
                     "expired_before_submission",

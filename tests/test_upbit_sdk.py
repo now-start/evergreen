@@ -119,7 +119,8 @@ async def test_post_errors_never_retry_or_follow_redirect(status: int) -> None:
 
 
 @pytest.mark.asyncio
-async def test_valid_read_responses_and_chronological_candles() -> None:
+@pytest.mark.parametrize("candidate", [False, True])
+async def test_valid_read_responses_and_chronological_candles(candidate: bool) -> None:
     responses: dict[str, object] = {
         "/v1/orders/chance": {
             "bid_fee": "0.0005",
@@ -167,9 +168,16 @@ async def test_valid_read_responses_and_chronological_candles() -> None:
     }
 
     def fetch(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/candles/minutes/60":
+            assert request.url.params["count"] == ("200" if candidate else "169")
         return httpx.Response(200, json=responses[request.url.path])
 
-    api = Upbit(live_settings(), transport=httpx.MockTransport(fetch))
+    config = live_settings()
+    if candidate:
+        config = config.model_copy(
+            update={"strategy": "breakout-buffer-early3-v1", "max_drawdown": Decimal(".20")}
+        )
+    api = Upbit(config, transport=httpx.MockTransport(fetch))
     try:
         chance = await api.chance()
         assert chance.bid_account.balance == Decimal("12345678.12345678")

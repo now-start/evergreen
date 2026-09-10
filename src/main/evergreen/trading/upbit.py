@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Annotated, Literal
 
 import httpx
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import AwareDatetime, BaseModel, Field, TypeAdapter
 from upbit import AsyncUpbit
 
 from evergreen.market import Candle, Nonnegative, Positive, UpbitCandle
@@ -60,6 +60,7 @@ class Book(BaseModel):
 class Fill(BaseModel):
     funds: Positive
     volume: Positive
+    created_at: AwareDatetime | None = None
 
 
 class Order(BaseModel):
@@ -110,7 +111,7 @@ class Upbit:
 
     async def candles(self, end: datetime, now: datetime) -> list[Candle]:
         response = await self.sdk.candles.with_raw_response.list_minutes(
-            60, market="KRW-BTC", count=169, to=end.isoformat()
+            60, market="KRW-BTC", count=self.settings.candle_count, to=end.isoformat()
         )
         records = TypeAdapter(list[UpbitCandle]).validate_python(await response.json())
         return sorted((bar.candle(now) for bar in records), key=lambda bar: bar.open_time)

@@ -15,6 +15,7 @@ from evergreen.database.connection import LOCK_NAME, locked_connection
 from evergreen.database.migration import apply
 from evergreen.market import Nonnegative
 from evergreen.observability import operation
+from evergreen.strategies.buffer import BufferState, ExecutionStrategy, IntentContext
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,10 @@ class State(BaseModel):
     btc: Nonnegative | None = None
     pending: dict[str, str] | None = None
     order_sequence: int = Field(default=0, ge=0)
+    strategy: ExecutionStrategy = "breakout-v1"
+    buffer: BufferState | None = None
+    intent_context: IntentContext | None = None
+    reserved_exit: IntentContext | None = None
 
 
 class StateUnavailable(ValueError):

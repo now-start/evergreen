@@ -32,7 +32,9 @@ async def run(
     # Context-local suppression keeps financial HTTP/SQL data out of API auto-instrumentation.
     with suppress_instrumentation():
         logger.info(
-            "event=worker_started initialize=%s strategy=breakout-v1 market=KRW-BTC", initialize
+            "event=worker_started initialize=%s strategy=%s market=KRW-BTC",
+            initialize,
+            settings.strategy,
         )
         engine = create_async_engine(
             settings.database_url, poolclass=NullPool, hide_parameters=True
