@@ -1,6 +1,7 @@
 # 주문 실행기
 
-현재는 **기본 비활성화된 코드와 격리 테스트**를 제공한다. 이 통합 변경으로 실계좌 조회·주문·운영 DB 초기화는 수행하지 않았다.
+코드 기본값은 **실거래 비활성화**다. 실제 활성 여부는 Config Server에서 정한다.
+2.1.0 통합 검증으로 실계좌 조회·주문·운영 DB 초기화는 수행하지 않았다.
 연구 후보의 수익성은 아직 입증되지 않았으며 자동 학습·승격은 구현하지 않았다.
 
 ## 실행 경계
@@ -20,7 +21,7 @@ uv run python -m evergreen.trading
 `--approve-initialization`은 빈 MariaDB에 최초 설치 승인을 기록하며 업비트 API는 호출하지 않는다.
 기존 `--initialize-state`도 같은 승인 명령의 별칭이다. 더 이상 미검증 상태 행을 직접 만들지 않는다.
 `--execute`는 `evergreen.execution.live-enabled=true`도 함께 있어야 동작하며,
-`--once`는 한 사이클 후 종료한다. 이 저장소가 제공하는 Config 설정은 **false**다.
+`--once`는 한 사이클 후 종료한다. 실제 운영 설정이 기본값과 같다고 가정하지 않는다.
 수동 `--execute`와 웹 실행을 병행하지 않는다. 같은 DB 세션 잠금으로 중복 실행을 거부한다.
 
 최초 설치 승인은 실거래 비활성화 상태에서 한 번만 수행한다.
@@ -54,11 +55,12 @@ Docker가 주문 루프를 반복 재시작하는 것을 피한다. 거래 장�
 | `evergreen.trading.access-key / secret-key` | 기존 업비트 키, 미복호화 cipher 거부 |
 | `spring.datasource.url / username / password` | 기존 MariaDB 연결 |
 | `evergreen.execution.live-enabled` | false, 명시적 주문 허용 스위치 |
+| `evergreen.execution.strategy` | 기본 breakout-v1; 승인한 후보는 breakout-buffer-early3-v1 |
 | `evergreen.execution.poll-seconds` | 30초, 주문 복구·위험 확인 |
 | `evergreen.execution.max-quote-age-seconds` | 5초, 오래된 호가 거부 |
 | `evergreen.execution.max-signal-age-seconds` | 120초, 시간봉 마감 후 신호 유효 구간 |
 | `evergreen.execution.max-slippage` | 0.003, 보이는 호가의 예상 평균 체결 편차 |
-| `evergreen.execution.max-drawdown` | 0.10, 관측한 계좌 고점 대비 중단 기준 |
+| `evergreen.execution.max-drawdown` | 기본 돌파 최대0.10; early3는 정확히0.20, 관측 중단 기준 |
 
 단일 호스트 `jdbc:mariadb://host:3306/database` 또는 `jdbc:mysql://...`를
 SQLAlchemy `mysql+asyncmy` URL로 변환한다. 비밀번호는 URL 문자열로 출력하지 않는다.
@@ -80,13 +82,15 @@ SDK·HTTP 로그에는 요청 옵션과 주문 식별자가 포함될 수 있으
 통합 프로세스의 API 계측은 유지하되 매매 루프의 HTTP·SQL 자동 계측은 task-local context로 억제한다.
 
 1. 계정 잔고·주문 가능 조건·미체결 주문을 확인한다.
-2. 연속된 확정 169개 시간봉으로 168시간 고점 돌파 / 48시간 저점 청산을 판단한다.
+2. 기본 돌파는 확정169봉의168시간 고점 진입 /48시간 저점 청산,
+   early3는 확정200봉의 보호 상태·96시간 청산·48시간 리셋을 판단한다.
 3. 실제 수수료·최소/최대 주문액·호가 깊이를 확인한다.
 4. 고유 identifier와 주문 의도를 DB에 먼저 커밋한다.
 5. 같은 DB 잠금 소유권을 재확인하고 주문을 **한 번만** 제출한다.
 6. 종료 확인 전에는 같은 identifier로 조회만 한다. 타임아웃·404도 재주문의 근거가 아니다.
 
-최초 원화 계정만 허용하며, 최소 주문액 미만 BTC 잔량은 허용한다.
+최초 원화 계정만 허용하며, 기본 전략은 최소 주문액 미만 BTC 잔량을 허용한다.
+early3 최초 시작·전환은 BTC≤1e-8만 허용하며 기존 BTC를 보호 상태 없이 인수하지 않는다.
 기존 BTC 포지션을 자동 인수하지 않는다. 원화는 실제 수수료와 1원 여유를 제외하고,
 매도는 사용 가능한 BTC를 8자리까지 내림한다. 외부 입출금·수동 거래는 중단 사유다.
 전용 계정/포켓을 사용하고 다른 봇·수동 주문과 병행하지 않아야 한다.
@@ -95,8 +99,13 @@ API 키는 필요한 조회·주문 권한만 부여하고 출금 권한은 부�
 부분 체결·취소도 주문 전 잔고와 누적 체결금액·수량·수수료로 기대 잔고를 계산해 실제 잔고와 대사한다.
 불일치하면 pending을 해제하지 않고 중단하므로, 주문 대기 중 외부 입금도 운용 원금에 자동 편입하지 않는다.
 낙폭 중단 상태는 저장되며 재시작해도 신규 매수를 재개하지 않는다.
-10%는 **관측 중단 기준이지 최대 손실 보장치가 아니다**. 급락·호가 변화·네트워크 장애·DB 장애로
+10%/20%는 **관측 중단 기준이지 최대 손실 보장치가 아니다**. 급락·호가 변화·네트워크 장애·DB 장애로
 청산이 지연되거나 실패할 수 있다. 시장가 주문의 슬리피지도 보장할 수 없다.
+
+early3 선택·기존 포지션 전환·실제 VWAP와 연구 체결 차이·버전 배포 순서는
+[승격 문서](strategy-promotion.md)를 따른다. 기존 상태는 기본 전략으로 읽으며,
+새 보호 상태와 주문 문맥은 기존 상태 테이블의 JSON payload에 함께 저장한다.
+새 payload를 쓴 뒤2.0.2로 이미지 롤백하면 읽기가 거부된다. DB 상태를 삭제해 해결하지 않는다.
 
 ## MariaDB 상태와 복구
 
