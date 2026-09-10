@@ -1,5 +1,7 @@
 """Deterministic, all-in spot simulation. This module cannot submit real orders."""
 
+import hashlib
+import json
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from decimal import ROUND_DOWN, Decimal
@@ -24,6 +26,20 @@ Rate = Annotated[Decimal, Field(ge=0, lt=1, allow_inf_nan=False)]
 ZERO = Decimal(0)
 ONE = Decimal(1)
 DRAWDOWN_LIMIT = Decimal("0.10")
+
+
+class ExitPolicy(BaseModel):
+    """Bounded offline exit sensitivity; production settings are not read or changed."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    drawdown_limit: Annotated[Decimal, Field(gt=0, le=Decimal(".2"), allow_inf_nan=False)] = (
+        DRAWDOWN_LIMIT
+    )
+    stop_multiple: Annotated[Decimal, Field(ge=3, le=6, allow_inf_nan=False)] = Decimal(3)
+    channel_hours: Literal[48, 72, 96] = 48
+    profit_activation_multiple: (
+        Annotated[Decimal, Field(ge=3, le=6, allow_inf_nan=False)] | None
+    ) = None
 
 
 class Costs(BaseModel):
@@ -54,7 +70,7 @@ class Fill(BaseModel):
 class Rejection(BaseModel):
     time: datetime
     side: Side
-    reason: Literal["below_minimum"] = "below_minimum"
+    reason: Literal["below_minimum", "risk_budget"] = "below_minimum"
     trigger: Reason
 
 
@@ -63,6 +79,28 @@ class EquityPoint(BaseModel):
     phase: Literal["open", "close", "settlement"]
     equity: Decimal
     drawdown: Decimal
+
+
+class ExitDecision(BaseModel):
+    """Offline experiment 52: immutable state before the first extra exit reservation."""
+
+    model_config = ConfigDict(frozen=True)
+
+    signal_time: datetime
+    entry_fill: Fill
+    cash: Decimal
+    btc: Decimal
+    account_peak: Decimal
+    max_drawdown: Decimal
+    equity: Decimal
+    entry_true_range: Decimal
+    entry_reference: Decimal
+    trailing_peak: Decimal
+    threshold: Decimal
+    short_breaches: int
+    long_breaches: int
+    prefix_sha256: str
+    candles_sha256: str
 
 
 class Result(BaseModel):
@@ -88,9 +126,17 @@ class Result(BaseModel):
 
 
 class _Portfolio:
-    def __init__(self, capital: Decimal, costs: Costs, guard: bool) -> None:
+    def __init__(
+        self,
+        capital: Decimal,
+        costs: Costs,
+        guard: bool,
+        *,
+        drawdown_limit: Decimal = DRAWDOWN_LIMIT,
+    ) -> None:
         self.cash, self.btc = capital, ZERO
         self.costs, self.guard = costs, guard
+        self.drawdown_limit = drawdown_limit
         self.peak, self.max_drawdown = capital, ZERO
         self.halted = False
         self.fills: list[Fill] = []
@@ -104,7 +150,7 @@ class _Portfolio:
         self.peak = max(self.peak, equity)
         drawdown = ONE - equity / self.peak
         self.max_drawdown = max(self.max_drawdown, drawdown)
-        if self.guard and drawdown >= DRAWDOWN_LIMIT:
+        if self.guard and drawdown >= self.drawdown_limit:
             self.halted = True
         self.curve.append(EquityPoint(time=time, phase=phase, equity=equity, drawdown=drawdown))
 
@@ -117,7 +163,7 @@ class _Portfolio:
         sell_notional = quantity * (floor * (ONE - self.costs.sell_slippage))
         projected = self.cash - (buy_notional + buy_notional * self.costs.buy_fee)
         projected += sell_notional - sell_notional * self.costs.sell_fee
-        return projected >= self.peak * (ONE - DRAWDOWN_LIMIT)
+        return projected >= self.peak * (ONE - self.drawdown_limit)
 
     def trade(
         self,
@@ -166,6 +212,26 @@ class _Portfolio:
         )
 
 
+def _entry_trend_context(history: Sequence[Candle]) -> int:
+    """Choose once from the original signal close; its TR excludes that candle."""
+    if len(history) < 26:
+        raise ValueError("진입 맥락에 필요한 과거 봉이 없습니다")
+    advance = history[-1].close - history[-25].close
+    return 168 if advance > 3 * prior_mean_true_range(history) else 24
+
+
+def _entry_path_context(history: Sequence[Candle]) -> int:
+    """Choose from 24 completed close-to-close moves ending at the signal."""
+    if len(history) < 25:
+        raise ValueError("진입 경로에 필요한 과거 봉이 없습니다")
+    advance = history[-1].close - history[-25].close
+    travel = sum(
+        abs(current.close - previous.close)
+        for previous, current in zip(history[-25:-1], history[-24:], strict=True)
+    )
+    return 168 if 2 * advance > travel else 24
+
+
 def run_backtest(
     candles: Sequence[Candle],
     start: datetime,
@@ -190,8 +256,54 @@ def run_backtest(
     breakout_entry_stop: bool = False,
     breakout_entry_stop_floor: bool = False,
     breakout_entry_stop_expansion: bool = False,
+    breakout_entry_stop_confirmations: int = 1,
+    breakout_entry_stop_channel_reset: bool = False,
+    breakout_entry_stop_profit_trail: bool = False,
+    breakout_entry_stop_adaptive_trail: bool = False,
+    breakout_entry_stop_loss_reset: bool = False,
+    breakout_confirmed_profit_reentry: bool = False,
+    breakout_entry_stop_trend_confirmation: bool = False,
+    breakout_entry_stop_budget: bool = False,
+    breakout_entry_stop_trend_lookback: int = 24,
+    breakout_exit_checkpoint: bool = False,
+    breakout_exit_higher_low: bool = False,
+    breakout_extension_floor: bool = False,
+    breakout_liquidation_buffer: bool = False,
+    breakout_entry_lookback: int = 168,
+    breakout_entry_trend_filter: bool = False,
+    breakout_entry_slope_filter: bool = False,
+    breakout_entry_cadence_hours: int = 1,
+    breakout_entry_context: bool = False,
+    breakout_entry_path_context: bool = False,
+    long_entry_at: datetime | None = None,
+    exit_decisions: list[ExitDecision] | None = None,
+    extend_exit_at: datetime | None = None,
+    exit_policy: ExitPolicy | None = None,
 ) -> Result:
     start = utc_hour(start)
+    policy = exit_policy or ExitPolicy()
+    stop_multiple = policy.stop_multiple
+    activation_multiple = policy.profit_activation_multiple or stop_multiple
+    if policy.profit_activation_multiple is not None and not breakout_entry_stop_adaptive_trail:
+        raise ValueError("수익 추적 활성화 분리는 적응 추적 손절에만 적용합니다")
+    if policy != ExitPolicy() and (
+        not (
+            strategy == "breakout-v1"
+            or (strategy in REGIME_STRATEGIES and regime_policy == "breakout-filter")
+        )
+        or breakout_exit_lookback != 48
+        or breakout_trailing_exit
+        or breakout_failure_exit
+        or breakout_entry_stop_floor
+        or breakout_entry_stop_expansion
+        or breakout_exit_checkpoint
+        or breakout_exit_higher_low
+        or breakout_extension_floor
+        or exit_decisions is not None
+        or extend_exit_at is not None
+        or long_entry_at is not None
+    ):
+        raise ValueError("완화 정책은 추가 분기 없는 돌파 청산 비교에만 사용합니다")
     if not capital.is_finite() or capital <= 0:
         raise ValueError("capital must be finite and positive")
     if strategy not in STRATEGY_PARAMETERS:
@@ -218,6 +330,116 @@ def run_backtest(
         raise ValueError("연구용 재진입 대기는 돌파 전략의 0/24시간만 지원합니다")
     if not candles:
         raise ValueError("empty dataset")
+    observe_exits = exit_decisions is not None or extend_exit_at is not None
+    if breakout_entry_cadence_hours not in (1, 4) or (
+        breakout_entry_cadence_hours != 1
+        and (
+            not breakout_liquidation_buffer
+            or breakout_entry_lookback != 168
+            or breakout_entry_stop_trend_lookback != 24
+            or breakout_entry_context
+            or breakout_entry_path_context
+            or long_entry_at is not None
+        )
+    ):
+        raise ValueError("진입 간격은 고정 정책57의 1/4시간만 지원합니다")
+    if breakout_entry_slope_filter and (
+        breakout_entry_lookback != 84 or breakout_entry_trend_filter
+    ):
+        raise ValueError("장기 평균 방향은 가격 위치 조건 없는 84시간 진입 창에만 적용합니다")
+    if breakout_entry_trend_filter and breakout_entry_lookback != 84:
+        raise ValueError("장기 평균가격 조건은 84시간 진입 창에만 적용합니다")
+    if breakout_entry_lookback not in (84, 168) or (
+        breakout_entry_lookback != 168
+        and (
+            not breakout_liquidation_buffer
+            or breakout_entry_stop_trend_lookback != 24
+            or breakout_entry_context
+            or breakout_entry_path_context
+            or long_entry_at is not None
+        )
+    ):
+        raise ValueError("연구용 진입 창은 고정 정책57의 84/168시간만 지원합니다")
+    if long_entry_at is not None:
+        long_entry_at = utc_hour(long_entry_at)
+        if (
+            not breakout_liquidation_buffer
+            or breakout_entry_stop_trend_lookback != 24
+            or breakout_entry_context
+            or breakout_entry_path_context
+        ):
+            raise ValueError("진입 분기는 고정된 짧은 추세 청산 여유에만 적용합니다")
+    if breakout_entry_path_context and (
+        not breakout_liquidation_buffer
+        or breakout_entry_stop_trend_lookback != 24
+        or breakout_entry_context
+    ):
+        raise ValueError("진입 경로는 다른 선택 조건 없는 짧은 추세 청산 여유 후보에만 적용합니다")
+    if breakout_entry_context and (
+        not breakout_liquidation_buffer or breakout_entry_stop_trend_lookback != 24
+    ):
+        raise ValueError("진입 맥락은 짧은 추세 청산 여유 후보에만 적용합니다")
+    if breakout_liquidation_buffer and (
+        not breakout_entry_stop_budget
+        or breakout_entry_stop_trend_lookback not in (24, 168)
+        or observe_exits
+        or breakout_exit_checkpoint
+        or breakout_exit_higher_low
+        or breakout_extension_floor
+    ):
+        raise ValueError("청산 여유는 다른 연장 조건 없는 정책50/51에만 적용합니다")
+    if breakout_extension_floor and (
+        not breakout_entry_stop_budget
+        or breakout_entry_stop_trend_lookback != 24
+        or observe_exits
+        or breakout_exit_checkpoint
+        or breakout_exit_higher_low
+    ):
+        raise ValueError("연장 가격 확인은 다른 분기 조건 없는 정책50에만 적용합니다")
+    if breakout_exit_higher_low and (
+        not breakout_entry_stop_budget
+        or breakout_entry_stop_trend_lookback != 24
+        or observe_exits
+        or breakout_exit_checkpoint
+    ):
+        raise ValueError("저점 상승 연장은 수동 분기·중간 점검 없는 정책50에만 적용합니다")
+    if breakout_exit_checkpoint and (
+        not breakout_entry_stop_budget or breakout_entry_stop_trend_lookback != 24 or observe_exits
+    ):
+        raise ValueError("중간 점검은 수동 분기 없는 정책50에만 적용합니다")
+    if observe_exits and (
+        not breakout_entry_stop_budget or breakout_entry_stop_trend_lookback != 24
+    ):
+        raise ValueError("청산 분기는 정책50의 짧은 추세 손절 예산에만 적용합니다")
+    if extend_exit_at is not None:
+        extend_exit_at = utc_hour(extend_exit_at)
+    if breakout_entry_stop_trend_lookback not in (24, 168) or (
+        breakout_entry_stop_trend_lookback != 24 and not breakout_entry_stop_budget
+    ):
+        raise ValueError("추세 맥락은 손절 예산 후보의 이전 24/168시간만 지원합니다")
+    if breakout_entry_stop_budget and not breakout_entry_stop_trend_confirmation:
+        raise ValueError("손절 예산은 추세 확인 후보에만 적용합니다")
+    if breakout_entry_stop_trend_confirmation and (
+        not breakout_entry_stop_adaptive_trail or breakout_entry_stop_loss_reset
+    ):
+        raise ValueError("추세 확인은 재진입 변형 없는 적응 추적 후보에만 적용합니다")
+    if breakout_confirmed_profit_reentry and not breakout_entry_stop_loss_reset:
+        raise ValueError("수익 재진입 확인은 손실 리셋 후보에만 적용합니다")
+    if breakout_entry_stop_loss_reset and not breakout_entry_stop_adaptive_trail:
+        raise ValueError("손실 리셋은 적응 추적과 채널 리셋에만 적용합니다")
+    if breakout_entry_stop_adaptive_trail and not breakout_entry_stop_profit_trail:
+        raise ValueError("적응 추적은 상승 후 추적과 채널 리셋에만 적용합니다")
+    if breakout_entry_stop_profit_trail and not breakout_entry_stop_channel_reset:
+        raise ValueError("상승 후 추적은 두 종가 손절과 채널 리셋에만 적용합니다")
+    if breakout_entry_stop_channel_reset and (
+        not breakout_entry_stop or breakout_entry_stop_confirmations != 2
+    ):
+        raise ValueError("채널 리셋은 두 종가 고정 손절에만 적용합니다")
+    if breakout_entry_stop_confirmations not in (1, 2) or (
+        breakout_entry_stop_confirmations != 1
+        and (not breakout_entry_stop or breakout_entry_stop_floor or breakout_entry_stop_expansion)
+    ):
+        raise ValueError("고정 손절 확인은 하한/확대 없는 해당 청산의 1/2시간만 지원합니다")
     if breakout_entry_stop_floor and not breakout_entry_stop:
         raise ValueError("장기 변동 폭 하한은 고정 손절에만 적용합니다")
     if breakout_entry_stop_expansion and (not breakout_entry_stop or breakout_entry_stop_floor):
@@ -295,7 +517,18 @@ def run_backtest(
     indices = {bar.open_time: index for index, bar in enumerate(bars)}
     required_warmup = max(
         warmup_bars(strategy),
+        193 if breakout_entry_slope_filter else 0,
         170 if breakout_entry_stop_floor or breakout_entry_stop_expansion else 0,
+        192
+        if breakout_entry_stop_trend_lookback == 168
+        or breakout_entry_context
+        or breakout_entry_path_context
+        or long_entry_at is not None
+        or observe_exits
+        or breakout_exit_checkpoint
+        or breakout_exit_higher_low
+        else 0,
+        192 if breakout_extension_floor else 0,
     )
     if start not in indices or indices[start] < required_warmup:
         raise ValueError(
@@ -329,14 +562,44 @@ def run_backtest(
     last_exit: datetime | None = None
     entry_breakout_level: Decimal | None = None
     entry_true_range: Decimal | None = None
+    position_trend_lookback = breakout_entry_stop_trend_lookback
+    entry_fork_matched = False
     trailing_peak: Decimal | None = None
     entry_reference: Decimal | None = None
     entry_stop_active = False
+    awaiting_channel_reset = False
+    profit_reentry_after: datetime | None = None
+    entry_stop_breaches = 0
+    long_breaches = 0
+    decision_recorded = False
+    extend_position = False
+    fork_matched = False
+    checkpoint_at: datetime | None = None
+    checkpoint_reference: Decimal | None = None
+    checkpoint_exit_due = False
+    extension_floor_breaches = 0
+    liquidation_exit_due = False
+    entry_stop_threshold: Decimal | None = None
     rejected_ceiling: Decimal | None = None
     router = RegimeRouter(regime_policy)
 
     def target(history: Sequence[Candle], holding: bool) -> Side | None:
-        nonlocal rejected_ceiling
+        nonlocal rejected_ceiling, awaiting_channel_reset, profit_reentry_after
+        if holding and (checkpoint_exit_due or liquidation_exit_due):
+            return "sell"
+        if not holding and awaiting_channel_reset:
+            if history[-1].close < min(b.low for b in history[-49:-1]):
+                awaiting_channel_reset = False
+            return None
+        if not holding and profit_reentry_after is not None:
+            if history[-1].close < min(b.low for b in history[-49:-1]):
+                profit_reentry_after = None
+                return None
+            if (
+                history[-2].open_time < profit_reentry_after
+                or signal_target(history[:-1], False, "breakout-v1") != "buy"
+            ):
+                return None
         if breakout_rejection_latch and not holding and rejected_ceiling is not None:
             if history[-1].close > rejected_ceiling:
                 return None
@@ -367,13 +630,37 @@ def run_backtest(
                 if history[-1].close < trailing_peak - distance:
                     return "sell"
         if holding and breakout_entry_stop and entry_stop_active:
-            if entry_true_range is None or entry_reference is None:
+            if entry_true_range is None or entry_reference is None or entry_time is None:
                 raise ValueError("고정 손절의 실제 매수 기준이 없습니다")
-            if entry_true_range > 0 and history[-1].close < entry_reference - 3 * entry_true_range:
+            if breakout_entry_stop_profit_trail:
+                confirmed = (
+                    long_breaches if extend_position else entry_stop_breaches
+                ) >= breakout_entry_stop_confirmations
+            else:
+                confirmed = all(
+                    b.open_time >= entry_time
+                    and b.close < entry_reference - stop_multiple * entry_true_range
+                    for b in history[-breakout_entry_stop_confirmations:]
+                )
+            if entry_true_range > 0 and confirmed:
                 return "sell"
-        if holding and breakout_exit_lookback == 24:
-            floor = min(bar.low for bar in history[-25:-1])
+        if holding and (breakout_exit_lookback == 24 or policy.channel_hours != 48):
+            channel = 24 if breakout_exit_lookback == 24 else policy.channel_hours
+            floor = min(bar.low for bar in history[-channel - 1 : -1])
             return "sell" if history[-1].close < floor else None
+        if not holding and breakout_entry_lookback == 84:
+            if regimes is not None and regimes[history[-1].close_time] != 2:
+                return None
+            if breakout_entry_slope_filter and sum(
+                (bar.close for bar in history[-169:-1]), ZERO
+            ) <= sum((bar.close for bar in history[-193:-25]), ZERO):
+                return None
+            if breakout_entry_trend_filter and history[-1].close * 168 <= sum(
+                (bar.close for bar in history[-169:-1]), ZERO
+            ):
+                return None
+            ceiling = max(bar.high for bar in history[-85:-1])
+            return "buy" if history[-1].close > ceiling * Decimal("1.001") else None
         if regimes is not None:
             signal = router.target(history, holding, regimes[history[-1].close_time])
             if (
@@ -401,10 +688,13 @@ def run_backtest(
             )
         ):
             return None
+        # Keep hourly state maintenance, exits and pending fills outside this entry-only gate.
+        if signal == "buy" and history[-1].close_time.hour % breakout_entry_cadence_hours:
+            return None
         return signal
 
     active = strategy not in ("cash", "buy-hold")
-    portfolio = _Portfolio(capital, costs, active)
+    portfolio = _Portfolio(capital, costs, active, drawdown_limit=policy.drawdown_limit)
     history = bars[:first]
     # (execution bar index, side, reason, signal timestamp). One pending order at a time.
     pending: tuple[int, Side, Reason, datetime | None] | None = None
@@ -420,8 +710,47 @@ def run_backtest(
         if pending and pending[0] == index:
             _, side, reason, signal_time = pending
             previous_fills = len(portfolio.fills)
-            portfolio.trade(side, bar.open, bar.open_time, reason, signal_time)
+            budget_fits = True
+            if side == "buy" and breakout_entry_stop_budget:
+                if signal_time is None:
+                    raise ValueError("손절 예산의 원래 진입 신호 시각이 없습니다")
+                signal_index = indices[signal_time] - 1
+                signal_tr = prior_mean_true_range(bars[signal_index - 25 : signal_index + 1])
+                initial_stop = bar.open - stop_multiple * signal_tr
+                budget_fits = (
+                    signal_tr > ZERO
+                    and initial_stop > ZERO
+                    and portfolio.channel_entry_fits(bar.open, initial_stop)
+                )
+            if budget_fits:
+                portfolio.trade(side, bar.open, bar.open_time, reason, signal_time)
+            else:
+                portfolio.rejections.append(
+                    Rejection(time=bar.open_time, side=side, reason="risk_budget", trigger=reason)
+                )
             if len(portfolio.fills) > previous_fills:
+                if breakout_entry_stop_channel_reset:
+                    awaiting_channel_reset = False
+                    profit_reentry_after = None
+                    if side == "sell" and reason == "signal":
+                        if signal_time is None:
+                            raise ValueError("채널 리셋의 매도 신호 시각이 없습니다")
+                        signal_index = indices[signal_time] - 1
+                        # Classify using the original sell signal, not the later fill candle.
+                        awaiting_channel_reset = bars[signal_index].close >= min(
+                            b.low for b in bars[signal_index - 48 : signal_index]
+                        )
+                        if awaiting_channel_reset and breakout_entry_stop_loss_reset:
+                            entry_fill, exit_fill = portfolio.fills[-2:]
+                            net_pnl = (
+                                exit_fill.price * exit_fill.quantity
+                                - exit_fill.fee
+                                - entry_fill.price * entry_fill.quantity
+                                - entry_fill.fee
+                            )
+                            awaiting_channel_reset = net_pnl <= ZERO
+                            if breakout_confirmed_profit_reentry and net_pnl > ZERO:
+                                profit_reentry_after = bar.open_time
                 entry_time = bar.open_time if side == "buy" else None
                 if breakout_failure_exit:
                     if side == "buy":
@@ -446,6 +775,18 @@ def run_backtest(
                         entry_true_range = prior_mean_true_range(
                             bars[signal_index - 25 : signal_index + 1]
                         )
+                        if long_entry_at is not None and signal_time == long_entry_at:
+                            position_trend_lookback = 168
+                            entry_fork_matched = True
+                        elif breakout_entry_path_context:
+                            position_trend_lookback = _entry_path_context(
+                                bars[signal_index - 24 : signal_index + 1]
+                            )
+                        elif breakout_entry_context:
+                            # Delayed execution must still use the original signal's history.
+                            position_trend_lookback = _entry_trend_context(
+                                bars[signal_index - 25 : signal_index + 1]
+                            )
                         entry_stop_active = breakout_entry_stop
                         if breakout_entry_stop_floor or breakout_entry_stop_expansion:
                             slow_range = prior_mean_true_range(
@@ -455,22 +796,112 @@ def run_backtest(
                                 entry_true_range = max(entry_true_range, slow_range)
                             else:
                                 entry_stop_active = entry_true_range > slow_range
-                        trailing_peak = bar.open if breakout_trailing_exit else None
+                        trailing_peak = (
+                            bar.open
+                            if breakout_trailing_exit or breakout_entry_stop_profit_trail
+                            else None
+                        )
                         entry_reference = bar.open
+                        if breakout_entry_stop_adaptive_trail:
+                            entry_stop_threshold = bar.open - stop_multiple * entry_true_range
                     else:
                         entry_true_range = trailing_peak = entry_reference = None
+                        position_trend_lookback = breakout_entry_stop_trend_lookback
                         entry_stop_active = False
+                        entry_stop_threshold = None
+                    entry_stop_breaches = 0
+                    long_breaches = 0
+                    decision_recorded = False
+                    extend_position = False
+                    checkpoint_at = None
+                    checkpoint_reference = None
+                    checkpoint_exit_due = False
+                    extension_floor_breaches = 0
+                    liquidation_exit_due = False
                 if side == "sell":
                     last_exit = bar.open_time
             pending = None
         portfolio.mark(bar.open, bar.open_time, "open")
         exposure += int(portfolio.btc > 0)
         history.append(bar)
-        if breakout_trailing_exit and portfolio.btc > 0:
+        if (breakout_trailing_exit or breakout_entry_stop_profit_trail) and portfolio.btc > 0:
             if trailing_peak is None:
                 raise ValueError("고점 추적 청산의 체결 기준이 없습니다")
             trailing_peak = max(trailing_peak, bar.close)
+            if breakout_entry_stop_profit_trail:
+                if entry_true_range is None or entry_reference is None:
+                    raise ValueError("상승 후 추적의 실제 매수 기준이 없습니다")
+                distance = stop_multiple * entry_true_range
+                threshold = entry_reference - distance
+                if trailing_peak >= entry_reference + activation_multiple * entry_true_range:
+                    if breakout_entry_stop_adaptive_trail:
+                        distance = stop_multiple * max(
+                            entry_true_range, prior_mean_true_range(history)
+                        )
+                    threshold = trailing_peak - distance
+                if breakout_entry_stop_adaptive_trail:
+                    if entry_stop_threshold is None:
+                        raise ValueError("적응 추적의 실제 매수 청산선이 없습니다")
+                    entry_stop_threshold = max(entry_stop_threshold, threshold)
+                    threshold = entry_stop_threshold
+                # Record this close against its contemporaneous threshold, even while pending.
+                breach = entry_true_range > 0 and bar.close < threshold
+                if breakout_entry_stop_trend_confirmation:
+                    # Non-overlapping prior means, cross-multiplied to avoid division rounding.
+                    rising = (
+                        sum(b.close for b in history[-25:-1]) * position_trend_lookback
+                        > sum(b.close for b in history[-25 - position_trend_lookback : -25]) * 24
+                    )
+                    breach = entry_true_range > 0 and (
+                        bar.close < entry_reference - stop_multiple * entry_true_range
+                        or (
+                            trailing_peak
+                            >= entry_reference + activation_multiple * entry_true_range
+                            and bar.close < threshold
+                            and not rising
+                        )
+                    )
+                entry_stop_breaches = entry_stop_breaches + 1 if breach else 0
+                if (
+                    observe_exits
+                    or breakout_exit_checkpoint
+                    or breakout_exit_higher_low
+                    or breakout_extension_floor
+                ):
+                    long_rising = (
+                        sum(b.close for b in history[-25:-1]) * 168
+                        > sum(b.close for b in history[-193:-25]) * 24
+                    )
+                    long_breach = entry_true_range > 0 and (
+                        bar.close < entry_reference - 3 * entry_true_range
+                        or (
+                            trailing_peak >= entry_reference + 3 * entry_true_range
+                            and bar.close < threshold
+                            and not long_rising
+                        )
+                    )
+                    long_breaches = long_breaches + 1 if long_breach else 0
         portfolio.mark(bar.close, bar.close_time, "close")
+        if breakout_liquidation_buffer and portfolio.btc > ZERO and not portfolio.halted:
+            buffered_price = max(
+                ZERO, bar.close - (1 + extra_delay_bars) * prior_mean_true_range(history)
+            )
+            liquidation_equity = portfolio.cash + (
+                portfolio.btc
+                * buffered_price
+                * (ONE - costs.sell_slippage)
+                * (ONE - costs.sell_fee)
+            )
+            liquidation_exit_due = liquidation_exit_due or (
+                liquidation_equity <= portfolio.peak * (ONE - policy.drawdown_limit)
+            )
+        if breakout_extension_floor and extend_position:
+            if checkpoint_reference is None:
+                raise ValueError("연장 가격 기준이 없습니다")
+            extension_floor_breaches = (
+                extension_floor_breaches + 1 if bar.close < checkpoint_reference else 0
+            )
+            checkpoint_exit_due = checkpoint_exit_due or extension_floor_breaches >= 2
         if portfolio.halted:
             # Risk replaces strategy orders, but an existing risk order keeps its due bar.
             if portfolio.btc <= 0:
@@ -478,9 +909,87 @@ def run_backtest(
             elif pending is None or pending[2] != "risk":
                 pending = (index + 1 + extra_delay_bars, "sell", "risk", bar.close_time)
         elif active and pending is None:
+            if checkpoint_at is not None and bar.close_time >= checkpoint_at:
+                if checkpoint_reference is None:
+                    raise ValueError("중간 점검의 원래 청산 결정 종가가 없습니다")
+                checkpoint_exit_due = bar.close <= checkpoint_reference
+                checkpoint_at = None
             signal = target(history, portfolio.btc > 0)
+            if (
+                (breakout_exit_checkpoint or breakout_exit_higher_low or breakout_extension_floor)
+                and signal == "sell"
+                and not decision_recorded
+                and bar.close >= min(b.low for b in history[-49:-1])
+            ):
+                decision_recorded = True
+                allow_extension = not breakout_exit_higher_low or (
+                    min(b.low for b in history[-25:-1]) > min(b.low for b in history[-49:-25])
+                )
+                if long_breaches < breakout_entry_stop_confirmations and allow_extension:
+                    extend_position = True
+                    if breakout_exit_checkpoint:
+                        checkpoint_at = bar.close_time + timedelta(hours=24)
+                    if breakout_exit_checkpoint or breakout_extension_floor:
+                        checkpoint_reference = bar.close
+                    signal = target(history, True)
+            if (
+                observe_exits
+                and signal == "sell"
+                and not decision_recorded
+                and bar.close >= min(b.low for b in history[-49:-1])
+            ):
+                if (
+                    entry_true_range is None
+                    or entry_reference is None
+                    or trailing_peak is None
+                    or entry_stop_threshold is None
+                ):
+                    raise ValueError("청산 분기 상태가 없습니다")
+                prefix = {
+                    "costs": costs.model_dump(mode="json"),
+                    "capital": str(capital),
+                    "delay": extra_delay_bars,
+                    "fills": [f.model_dump(mode="json") for f in portfolio.fills],
+                    "rejections": [r.model_dump(mode="json") for r in portfolio.rejections],
+                    "curve": [p.model_dump(mode="json") for p in portfolio.curve],
+                    "halted": portfolio.halted,
+                    "last_exit": str(last_exit),
+                    "awaiting_channel_reset": awaiting_channel_reset,
+                    "entry_stop_active": entry_stop_active,
+                }
+                decision = ExitDecision(
+                    signal_time=bar.close_time,
+                    entry_fill=portfolio.fills[-1].model_copy(deep=True),
+                    cash=portfolio.cash,
+                    btc=portfolio.btc,
+                    account_peak=portfolio.peak,
+                    max_drawdown=portfolio.max_drawdown,
+                    equity=portfolio.cash + portfolio.btc * bar.close,
+                    entry_true_range=entry_true_range,
+                    entry_reference=entry_reference,
+                    trailing_peak=trailing_peak,
+                    threshold=entry_stop_threshold,
+                    short_breaches=entry_stop_breaches,
+                    long_breaches=long_breaches,
+                    prefix_sha256=hashlib.sha256(
+                        json.dumps(prefix, sort_keys=True).encode()
+                    ).hexdigest(),
+                    candles_sha256=hashlib.sha256(
+                        "".join(b.model_dump_json() + "\n" for b in history).encode()
+                    ).hexdigest(),
+                )
+                if exit_decisions is not None:
+                    exit_decisions.append(decision)
+                decision_recorded = True
+                if bar.close_time == extend_exit_at:
+                    extend_position = fork_matched = True
+                    signal = target(history, True)
             if signal:
                 pending = (index + 1 + extra_delay_bars, signal, "signal", bar.close_time)
+    if extend_exit_at is not None and not fork_matched:
+        raise ValueError("청산 분기 시각이 최초 추가 청산 결정과 일치하지 않습니다")
+    if long_entry_at is not None and not entry_fork_matched:
+        raise ValueError("진입 분기 시각에 실제 매수가 없습니다")
     last = bars[-1]
     if portfolio.btc > 0:
         portfolio.trade("sell", last.close, last.close_time, "settlement", None)

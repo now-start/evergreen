@@ -1,4 +1,4 @@
-"""Experiments 26-42: independent filters or exits; original breakout entry required."""
+"""Experiments 26-51: independent filters or exits; original breakout entry required."""
 
 import argparse
 import hashlib
@@ -102,6 +102,15 @@ def run_study(
     entry_stop: bool = False,
     entry_stop_floor: bool = False,
     entry_stop_expansion: bool = False,
+    confirmed_entry_stop: bool = False,
+    entry_stop_channel_reset: bool = False,
+    entry_stop_profit_trail_reset: bool = False,
+    entry_stop_adaptive_trail_reset: bool = False,
+    entry_stop_loss_reset: bool = False,
+    confirmed_profit_reentry: bool = False,
+    entry_stop_trend_confirmation: bool = False,
+    entry_stop_budget: bool = False,
+    entry_stop_trend_context: bool = False,
 ) -> None:
     if (
         sum(
@@ -122,6 +131,15 @@ def run_study(
                 entry_stop,
                 entry_stop_floor,
                 entry_stop_expansion,
+                confirmed_entry_stop,
+                entry_stop_channel_reset,
+                entry_stop_profit_trail_reset,
+                entry_stop_adaptive_trail_reset,
+                entry_stop_loss_reset,
+                confirmed_profit_reentry,
+                entry_stop_trend_confirmation,
+                entry_stop_budget,
+                entry_stop_trend_context,
             )
         )
         > 1
@@ -218,6 +236,46 @@ def run_study(
         candidate, experiment, reference_experiment = "entry-stop-expansion", "42", "41"
         confirmation = "fixed_entry_stop_enabled_only_when_signal_prior24_tr_gt_prior168_tr"
         models = ("entry-stop-tr-floor", candidate)
+    if confirmed_entry_stop:
+        candidate, experiment, reference_experiment = "entry-stop-confirm2", "43", "42"
+        confirmation = "two_consecutive_postfill_closes_below_frozen_entry_open_minus_3_prior24_tr"
+        models = ("entry-stop-expansion", candidate)
+    if entry_stop_channel_reset:
+        candidate, experiment, reference_experiment = "entry-stop-channel-reset", "44", "43"
+        confirmation = "confirmed_entry_stop_then_wait_for_postsell_closed_48h_channel_reset"
+        models = ("entry-stop-confirm2", candidate)
+    if entry_stop_profit_trail_reset:
+        candidate, experiment, reference_experiment = "entry-stop-profit-trail-reset", "45", "44"
+        confirmation = "profit_activated_3tr_trail_two_contemporaneous_closes_then_channel_reset"
+        models = ("entry-stop-channel-reset", candidate)
+    if entry_stop_adaptive_trail_reset:
+        candidate, experiment, reference_experiment = "entry-stop-adaptive-trail-reset", "46", "45"
+        confirmation = "profit_activated_adaptive_3tr_monotonic_stop_two_closes_then_channel_reset"
+        models = ("entry-stop-profit-trail-reset", candidate)
+    if entry_stop_loss_reset:
+        candidate, experiment, reference_experiment = "entry-stop-loss-reset", "47", "46"
+        confirmation = "adaptive_trail_channel_reset_only_after_nonpositive_actual_trade_net_pnl"
+        models = ("entry-stop-adaptive-trail-reset", candidate)
+    if confirmed_profit_reentry:
+        candidate, experiment, reference_experiment = (
+            "entry-stop-confirmed-profit-reentry",
+            "48",
+            "47",
+        )
+        confirmation = "two_independent_postsale_breakouts_for_profitable_extra_exit_reentry"
+        models = ("entry-stop-loss-reset", candidate)
+    if entry_stop_trend_confirmation:
+        candidate, experiment, reference_experiment = "entry-stop-trend-confirmation", "49", "46"
+        confirmation = "adaptive_profit_exit_only_when_prior24_close_mean_le_preceding24_mean"
+        models = ("entry-stop-adaptive-trail-reset", candidate)
+    if entry_stop_budget:
+        candidate, experiment, reference_experiment = "entry-stop-budget", "50", "49"
+        confirmation = "actual_open_initial_stop_net_liquidation_ge_90pct_preserved_account_peak"
+        models = ("entry-stop-trend-confirmation", candidate)
+    if entry_stop_trend_context:
+        candidate, experiment, reference_experiment = "entry-stop-trend-context", "51", "50"
+        confirmation = "prior24_close_mean_compared_to_preceding168_mean_with_entry_stop_budget"
+        models = ("entry-stop-budget", candidate)
     output.mkdir(parents=True, exist_ok=False)
     write_json(
         output / "protocol.json",
@@ -285,6 +343,15 @@ def run_study(
                 or entry_stop
                 or entry_stop_floor
                 or entry_stop_expansion
+                or confirmed_entry_stop
+                or entry_stop_channel_reset
+                or entry_stop_profit_trail_reset
+                or entry_stop_adaptive_trail_reset
+                or entry_stop_loss_reset
+                or confirmed_profit_reentry
+                or entry_stop_trend_confirmation
+                or entry_stop_budget
+                or entry_stop_trend_context
                 else schedule(bars, start)
             )
             model_approvals = {candidate: approvals}
@@ -318,7 +385,17 @@ def run_study(
             trailing_adaptive_models=adaptive_models,
             rejection_latch_models=latch_models,
             entry_stop_models=models
-            if entry_stop_floor or entry_stop_expansion
+            if entry_stop_floor
+            or entry_stop_expansion
+            or confirmed_entry_stop
+            or entry_stop_channel_reset
+            or entry_stop_profit_trail_reset
+            or entry_stop_adaptive_trail_reset
+            or entry_stop_loss_reset
+            or confirmed_profit_reentry
+            or entry_stop_trend_confirmation
+            or entry_stop_budget
+            or entry_stop_trend_context
             else (candidate,)
             if entry_stop
             else (),
@@ -327,7 +404,70 @@ def run_study(
             else ("entry-stop-tr-floor",)
             if entry_stop_expansion
             else (),
-            entry_stop_expansion_models=(candidate,) if entry_stop_expansion else (),
+            entry_stop_expansion_models=(candidate,)
+            if entry_stop_expansion
+            else ("entry-stop-expansion",)
+            if confirmed_entry_stop
+            else (),
+            entry_stop_confirmations=dict.fromkeys(models, 2)
+            if entry_stop_channel_reset
+            or entry_stop_profit_trail_reset
+            or entry_stop_adaptive_trail_reset
+            or entry_stop_loss_reset
+            or confirmed_profit_reentry
+            or entry_stop_trend_confirmation
+            or entry_stop_budget
+            or entry_stop_trend_context
+            else {candidate: 2}
+            if confirmed_entry_stop
+            else None,
+            entry_stop_channel_reset_models=models
+            if entry_stop_profit_trail_reset
+            or entry_stop_adaptive_trail_reset
+            or entry_stop_loss_reset
+            or confirmed_profit_reentry
+            or entry_stop_trend_confirmation
+            or entry_stop_budget
+            or entry_stop_trend_context
+            else (candidate,)
+            if entry_stop_channel_reset
+            else (),
+            entry_stop_profit_trail_models=models
+            if entry_stop_adaptive_trail_reset
+            or entry_stop_loss_reset
+            or confirmed_profit_reentry
+            or entry_stop_trend_confirmation
+            or entry_stop_budget
+            or entry_stop_trend_context
+            else (candidate,)
+            if entry_stop_profit_trail_reset
+            else (),
+            entry_stop_adaptive_trail_models=models
+            if entry_stop_loss_reset
+            or confirmed_profit_reentry
+            or entry_stop_trend_confirmation
+            or entry_stop_budget
+            or entry_stop_trend_context
+            else (candidate,)
+            if entry_stop_adaptive_trail_reset
+            else (),
+            entry_stop_loss_reset_models=models
+            if confirmed_profit_reentry
+            else (candidate,)
+            if entry_stop_loss_reset
+            else (),
+            confirmed_profit_reentry_models=(candidate,) if confirmed_profit_reentry else (),
+            entry_stop_trend_confirmation_models=models
+            if entry_stop_budget or entry_stop_trend_context
+            else (candidate,)
+            if entry_stop_trend_confirmation
+            else (),
+            entry_stop_budget_models=models
+            if entry_stop_trend_context
+            else (candidate,)
+            if entry_stop_budget
+            else (),
+            entry_stop_trend_lookbacks={candidate: 168} if entry_stop_trend_context else None,
         )
         generated = sorted((group / "continuous").glob("*/base.breakout-v1.json"))
         if len(generated) != len(baselines):
@@ -361,6 +501,24 @@ def run_study(
                     controls = ("breakout-v1", "entry-stop-tr24")
                 if entry_stop_expansion:
                     controls = ("breakout-v1", "entry-stop-tr-floor")
+                if confirmed_entry_stop:
+                    controls = ("breakout-v1", "entry-stop-expansion")
+                if entry_stop_channel_reset:
+                    controls = ("breakout-v1", "entry-stop-confirm2")
+                if entry_stop_profit_trail_reset:
+                    controls = ("breakout-v1", "entry-stop-channel-reset")
+                if entry_stop_adaptive_trail_reset:
+                    controls = ("breakout-v1", "entry-stop-profit-trail-reset")
+                if entry_stop_loss_reset:
+                    controls = ("breakout-v1", "entry-stop-adaptive-trail-reset")
+                if confirmed_profit_reentry:
+                    controls = ("breakout-v1", "entry-stop-loss-reset")
+                if entry_stop_trend_confirmation:
+                    controls = ("breakout-v1", "entry-stop-adaptive-trail-reset")
+                if entry_stop_budget:
+                    controls = ("breakout-v1", "entry-stop-trend-confirmation")
+                if entry_stop_trend_context:
+                    controls = ("breakout-v1", "entry-stop-budget")
                 for control in controls:
                     filename = f"{scenario}.{control}.json"
                     if read(old.parent / filename) != read(new.parent / filename):
@@ -401,6 +559,15 @@ def main() -> None:
     filters.add_argument("--entry-stop", action="store_true")
     filters.add_argument("--entry-stop-floor", action="store_true")
     filters.add_argument("--entry-stop-expansion", action="store_true")
+    filters.add_argument("--confirmed-entry-stop", action="store_true")
+    filters.add_argument("--entry-stop-channel-reset", action="store_true")
+    filters.add_argument("--entry-stop-profit-trail-reset", action="store_true")
+    filters.add_argument("--entry-stop-adaptive-trail-reset", action="store_true")
+    filters.add_argument("--entry-stop-loss-reset", action="store_true")
+    filters.add_argument("--confirmed-profit-reentry", action="store_true")
+    filters.add_argument("--entry-stop-trend-confirmation", action="store_true")
+    filters.add_argument("--entry-stop-budget", action="store_true")
+    filters.add_argument("--entry-stop-trend-context", action="store_true")
     for name in ("raw", "reference", "output"):
         parser.add_argument(f"--{name}", type=Path, required=True)
     args = parser.parse_args()
@@ -424,6 +591,15 @@ def main() -> None:
         entry_stop=args.entry_stop,
         entry_stop_floor=args.entry_stop_floor,
         entry_stop_expansion=args.entry_stop_expansion,
+        confirmed_entry_stop=args.confirmed_entry_stop,
+        entry_stop_channel_reset=args.entry_stop_channel_reset,
+        entry_stop_profit_trail_reset=args.entry_stop_profit_trail_reset,
+        entry_stop_adaptive_trail_reset=args.entry_stop_adaptive_trail_reset,
+        entry_stop_loss_reset=args.entry_stop_loss_reset,
+        confirmed_profit_reentry=args.confirmed_profit_reentry,
+        entry_stop_trend_confirmation=args.entry_stop_trend_confirmation,
+        entry_stop_budget=args.entry_stop_budget,
+        entry_stop_trend_context=args.entry_stop_trend_context,
     )
 
 

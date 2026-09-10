@@ -72,10 +72,66 @@ def evaluate(
     entry_stop_models: tuple[str, ...] = (),
     entry_stop_floor_models: tuple[str, ...] = (),
     entry_stop_expansion_models: tuple[str, ...] = (),
+    entry_stop_confirmations: dict[str, int] | None = None,
+    entry_stop_channel_reset_models: tuple[str, ...] = (),
+    entry_stop_profit_trail_models: tuple[str, ...] = (),
+    entry_stop_adaptive_trail_models: tuple[str, ...] = (),
+    entry_stop_loss_reset_models: tuple[str, ...] = (),
+    confirmed_profit_reentry_models: tuple[str, ...] = (),
+    entry_stop_trend_confirmation_models: tuple[str, ...] = (),
+    entry_stop_budget_models: tuple[str, ...] = (),
+    entry_stop_trend_lookbacks: dict[str, int] | None = None,
+    exit_checkpoint_models: tuple[str, ...] = (),
+    exit_higher_low_models: tuple[str, ...] = (),
+    extension_floor_models: tuple[str, ...] = (),
+    liquidation_buffer_models: tuple[str, ...] = (),
+    entry_context_models: tuple[str, ...] = (),
+    entry_path_context_models: tuple[str, ...] = (),
 ) -> None:
     candidates = ("breakout-v1", "cash", "prior", *models)
     if set(parts) != set(candidates):
         raise ValueError("평가 후보가 누락됐습니다")
+    if (
+        set(entry_path_context_models) - set(liquidation_buffer_models)
+        or set(entry_path_context_models) & set(entry_context_models)
+        or any(
+            (entry_stop_trend_lookbacks or {}).get(n, 24) != 24 for n in entry_path_context_models
+        )
+    ):
+        raise ValueError("진입 경로는 다른 선택 조건 없는 짧은 추세 청산 여유 후보에만 적용합니다")
+    if set(entry_context_models) - set(liquidation_buffer_models) or any(
+        (entry_stop_trend_lookbacks or {}).get(n, 24) != 24 for n in entry_context_models
+    ):
+        raise ValueError("진입 맥락은 짧은 추세 청산 여유 후보에만 적용합니다")
+    if (
+        set(liquidation_buffer_models) - set(entry_stop_budget_models)
+        or set(liquidation_buffer_models)
+        & (set(exit_checkpoint_models) | set(exit_higher_low_models) | set(extension_floor_models))
+        or any(
+            (entry_stop_trend_lookbacks or {}).get(n, 24) not in (24, 168)
+            for n in liquidation_buffer_models
+        )
+    ):
+        raise ValueError("청산 여유는 다른 연장 조건 없는 24/168 추세 예산 후보에만 적용합니다")
+    if (
+        set(extension_floor_models) - set(entry_stop_budget_models)
+        or set(extension_floor_models) & (set(exit_checkpoint_models) | set(exit_higher_low_models))
+        or any((entry_stop_trend_lookbacks or {}).get(n, 24) != 24 for n in extension_floor_models)
+    ):
+        raise ValueError("연장 가격 확인은 다른 분기 조건 없는 짧은 추세 예산 후보에만 적용합니다")
+    if (
+        set(exit_higher_low_models) - set(entry_stop_budget_models)
+        or set(exit_higher_low_models) & set(exit_checkpoint_models)
+        or any(
+            (entry_stop_trend_lookbacks or {}).get(name, 24) != 24
+            for name in exit_higher_low_models
+        )
+    ):
+        raise ValueError("저점 상승 연장은 중간 점검 없는 짧은 추세 예산 후보에만 적용합니다")
+    if set(exit_checkpoint_models) - set(entry_stop_budget_models) or any(
+        (entry_stop_trend_lookbacks or {}).get(name, 24) != 24 for name in exit_checkpoint_models
+    ):
+        raise ValueError("중간 점검은 짧은 추세 손절 예산 후보에만 적용합니다")
     if exit_lookbacks is not None and set(exit_lookbacks) - set(models):
         raise ValueError("청산 채널 변경은 명시된 연구 후보에만 허용합니다")
     if cooldowns is not None and set(cooldowns) - set(models):
@@ -104,6 +160,30 @@ def evaluate(
         raise ValueError("장기 변동 폭 하한은 고정 손절 후보에만 허용합니다")
     if set(entry_stop_expansion_models) - set(entry_stop_models):
         raise ValueError("확대 조건은 고정 손절 후보에만 허용합니다")
+    if set(entry_stop_channel_reset_models) - set(entry_stop_models):
+        raise ValueError("채널 리셋은 고정 손절 후보에만 허용합니다")
+    if set(entry_stop_profit_trail_models) - set(entry_stop_channel_reset_models):
+        raise ValueError("상승 후 추적은 채널 리셋 후보에만 허용합니다")
+    if set(entry_stop_adaptive_trail_models) - set(entry_stop_profit_trail_models):
+        raise ValueError("적응 추적은 상승 후 추적 후보에만 허용합니다")
+    if set(entry_stop_loss_reset_models) - set(entry_stop_adaptive_trail_models):
+        raise ValueError("손실 리셋은 적응 추적 후보에만 허용합니다")
+    if set(confirmed_profit_reentry_models) - set(entry_stop_loss_reset_models):
+        raise ValueError("수익 재진입 확인은 손실 리셋 후보에만 허용합니다")
+    if set(entry_stop_trend_confirmation_models) - set(entry_stop_adaptive_trail_models) or set(
+        entry_stop_trend_confirmation_models
+    ) & set(entry_stop_loss_reset_models):
+        raise ValueError("추세 확인은 재진입 변형 없는 적응 추적 후보에만 허용합니다")
+    if set(entry_stop_budget_models) - set(entry_stop_trend_confirmation_models):
+        raise ValueError("손절 예산은 추세 확인 후보에만 허용합니다")
+    if entry_stop_trend_lookbacks is not None and set(entry_stop_trend_lookbacks) - set(
+        entry_stop_budget_models
+    ):
+        raise ValueError("추세 맥락 변경은 손절 예산 후보에만 허용합니다")
+    if entry_stop_confirmations is not None and set(entry_stop_confirmations) - set(
+        entry_stop_models
+    ):
+        raise ValueError("고정 손절 확인은 해당 청산 후보에만 허용합니다")
     joined = {name: joined_evaluations(values) for name, values in parts.items()}
     ranges = [[(p.start, p.bars[-1].close_time) for p in rows] for rows in joined.values()]
     if not ranges[0] or any(r != ranges[0] for r in ranges):
@@ -141,6 +221,24 @@ def evaluate(
                     breakout_entry_stop=name in entry_stop_models,
                     breakout_entry_stop_floor=name in entry_stop_floor_models,
                     breakout_entry_stop_expansion=name in entry_stop_expansion_models,
+                    breakout_entry_stop_confirmations=(entry_stop_confirmations or {}).get(name, 1),
+                    breakout_entry_stop_channel_reset=name in entry_stop_channel_reset_models,
+                    breakout_entry_stop_profit_trail=name in entry_stop_profit_trail_models,
+                    breakout_entry_stop_adaptive_trail=name in entry_stop_adaptive_trail_models,
+                    breakout_entry_stop_loss_reset=name in entry_stop_loss_reset_models,
+                    breakout_confirmed_profit_reentry=name in confirmed_profit_reentry_models,
+                    breakout_entry_stop_trend_confirmation=name
+                    in entry_stop_trend_confirmation_models,
+                    breakout_entry_stop_budget=name in entry_stop_budget_models,
+                    breakout_exit_checkpoint=name in exit_checkpoint_models,
+                    breakout_exit_higher_low=name in exit_higher_low_models,
+                    breakout_extension_floor=name in extension_floor_models,
+                    breakout_liquidation_buffer=name in liquidation_buffer_models,
+                    breakout_entry_context=name in entry_context_models,
+                    breakout_entry_path_context=name in entry_path_context_models,
+                    breakout_entry_stop_trend_lookback=(entry_stop_trend_lookbacks or {}).get(
+                        name, 24
+                    ),
                 )
                 write_json(directory / f"{scenario}.{name}.json", result.model_dump(mode="json"))
                 rows.append(
