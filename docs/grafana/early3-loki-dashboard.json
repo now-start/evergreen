@@ -1,0 +1,2273 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_LOKI",
+      "label": "Loki",
+      "type": "datasource",
+      "pluginId": "loki",
+      "pluginName": "Loki"
+    }
+  ],
+  "id": null,
+  "uid": "evergreen-trading-plot",
+  "title": "에버그린 트레이딩",
+  "tags": [
+    "evergreen",
+    "trading",
+    "loki"
+  ],
+  "timezone": "Asia/Seoul",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 100,
+      "type": "text",
+      "title": "KRW-BTC · early3",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 2
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**선택 기간의 마지막 기록**입니다. 시각을 확인하세요. 기록 없음 ≠ 정상 · 초록/빨강 점 = 실제 매수/매도"
+      },
+      "transparent": true
+    },
+    {
+      "id": 120,
+      "type": "stat",
+      "title": "워커 · 마지막 수집",
+      "description": "선택 기간의 마지막 워커 이벤트와 수집 시각입니다. heartbeat도 현재 정상 동작을 보장하지 않습니다. 시작/종료/실패/비활성 기록을 포함합니다.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 2,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{service_name=\"evergreen\"} | regexp \"event=(?P<worker_event>worker_heartbeat|worker_failed|worker_skipped|worker_started|worker_stopped)(?: |$)\" | worker_event!=\"\" | line_format \"{{.worker_event}}\"",
+          "queryType": "range",
+          "editorMode": "code",
+          "direction": "backward",
+          "maxLines": 1
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "includeByName": {
+              "Time": true,
+              "Line": true
+            },
+            "excludeByName": {},
+            "indexByName": {
+              "Line": 0,
+              "Time": 1
+            },
+            "renameByName": {
+              "Line": "이벤트"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "수집 없음",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              },
+              {
+                "id": "displayName",
+                "value": "기록 시각"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "이벤트"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "worker_heartbeat": {
+                        "text": "활동 기록",
+                        "color": "blue"
+                      },
+                      "worker_started": {
+                        "text": "시작 기록",
+                        "color": "blue"
+                      },
+                      "worker_stopped": {
+                        "text": "종료 기록",
+                        "color": "orange"
+                      },
+                      "worker_failed": {
+                        "text": "실패 기록",
+                        "color": "red"
+                      },
+                      "worker_skipped": {
+                        "text": "미실행 기록",
+                        "color": "orange"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "wideLayout": false,
+        "reduceOptions": {
+          "calcs": [
+            "first"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        }
+      }
+    },
+    {
+      "id": 121,
+      "type": "stat",
+      "title": "마지막 판단 시각",
+      "description": "선택한 기간의 마지막 기록입니다. 현재 상태 보장이 아니며 기록 시각을 함께 확인하세요.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 2,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{service_name=\"evergreen\"} |= \"strategy_bar\" | json | __error__=\"\" | event=\"strategy_bar\" | schema_version=1 | strategy=\"breakout-buffer-early3-v1\" | market=\"KRW-BTC\" | mode=\"live\" | event_time >= ${__from:date:seconds} | event_time <= ${__to:date:seconds} | __error__=\"\"",
+          "queryType": "range",
+          "editorMode": "code",
+          "direction": "backward",
+          "maxLines": 5000
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line",
+            "format": "json",
+            "replace": true,
+            "keepTime": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "breach_count",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "bar_close_time",
+                "destinationType": "time"
+              },
+              {
+                "targetField": "observed_at",
+                "destinationType": "time"
+              }
+            ]
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "observed_at",
+                "desc": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "event_id": {
+                "operation": "groupby",
+                "aggregations": []
+              },
+              "position": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "candidate_signal": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "pre_order_signal": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "decision_reason": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "breach_count": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "rising_grace": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "awaiting_reset": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "exit_due": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "exit_reserved": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "halted": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "observed_at": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "bar_close_time": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          },
+          "options": {
+            "excludeByName": {},
+            "includeByName": {
+              "bar_close_time (last)": true,
+              "position (last)": true,
+              "candidate_signal (last)": true,
+              "pre_order_signal (last)": true,
+              "decision_reason (last)": true,
+              "breach_count (last)": true,
+              "rising_grace (last)": true,
+              "awaiting_reset (last)": true,
+              "exit_due (last)": true,
+              "exit_reserved (last)": true,
+              "halted (last)": true,
+              "observed_at (last)": true,
+              "event_id": true
+            },
+            "indexByName": {
+              "bar_close_time (last)": 0,
+              "position (last)": 1,
+              "candidate_signal (last)": 2,
+              "pre_order_signal (last)": 3,
+              "decision_reason (last)": 4,
+              "breach_count (last)": 5,
+              "rising_grace (last)": 6,
+              "awaiting_reset (last)": 7,
+              "exit_due (last)": 8,
+              "exit_reserved (last)": 9,
+              "halted (last)": 10,
+              "observed_at (last)": 11,
+              "event_id": 12
+            },
+            "renameByName": {
+              "bar_close_time (last)": "Time",
+              "position (last)": "보유 상태",
+              "candidate_signal (last)": "전략 신호",
+              "pre_order_signal (last)": "주문 전 신호",
+              "decision_reason (last)": "판단 사유",
+              "breach_count (last)": "연속 이탈",
+              "rising_grace (last)": "상승 유예",
+              "awaiting_reset (last)": "재진입 대기",
+              "exit_due (last)": "예방 청산",
+              "exit_reserved (last)": "청산 예약",
+              "halted (last)": "거래 중단",
+              "observed_at (last)": "관측 시각",
+              "event_id": "이벤트 ID"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Time",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(Time)$"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "기록 없음",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              },
+              {
+                "id": "displayName",
+                "value": "기록 시각"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "wideLayout": false,
+        "reduceOptions": {
+          "calcs": [
+            "first"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        }
+      }
+    },
+    {
+      "id": 122,
+      "type": "stat",
+      "title": "판단 당시 보유",
+      "description": "선택한 기간의 마지막 기록입니다. 현재 상태 보장이 아니며 기록 시각을 함께 확인하세요.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 2,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{service_name=\"evergreen\"} |= \"strategy_bar\" | json | __error__=\"\" | event=\"strategy_bar\" | schema_version=1 | strategy=\"breakout-buffer-early3-v1\" | market=\"KRW-BTC\" | mode=\"live\" | event_time >= ${__from:date:seconds} | event_time <= ${__to:date:seconds} | __error__=\"\"",
+          "queryType": "range",
+          "editorMode": "code",
+          "direction": "backward",
+          "maxLines": 5000
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line",
+            "format": "json",
+            "replace": true,
+            "keepTime": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "breach_count",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "bar_close_time",
+                "destinationType": "time"
+              },
+              {
+                "targetField": "observed_at",
+                "destinationType": "time"
+              }
+            ]
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "observed_at",
+                "desc": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "event_id": {
+                "operation": "groupby",
+                "aggregations": []
+              },
+              "position": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "candidate_signal": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "pre_order_signal": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "decision_reason": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "breach_count": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "rising_grace": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "awaiting_reset": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "exit_due": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "exit_reserved": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "halted": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "observed_at": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "bar_close_time": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          },
+          "options": {
+            "excludeByName": {},
+            "includeByName": {
+              "bar_close_time (last)": true,
+              "position (last)": true,
+              "candidate_signal (last)": true,
+              "pre_order_signal (last)": true,
+              "decision_reason (last)": true,
+              "breach_count (last)": true,
+              "rising_grace (last)": true,
+              "awaiting_reset (last)": true,
+              "exit_due (last)": true,
+              "exit_reserved (last)": true,
+              "halted (last)": true,
+              "observed_at (last)": true,
+              "event_id": true
+            },
+            "indexByName": {
+              "bar_close_time (last)": 0,
+              "position (last)": 1,
+              "candidate_signal (last)": 2,
+              "pre_order_signal (last)": 3,
+              "decision_reason (last)": 4,
+              "breach_count (last)": 5,
+              "rising_grace (last)": 6,
+              "awaiting_reset (last)": 7,
+              "exit_due (last)": 8,
+              "exit_reserved (last)": 9,
+              "halted (last)": 10,
+              "observed_at (last)": 11,
+              "event_id": 12
+            },
+            "renameByName": {
+              "bar_close_time (last)": "Time",
+              "position (last)": "보유 상태",
+              "candidate_signal (last)": "전략 신호",
+              "pre_order_signal (last)": "주문 전 신호",
+              "decision_reason (last)": "판단 사유",
+              "breach_count (last)": "연속 이탈",
+              "rising_grace (last)": "상승 유예",
+              "awaiting_reset (last)": "재진입 대기",
+              "exit_due (last)": "예방 청산",
+              "exit_reserved (last)": "청산 예약",
+              "halted (last)": "거래 중단",
+              "observed_at (last)": "관측 시각",
+              "event_id": "이벤트 ID"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Time",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(보유 상태|Time)$"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "기록 없음",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              },
+              {
+                "id": "displayName",
+                "value": "기록 시각"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "보유 상태"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "cash": {
+                        "text": "현금",
+                        "color": "blue"
+                      },
+                      "btc": {
+                        "text": "BTC 보유",
+                        "color": "orange"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "wideLayout": false,
+        "reduceOptions": {
+          "calcs": [
+            "first"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        }
+      }
+    },
+    {
+      "id": 123,
+      "type": "stat",
+      "title": "마지막 실제 체결",
+      "description": "선택한 기간의 마지막 기록입니다. 현재 상태 보장이 아니며 기록 시각을 함께 확인하세요.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 2,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{service_name=\"evergreen\"} |= \"order_execution\" | json | __error__=\"\" | event=\"order_execution\" | schema_version=1 | strategy=\"breakout-buffer-early3-v1\" | market=\"KRW-BTC\" | mode=\"live\" | event_time >= ${__from:date:seconds} | event_time <= ${__to:date:seconds} | __error__=\"\"",
+          "queryType": "range",
+          "editorMode": "code",
+          "direction": "backward",
+          "maxLines": 5000
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line",
+            "format": "json",
+            "replace": true,
+            "keepTime": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "order_sequence",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "fill_price",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "quantity",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "fee_amount",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "remaining_btc",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "filled_at",
+                "destinationType": "time"
+              },
+              {
+                "targetField": "observed_at",
+                "destinationType": "time"
+              }
+            ]
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "observed_at",
+                "desc": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "event_id": {
+                "operation": "groupby",
+                "aggregations": []
+              },
+              "order_sequence": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "side": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "fill_price": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "quantity": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "fee_amount": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "terminal_state": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "signal_time": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "filled_at": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "remaining_btc": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "observed_at": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          },
+          "options": {
+            "excludeByName": {},
+            "includeByName": {
+              "filled_at (last)": true,
+              "order_sequence (last)": true,
+              "side (last)": true,
+              "fill_price (last)": true,
+              "quantity (last)": true,
+              "fee_amount (last)": true,
+              "terminal_state (last)": true,
+              "signal_time (last)": true,
+              "remaining_btc (last)": true,
+              "observed_at (last)": true,
+              "event_id": true
+            },
+            "indexByName": {
+              "filled_at (last)": 0,
+              "order_sequence (last)": 1,
+              "side (last)": 2,
+              "fill_price (last)": 3,
+              "quantity (last)": 4,
+              "fee_amount (last)": 5,
+              "terminal_state (last)": 6,
+              "signal_time (last)": 7,
+              "remaining_btc (last)": 8,
+              "observed_at (last)": 9,
+              "event_id": 10
+            },
+            "renameByName": {
+              "filled_at (last)": "Time",
+              "order_sequence (last)": "주문 순번",
+              "side (last)": "방향",
+              "fill_price (last)": "주문 평균 체결가",
+              "quantity (last)": "체결 BTC",
+              "fee_amount (last)": "수수료 KRW",
+              "terminal_state (last)": "종료 상태",
+              "signal_time (last)": "신호 시각 UTC",
+              "remaining_btc (last)": "잔여 BTC",
+              "observed_at (last)": "관측 시각",
+              "event_id": "이벤트 ID"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Time",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(방향|Time)$"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "기록 없음",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              },
+              {
+                "id": "displayName",
+                "value": "기록 시각"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "방향"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "buy": {
+                        "text": "매수",
+                        "color": "green"
+                      },
+                      "sell": {
+                        "text": "매도",
+                        "color": "red"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "wideLayout": false,
+        "reduceOptions": {
+          "calcs": [
+            "first"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        }
+      }
+    },
+    {
+      "id": 101,
+      "type": "timeseries",
+      "title": "가격과 매매",
+      "description": "확정 1시간봉 종가와 전략 기준선. 체결점은 종료 주문 전체 VWAP이며 마지막 실제 체결 시각입니다. 신호는 체결로 표시하지 않습니다. Loki에 수집된 로그만 표시하며 누락/보존 만료 구간은 복원하지 않습니다.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{service_name=\"evergreen\"} |= \"strategy_bar\" | json | __error__=\"\" | event=\"strategy_bar\" | schema_version=1 | strategy=\"breakout-buffer-early3-v1\" | market=\"KRW-BTC\" | mode=\"live\" | event_time >= ${__from:date:seconds} | event_time <= ${__to:date:seconds} | __error__=\"\"",
+          "queryType": "range",
+          "editorMode": "code",
+          "direction": "backward",
+          "maxLines": 5000
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{service_name=\"evergreen\"} |= \"order_execution\" | json | __error__=\"\" | event=\"order_execution\" | schema_version=1 | strategy=\"breakout-buffer-early3-v1\" | market=\"KRW-BTC\" | mode=\"live\" | side=\"buy\" | event_time >= ${__from:date:seconds} | event_time <= ${__to:date:seconds} | __error__=\"\"",
+          "queryType": "range",
+          "editorMode": "code",
+          "direction": "backward",
+          "maxLines": 5000
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{service_name=\"evergreen\"} |= \"order_execution\" | json | __error__=\"\" | event=\"order_execution\" | schema_version=1 | strategy=\"breakout-buffer-early3-v1\" | market=\"KRW-BTC\" | mode=\"live\" | side=\"sell\" | event_time >= ${__from:date:seconds} | event_time <= ${__to:date:seconds} | __error__=\"\"",
+          "queryType": "range",
+          "editorMode": "code",
+          "direction": "backward",
+          "maxLines": 5000
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line",
+            "format": "json",
+            "replace": true,
+            "keepTime": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "close",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "entry_threshold",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "initial_stop",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "trailing_stop",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "channel_exit_threshold",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "fill_price",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "bar_close_time",
+                "destinationType": "time"
+              },
+              {
+                "targetField": "filled_at",
+                "destinationType": "time"
+              },
+              {
+                "targetField": "observed_at",
+                "destinationType": "time"
+              }
+            ]
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "observed_at",
+                "desc": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "event_id": {
+                "operation": "groupby",
+                "aggregations": []
+              },
+              "close": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "entry_threshold": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "initial_stop": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "trailing_stop": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "channel_exit_threshold": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "fill_price": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "observed_at": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "bar_close_time": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "filled_at": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          },
+          "options": {
+            "excludeByName": {},
+            "includeByName": {
+              "bar_close_time (last)": true,
+              "close (last)": true,
+              "entry_threshold (last)": true,
+              "initial_stop (last)": true,
+              "trailing_stop (last)": true,
+              "channel_exit_threshold (last)": true
+            },
+            "indexByName": {
+              "bar_close_time (last)": 0,
+              "close (last)": 1,
+              "entry_threshold (last)": 2,
+              "initial_stop (last)": 3,
+              "trailing_stop (last)": 4,
+              "channel_exit_threshold (last)": 5
+            },
+            "renameByName": {
+              "bar_close_time (last)": "Time",
+              "close (last)": "종가",
+              "entry_threshold (last)": "진입선",
+              "initial_stop (last)": "초기 손절선",
+              "trailing_stop (last)": "추적 손절선",
+              "channel_exit_threshold (last)": "96시간 청산선"
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "filter": {
+            "id": "byRefId",
+            "options": "B"
+          },
+          "options": {
+            "excludeByName": {},
+            "includeByName": {
+              "filled_at (last)": true,
+              "fill_price (last)": true
+            },
+            "indexByName": {
+              "filled_at (last)": 0,
+              "fill_price (last)": 1
+            },
+            "renameByName": {
+              "filled_at (last)": "Time",
+              "fill_price (last)": "매수 VWAP"
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "filter": {
+            "id": "byRefId",
+            "options": "C"
+          },
+          "options": {
+            "excludeByName": {},
+            "includeByName": {
+              "filled_at (last)": true,
+              "fill_price (last)": true
+            },
+            "indexByName": {
+              "filled_at (last)": 0,
+              "fill_price (last)": 1
+            },
+            "renameByName": {
+              "filled_at (last)": "Time",
+              "fill_price (last)": "매도 VWAP"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Time",
+                "desc": false
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyKRW",
+          "decimals": 0,
+          "noValue": "자료 없음",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 3,
+            "spanNulls": false,
+            "insertNulls": 3600000
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "종가"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "매수 VWAP"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 9
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "always"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "매도 VWAP"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 9
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "always"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "진입선"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "초기 손절선"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "light-red"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "추적 손절선"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "96시간 청산선"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 103,
+      "type": "table",
+      "title": "실제 체결",
+      "description": "잔고 대사 완료 후 기록. 일부 체결 후 취소된 주문도 실제 체결분만 표시합니다. 같은 주문은 event_id로 중복 제거합니다. 실제 체결 시각이 없는 구형 주문은 제외합니다.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{service_name=\"evergreen\"} |= \"order_execution\" | json | __error__=\"\" | event=\"order_execution\" | schema_version=1 | strategy=\"breakout-buffer-early3-v1\" | market=\"KRW-BTC\" | mode=\"live\" | event_time >= ${__from:date:seconds} | event_time <= ${__to:date:seconds} | __error__=\"\"",
+          "queryType": "range",
+          "editorMode": "code",
+          "direction": "backward",
+          "maxLines": 5000
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line",
+            "format": "json",
+            "replace": true,
+            "keepTime": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "order_sequence",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "fill_price",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "quantity",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "fee_amount",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "remaining_btc",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "filled_at",
+                "destinationType": "time"
+              },
+              {
+                "targetField": "observed_at",
+                "destinationType": "time"
+              }
+            ]
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "observed_at",
+                "desc": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "event_id": {
+                "operation": "groupby",
+                "aggregations": []
+              },
+              "order_sequence": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "side": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "fill_price": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "quantity": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "fee_amount": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "terminal_state": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "signal_time": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "filled_at": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "remaining_btc": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "observed_at": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "last"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          },
+          "options": {
+            "excludeByName": {},
+            "includeByName": {
+              "filled_at (last)": true,
+              "order_sequence (last)": true,
+              "side (last)": true,
+              "fill_price (last)": true,
+              "quantity (last)": true,
+              "fee_amount (last)": true,
+              "terminal_state (last)": true,
+              "signal_time (last)": true,
+              "remaining_btc (last)": true,
+              "observed_at (last)": true,
+              "event_id": true
+            },
+            "indexByName": {
+              "filled_at (last)": 0,
+              "order_sequence (last)": 1,
+              "side (last)": 2,
+              "fill_price (last)": 3,
+              "quantity (last)": 4,
+              "fee_amount (last)": 5,
+              "terminal_state (last)": 6,
+              "signal_time (last)": 7,
+              "remaining_btc (last)": 8,
+              "observed_at (last)": 9,
+              "event_id": 10
+            },
+            "renameByName": {
+              "filled_at (last)": "Time",
+              "order_sequence (last)": "주문 순번",
+              "side (last)": "방향",
+              "fill_price (last)": "주문 평균 체결가",
+              "quantity (last)": "체결 BTC",
+              "fee_amount (last)": "수수료 KRW",
+              "terminal_state (last)": "종료 상태",
+              "signal_time (last)": "신호 시각 UTC",
+              "remaining_btc (last)": "잔여 BTC",
+              "observed_at (last)": "관측 시각",
+              "event_id": "이벤트 ID"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Time",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "—",
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "주문 평균 체결가"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyKRW"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "체결 BTC"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 8
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "잔여 BTC"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 8
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "수수료 KRW"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyKRW"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "이벤트 ID"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "관측 시각"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "신호 시각 UTC"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "잔여 BTC"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "방향"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "buy": {
+                        "text": "매수",
+                        "color": "green"
+                      },
+                      "sell": {
+                        "text": "매도",
+                        "color": "red"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "종료 상태"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "done": {
+                        "text": "체결 완료"
+                      },
+                      "cancel": {
+                        "text": "부분 체결 후 취소"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "enablePagination": true
+      }
+    },
+    {
+      "id": 124,
+      "type": "row",
+      "title": "운영 로그",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 1
+      },
+      "panels": [
+        {
+          "id": 104,
+          "type": "logs",
+          "title": "운영 로그",
+          "description": "수집 시각 기준. 오류 과거 기록과 현재 상태를 구분하세요. 빈 결과는 정상/거래 없음의 증거가 아닙니다.",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 25,
+            "w": 24,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "${DS_LOKI}"
+              },
+              "expr": "{service_name=\"evergreen\"} |~ \"worker_heartbeat|worker_failed|worker_skipped|worker_started|worker_stopped|trading_rejected|trading_halted\"",
+              "queryType": "range",
+              "direction": "backward",
+              "maxLines": 1000
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "wrapLogMessage": true,
+            "sortOrder": "Descending",
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "showLabels": false,
+            "showCommonLabels": false,
+            "prettifyLogMessage": false,
+            "showControls": true,
+            "enableInfiniteScrolling": false
+          }
+        }
+      ]
+    },
+    {
+      "id": 110,
+      "type": "row",
+      "title": "전략 판단 상세",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 24,
+        "h": 1
+      },
+      "panels": [
+        {
+          "id": 102,
+          "type": "table",
+          "title": "전략 판단 상세",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 26,
+            "w": 24,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "${DS_LOKI}"
+              },
+              "expr": "{service_name=\"evergreen\"} |= \"strategy_bar\" | json | __error__=\"\" | event=\"strategy_bar\" | schema_version=1 | strategy=\"breakout-buffer-early3-v1\" | market=\"KRW-BTC\" | mode=\"live\" | event_time >= ${__from:date:seconds} | event_time <= ${__to:date:seconds} | __error__=\"\"",
+              "queryType": "range",
+              "editorMode": "code",
+              "direction": "backward",
+              "maxLines": 5000
+            }
+          ],
+          "transformations": [
+            {
+              "id": "extractFields",
+              "options": {
+                "source": "Line",
+                "format": "json",
+                "replace": true,
+                "keepTime": false
+              }
+            },
+            {
+              "id": "convertFieldType",
+              "options": {
+                "conversions": [
+                  {
+                    "targetField": "breach_count",
+                    "destinationType": "number"
+                  },
+                  {
+                    "targetField": "bar_close_time",
+                    "destinationType": "time"
+                  },
+                  {
+                    "targetField": "observed_at",
+                    "destinationType": "time"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "sort": [
+                  {
+                    "field": "observed_at",
+                    "desc": false
+                  }
+                ]
+              }
+            },
+            {
+              "id": "groupBy",
+              "options": {
+                "fields": {
+                  "event_id": {
+                    "operation": "groupby",
+                    "aggregations": []
+                  },
+                  "position": {
+                    "operation": "aggregate",
+                    "aggregations": [
+                      "last"
+                    ]
+                  },
+                  "candidate_signal": {
+                    "operation": "aggregate",
+                    "aggregations": [
+                      "last"
+                    ]
+                  },
+                  "pre_order_signal": {
+                    "operation": "aggregate",
+                    "aggregations": [
+                      "last"
+                    ]
+                  },
+                  "decision_reason": {
+                    "operation": "aggregate",
+                    "aggregations": [
+                      "last"
+                    ]
+                  },
+                  "breach_count": {
+                    "operation": "aggregate",
+                    "aggregations": [
+                      "last"
+                    ]
+                  },
+                  "rising_grace": {
+                    "operation": "aggregate",
+                    "aggregations": [
+                      "last"
+                    ]
+                  },
+                  "awaiting_reset": {
+                    "operation": "aggregate",
+                    "aggregations": [
+                      "last"
+                    ]
+                  },
+                  "exit_due": {
+                    "operation": "aggregate",
+                    "aggregations": [
+                      "last"
+                    ]
+                  },
+                  "exit_reserved": {
+                    "operation": "aggregate",
+                    "aggregations": [
+                      "last"
+                    ]
+                  },
+                  "halted": {
+                    "operation": "aggregate",
+                    "aggregations": [
+                      "last"
+                    ]
+                  },
+                  "observed_at": {
+                    "operation": "aggregate",
+                    "aggregations": [
+                      "last"
+                    ]
+                  },
+                  "bar_close_time": {
+                    "operation": "aggregate",
+                    "aggregations": [
+                      "last"
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "id": "organize",
+              "filter": {
+                "id": "byRefId",
+                "options": "A"
+              },
+              "options": {
+                "excludeByName": {},
+                "includeByName": {
+                  "bar_close_time (last)": true,
+                  "position (last)": true,
+                  "candidate_signal (last)": true,
+                  "pre_order_signal (last)": true,
+                  "decision_reason (last)": true,
+                  "breach_count (last)": true,
+                  "rising_grace (last)": true,
+                  "awaiting_reset (last)": true,
+                  "exit_due (last)": true,
+                  "exit_reserved (last)": true,
+                  "halted (last)": true,
+                  "observed_at (last)": true,
+                  "event_id": true
+                },
+                "indexByName": {
+                  "bar_close_time (last)": 0,
+                  "position (last)": 1,
+                  "candidate_signal (last)": 2,
+                  "pre_order_signal (last)": 3,
+                  "decision_reason (last)": 4,
+                  "breach_count (last)": 5,
+                  "rising_grace (last)": 6,
+                  "awaiting_reset (last)": 7,
+                  "exit_due (last)": 8,
+                  "exit_reserved (last)": 9,
+                  "halted (last)": 10,
+                  "observed_at (last)": 11,
+                  "event_id": 12
+                },
+                "renameByName": {
+                  "bar_close_time (last)": "Time",
+                  "position (last)": "보유 상태",
+                  "candidate_signal (last)": "전략 신호",
+                  "pre_order_signal (last)": "주문 전 신호",
+                  "decision_reason (last)": "판단 사유",
+                  "breach_count (last)": "연속 이탈",
+                  "rising_grace (last)": "상승 유예",
+                  "awaiting_reset (last)": "재진입 대기",
+                  "exit_due (last)": "예방 청산",
+                  "exit_reserved (last)": "청산 예약",
+                  "halted (last)": "거래 중단",
+                  "observed_at (last)": "관측 시각",
+                  "event_id": "이벤트 ID"
+                }
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "sort": [
+                  {
+                    "field": "Time",
+                    "desc": true
+                  }
+                ]
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "—"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "이벤트 ID"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hidden",
+                    "value": true
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "enablePagination": true
+          }
+        }
+      ]
+    },
+    {
+      "id": 111,
+      "type": "row",
+      "title": "조회 안내",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 24,
+        "h": 1
+      },
+      "panels": [
+        {
+          "id": 112,
+          "type": "text",
+          "title": "데이터 범위와 해석",
+          "gridPos": {
+            "x": 0,
+            "y": 27,
+            "w": 24,
+            "h": 5
+          },
+          "options": {
+            "mode": "markdown",
+            "content": "DB 연결 없이 현재 Python 워커의 JSON 로그만 조회합니다. **빈 차트는 거래 없음/정상을 뜻하지 않습니다.** 배포 버전·워커 상태·로그 수집을 확인하세요.\n\n가격선은 확정 1시간봉, 초록/빨강 점은 실제 종료 주문 VWAP입니다. 로그 수집 시각으로 검색하고 본문의 봉/체결 시각으로 표시하므로 늦게 수집된 기록은 검색 범위 밖에서 누락될 수 있습니다. 자동 새로고침은 꺼져 있으며 쿼리당 최근 5,000행(워커 로그 1,000행)으로 제한합니다. 긴 범위는 나눠 조회하세요. 로그 누락·보존 만료는 복원하지 않습니다."
+          }
+        }
+      ]
+    }
+  ]
+}
