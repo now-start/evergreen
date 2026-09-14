@@ -10,6 +10,7 @@ from upbit import APITimeoutError, NotFoundError
 from evergreen.market import Candle
 from evergreen.trading.config import TradingSettings
 from evergreen.trading.engine import Trader, check_depth
+from evergreen.trading.performance import Ledger
 from evergreen.trading.state import State, Store
 from evergreen.trading.upbit import Book, Chance, Order, Upbit
 
@@ -26,6 +27,9 @@ class MemoryStore(Store):
     def __init__(self, identity: str) -> None:
         self.state = State(identity=identity)
         self.owned = True
+
+    async def performance(self, identity: str) -> Ledger:
+        return Ledger(identity)
 
     async def load(self) -> State:
         return self.state.model_copy(deep=True)

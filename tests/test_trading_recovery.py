@@ -146,9 +146,10 @@ async def test_restart_recovers_every_bar_once_outside_buy_window(
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "already-evaluated"
     assert len(api.windows) == 1
     snapshots = [
-        json.loads(record.getMessage())
+        snapshot
         for record in caplog.records
         if record.name == "evergreen.trading.chart"
+        and (snapshot := json.loads(record.getMessage()))["event"] == "strategy_bar"
     ]
     assert len(snapshots) == gap
     assert len({bar["event_id"] for bar in snapshots}) == gap

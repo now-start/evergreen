@@ -1053,6 +1053,544 @@
       }
     },
     {
+      "id": 130,
+      "type": "stat",
+      "title": "누적 실현손익",
+      "description": "선택 기간 마지막 관측 기준 계좌 운용 시작 이후 누적값. 전략 변경 전 거래 포함. 매수 원가에 매수 수수료를 포함하고 매도 수수료를 차감합니다. 이력 불완전은 산출 불가. 현재 상태 보장 아님.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{service_name=\"evergreen\"} |= \"account_performance\" | json | __error__=\"\" | event=\"account_performance\" | schema_version=1 | market=\"KRW-BTC\" | mode=\"live\"",
+          "queryType": "range",
+          "editorMode": "code",
+          "direction": "backward",
+          "maxLines": 1
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "first"
+          ],
+          "fields": "/.*/"
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyKRW",
+          "decimals": 0,
+          "noValue": "산출 불가",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line",
+            "format": "json",
+            "replace": true,
+            "keepTime": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "realized_pnl_krw",
+                "destinationType": "number"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "includeByName": {
+              "realized_pnl_krw": true
+            },
+            "excludeByName": {},
+            "indexByName": {
+              "realized_pnl_krw": 0
+            },
+            "renameByName": {
+              "realized_pnl_krw": "누적 실현손익"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 131,
+      "type": "stat",
+      "title": "미실현손익 · 추정",
+      "description": "선택 기간 마지막 관측 기준 계좌 운용 시작 이후 누적값. 전략 변경 전 거래 포함. 매수 원가에 매수 수수료를 포함하고 매도 수수료를 차감합니다. 이력 불완전은 산출 불가. 현재 상태 보장 아님.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 6,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{service_name=\"evergreen\"} |= \"account_performance\" | json | __error__=\"\" | event=\"account_performance\" | schema_version=1 | market=\"KRW-BTC\" | mode=\"live\"",
+          "queryType": "range",
+          "editorMode": "code",
+          "direction": "backward",
+          "maxLines": 1
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "first"
+          ],
+          "fields": "/.*/"
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyKRW",
+          "decimals": 0,
+          "noValue": "산출 불가",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line",
+            "format": "json",
+            "replace": true,
+            "keepTime": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "unrealized_pnl_krw",
+                "destinationType": "number"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "includeByName": {
+              "unrealized_pnl_krw": true
+            },
+            "excludeByName": {},
+            "indexByName": {
+              "unrealized_pnl_krw": 0
+            },
+            "renameByName": {
+              "unrealized_pnl_krw": "미실현손익 · 추정"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 132,
+      "type": "stat",
+      "title": "총손익 · 추정",
+      "description": "선택 기간 마지막 관측 기준 계좌 운용 시작 이후 누적값. 전략 변경 전 거래 포함. 매수 원가에 매수 수수료를 포함하고 매도 수수료를 차감합니다. 이력 불완전은 산출 불가. 현재 상태 보장 아님.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 6,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{service_name=\"evergreen\"} |= \"account_performance\" | json | __error__=\"\" | event=\"account_performance\" | schema_version=1 | market=\"KRW-BTC\" | mode=\"live\"",
+          "queryType": "range",
+          "editorMode": "code",
+          "direction": "backward",
+          "maxLines": 1
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "first"
+          ],
+          "fields": "/.*/"
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyKRW",
+          "decimals": 0,
+          "noValue": "산출 불가",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line",
+            "format": "json",
+            "replace": true,
+            "keepTime": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "total_pnl_krw",
+                "destinationType": "number"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "includeByName": {
+              "total_pnl_krw": true
+            },
+            "excludeByName": {},
+            "indexByName": {
+              "total_pnl_krw": 0
+            },
+            "renameByName": {
+              "total_pnl_krw": "총손익 · 추정"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 133,
+      "type": "stat",
+      "title": "원금 대비 총수익률 · 추정",
+      "description": "선택 기간 마지막 관측 기준 계좌 운용 시작 이후 누적값. 전략 변경 전 거래 포함. 매수 원가에 매수 수수료를 포함하고 매도 수수료를 차감합니다. 이력 불완전은 산출 불가. 현재 상태 보장 아님.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 6,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{service_name=\"evergreen\"} |= \"account_performance\" | json | __error__=\"\" | event=\"account_performance\" | schema_version=1 | market=\"KRW-BTC\" | mode=\"live\"",
+          "queryType": "range",
+          "editorMode": "code",
+          "direction": "backward",
+          "maxLines": 1
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "first"
+          ],
+          "fields": "/.*/"
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "noValue": "산출 불가",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line",
+            "format": "json",
+            "replace": true,
+            "keepTime": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "total_return_pct",
+                "destinationType": "number"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "includeByName": {
+              "total_return_pct": true
+            },
+            "excludeByName": {},
+            "indexByName": {
+              "total_return_pct": 0
+            },
+            "renameByName": {
+              "total_return_pct": "원금 대비 총수익률 · 추정"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 134,
+      "type": "table",
+      "title": "손익 기준 · 마지막 관측",
+      "description": "DB 최초 초기화부터 현재까지 계좌 전체 기준이며 선택 기간 수익률이 아닙니다. 총수익률=(추정 순자산/기준 원금-1)×100. BTC는 최우선 매수호가와 예상 매도 수수료로 평가하며 호가 깊이·슬리피지는 미반영. 실현손익은 이동평균 원가(매수 수수료 포함) 기준. 이력 누락·외부 잔고 변동은 수익으로 계산하지 않습니다. 재시작 시 DB 이력에서 복원하고 다음 정상 잔고 평가에 로그를 발행합니다.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 24,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{service_name=\"evergreen\"} |= \"account_performance\" | json | __error__=\"\" | event=\"account_performance\" | schema_version=1 | market=\"KRW-BTC\" | mode=\"live\"",
+          "queryType": "range",
+          "editorMode": "code",
+          "direction": "backward",
+          "maxLines": 1
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "—",
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(마지막 관측|운용 시작)$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "KRW$"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyKRW"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "집계 상태"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "complete": {
+                        "text": "이력 대사 완료"
+                      },
+                      "unavailable": {
+                        "text": "산출 불가"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line",
+            "format": "json",
+            "replace": true,
+            "keepTime": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "observed_at",
+                "destinationType": "time"
+              },
+              {
+                "targetField": "started_at",
+                "destinationType": "time"
+              },
+              {
+                "targetField": "initial_capital_krw",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "equity_krw",
+                "destinationType": "number"
+              },
+              {
+                "targetField": "fees_krw",
+                "destinationType": "number"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "includeByName": {
+              "observed_at": true,
+              "started_at": true,
+              "status": true,
+              "reason": true,
+              "initial_capital_krw": true,
+              "equity_krw": true,
+              "fees_krw": true
+            },
+            "excludeByName": {},
+            "indexByName": {
+              "observed_at": 0,
+              "started_at": 1,
+              "status": 2,
+              "reason": 3,
+              "initial_capital_krw": 4,
+              "equity_krw": 5,
+              "fees_krw": 6
+            },
+            "renameByName": {
+              "observed_at": "마지막 관측",
+              "started_at": "운용 시작",
+              "status": "집계 상태",
+              "reason": "산출 불가 사유",
+              "initial_capital_krw": "기준 원금 KRW",
+              "equity_krw": "추정 순자산 KRW",
+              "fees_krw": "누적 지급 수수료 KRW"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": 101,
       "type": "timeseries",
       "title": "가격과 매매",
@@ -1063,7 +1601,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 6,
+        "y": 16,
         "w": 24,
         "h": 11
       },
@@ -1543,7 +2081,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 17,
+        "y": 27,
         "w": 24,
         "h": 7
       },
@@ -1935,7 +2473,7 @@
       "collapsed": true,
       "gridPos": {
         "x": 0,
-        "y": 24,
+        "y": 34,
         "w": 24,
         "h": 1
       },
@@ -1990,7 +2528,7 @@
       "collapsed": true,
       "gridPos": {
         "x": 0,
-        "y": 25,
+        "y": 35,
         "w": 24,
         "h": 1
       },
@@ -2247,7 +2785,7 @@
       "collapsed": true,
       "gridPos": {
         "x": 0,
-        "y": 26,
+        "y": 36,
         "w": 24,
         "h": 1
       },

@@ -101,6 +101,28 @@ const field = (frame, name) => frame.fields.find(f => g.getFieldDisplayName(f) =
   const workerOut = await firstValueFrom(g.transformDataFrame(worker.transformations, [input]));
   assert.deepEqual(field(workerOut[0], '이벤트'), ['worker_failed']);
   assert.deepEqual(field(workerOut[0], 'Time'), [Date.parse(first)]);
+  const performance = {
+    observed_at: second, started_at: first, status: 'complete', reason: null,
+    realized_pnl_krw: '35.6', unrealized_pnl_krw: '53.4', total_pnl_krw: '89',
+    total_return_pct: '8.9', initial_capital_krw: '1000', equity_krw: '1089', fees_krw: '7.4',
+  };
+  for (const [id, key, title, value] of [
+    [130, 'realized_pnl_krw', '누적 실현손익', 35.6],
+    [131, 'unrealized_pnl_krw', '미실현손익 · 추정', 53.4],
+    [132, 'total_pnl_krw', '총손익 · 추정', 89],
+    [133, 'total_return_pct', '원금 대비 총수익률 · 추정', 8.9],
+  ]) {
+    const panel = panels.find(p => p.id === id);
+    assert.equal(panel.targets[0].maxLines, 1);
+    assert.deepEqual(panel.options.reduceOptions.calcs, ['first']);
+    assert.deepEqual(field((await run(panel, [extracted('A', [performance])]))[0], title), [value]);
+    assert.deepEqual(field((await run(panel, [extracted('A', [{...performance, [key]: null}])]))[0], title), [null]);
+    assert.deepEqual(await run(panel, []), []);
+  }
+  const basis = await run(panels.find(p => p.id === 134), [extracted('A', [performance])]);
+  assert.deepEqual(field(basis[0], '마지막 관측'), [Date.parse(second)]);
+  assert.deepEqual(field(basis[0], '기준 원금 KRW'), [1000]);
+  console.log('PASS: fee-inclusive P&L fields, percent units, unknown nulls, lifetime basis/time');
   console.log('PASS: actual-time axes, nulls, latest-event dedup, distinct fills, tables, empty input');
   console.log('PASS: overview cards keep timestamps, newest row, unknown empty state, last worker event');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -204,7 +204,18 @@ class Trader:
             if not state.halted:
                 logger.warning("event=trading_halted reason=max_drawdown")
             state.halted = True
-        await self.store.save(state, "valuation")
+        ledger = await self.store.performance(state.identity)
+        performance = ledger.snapshot(
+            cash=cash,
+            btc=btc,
+            sequence=state.order_sequence,
+            bid=bid,
+            sell_fee=chance.ask_fee,
+            now=self.clock(),
+            strategy=state.strategy,
+        )
+        await self.store.save(state, "valuation", {"chart": [performance]})
+        chart.emit([performance])
         holding = btc * bid >= chance.market.ask.min_total
         now = self.clock()
         if now.utcoffset() is None:

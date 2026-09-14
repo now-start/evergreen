@@ -36,6 +36,32 @@ def logs(caplog: pytest.LogCaptureFixture, event: str) -> list[dict[str, object]
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("commit_fails", [False, True])
+async def test_performance_logged_only_after_valuation_commit(
+    caplog: pytest.LogCaptureFixture,
+    commit_fails: bool,
+) -> None:
+    caplog.set_level(logging.INFO, logger="evergreen")
+    cfg, api = candidate(), CandidateUpbit()
+    store = RecordingStore(cfg.identity)
+    store.state.strategy, store.state.buffer = ID, BufferState()
+    store.state.krw, store.state.btc = D(100000), D(0)
+    if commit_fails:
+        store.fail_event = "valuation"
+        with pytest.raises(RuntimeError, match="commit failed"):
+            await Trader(api, store, cfg, lambda: api.now).tick()
+        assert not logs(caplog, "account_performance") and not api.sent
+    else:
+        await Trader(api, store, cfg, lambda: api.now).tick()
+        snapshots = logs(caplog, "account_performance")
+        assert len(snapshots) == 1
+        assert snapshots[0]["status"] == "unavailable"  # No journal in this fake store.
+        assert snapshots[0]["realized_pnl_krw"] is None
+        details = [detail for event, detail in store.history if event == "valuation"]
+        assert details == [{"chart": snapshots}]
+
+
+@pytest.mark.asyncio
 async def test_snapshot_persisted_and_logged_once_without_changing_order(
     caplog: pytest.LogCaptureFixture,
 ) -> None:

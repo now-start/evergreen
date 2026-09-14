@@ -16,6 +16,7 @@ from evergreen.database.migration import apply
 from evergreen.market import Nonnegative
 from evergreen.observability import operation
 from evergreen.strategies.buffer import BufferState, ExecutionStrategy, IntentContext
+from evergreen.trading.performance import Ledger
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,48 @@ class StateUnavailable(ValueError):
 class Store:
     def __init__(self, connection: AsyncConnection, owner: int) -> None:
         self.connection, self.owner = connection, owner
+        self._ledger: Ledger | None = None
+
+    async def performance(self, identity: str) -> Ledger:
+        """Replay once per worker, then read new rows by primary key; no state/schema writes."""
+        if self._ledger is None or self._ledger.identity != identity:
+            self._ledger = Ledger(identity)
+        ledger = self._ledger
+        async with self.connection.begin():
+            await self._check_owner()
+            end = (
+                await self.connection.execute(
+                    select(events.c.id).order_by(events.c.id.desc()).limit(1)
+                )
+            ).scalar_one_or_none()
+            if end is None or end <= ledger.cursor or ledger.reason:
+                return ledger
+            rows = (
+                await self.connection.execute(
+                    select(events.c.event, events.c.payload, events.c.time)
+                    .where(
+                        events.c.id > ledger.cursor,
+                        events.c.id <= end,
+                        events.c.event.in_(
+                            (
+                                "initialized",
+                                "order-terminal",
+                                "unexpected-balance",
+                                "settlement-mismatch",
+                            )
+                        ),
+                    )
+                    .order_by(events.c.id)
+                    .limit(10001)
+                )
+            ).all()
+        if len(rows) > 10000:
+            ledger.reason = "history_limit_exceeded"
+        else:
+            for row in rows:
+                ledger.consume(row.event, row.payload, row.time)
+        ledger.cursor = end
+        return ledger
 
     async def _check_owner(self) -> None:
         value = (

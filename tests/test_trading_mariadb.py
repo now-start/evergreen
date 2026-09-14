@@ -48,6 +48,48 @@ async def engine() -> AsyncIterator[AsyncEngine]:
 
 
 @pytest.mark.asyncio
+async def test_performance_replays_incrementally_and_after_restart(engine: AsyncEngine) -> None:
+    identity = "performance-test"
+    async with open_store(engine, identity, initialize=True):
+        pass
+    async with open_store(engine, identity) as store:
+        state = State(identity=identity, krw=Decimal(1000), btc=Decimal(0))
+        await store.initialize(state)
+        ledger = await store.performance(identity)
+        assert ledger.capital == Decimal(1000) and ledger.reason is None
+        cursor = ledger.cursor
+        await store.save(state, "valuation")
+        assert await store.performance(identity) is ledger
+        assert ledger.cursor > cursor and ledger.realized == 0
+        state.krw, state.btc, state.order_sequence = Decimal(495), Decimal(5), 1
+        await store.save(
+            state,
+            "order-terminal",
+            {
+                "uuid": "test-order",
+                "identifier": "test-intent",
+                "market": "KRW-BTC",
+                "side": "bid",
+                "state": "done",
+                "executed_volume": "5",
+                "paid_fee": "5",
+                "trades": [{"funds": "500", "volume": "5"}],
+            },
+        )
+        ledger = await store.performance(identity)
+        assert ledger.basis == Decimal(505) and ledger.sequence == 1
+        assert ledger.reason is None
+        assert (await store.performance(identity)).basis == Decimal(505)
+    async with open_store(engine, identity) as store:
+        ledger = await store.performance(identity)
+        assert ledger.basis == Decimal(505) and ledger.sequence == 1
+        assert ledger.reason is None
+        before = await store.load()
+        await store.performance(identity)
+        assert await store.load() == before
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("fail_later_chunk", [False, True])
 async def test_long_recovery_events_fit_text_and_commit_atomically(
     engine: AsyncEngine, fail_later_chunk: bool
