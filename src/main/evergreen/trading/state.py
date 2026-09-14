@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Column, Integer, MetaData, String, Table, Text, insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from evergreen.database.connection import LOCK_NAME, locked_connection
+from evergreen.database.connection import LOCK_NAME, ExecutionLockError, locked_connection
 from evergreen.database.migration import apply
 from evergreen.market import Nonnegative
 from evergreen.observability import operation
@@ -117,7 +117,7 @@ class Store:
         ).scalar_one()
         if value != 1:
             logger.error("event=execution_lock_lost")
-            raise RuntimeError("MariaDB 실행 잠금을 잃었습니다")
+            raise ExecutionLockError("MariaDB 실행 잠금을 잃었습니다")
 
     async def assert_owner(self) -> None:
         async with self.connection.begin():

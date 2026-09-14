@@ -354,8 +354,30 @@ async def test_manual_balance_change_does_not_reset_peak() -> None:
     api.cash += 100
     with pytest.raises(ValueError, match="잔고"):
         await Trader(api, store, config, lambda: NOW).tick()
-    assert (await store.load()).peak == 120000 and (await store.load()).halted
+    assert (await store.load()).peak == 120000 and not (await store.load()).halted
     assert not api.sent
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("halted", [False, True])
+async def test_balance_revalidation_resumes_without_clearing_existing_halt(halted: bool) -> None:
+    api, config = FakeUpbit(), settings()
+    store = MemoryStore(config.identity)
+    state = await store.load()
+    state.krw, state.btc, state.peak = api.cash, api.btc, api.cash
+    state.halted = halted
+    await store.save(state, "test-initial")
+    api.cash += 100
+    for _ in range(2):
+        with pytest.raises(ValueError, match="잔고"):
+            await Trader(api, store, config, lambda: NOW).tick()
+        assert not api.sent and (await store.load()).krw == state.krw
+        assert (await store.load()).halted == halted
+    api.cash = state.krw
+    result = await Trader(api, store, config, lambda: NOW).tick()
+    assert result == ("halted" if halted else "submitted")
+    assert len(api.sent) == (0 if halted else 1)
+    assert (await store.load()).peak == state.peak
 
 
 @pytest.mark.asyncio
@@ -442,8 +464,15 @@ async def test_external_balance_change_during_pending_does_not_increase_capital(
         with pytest.raises(ValueError, match="예상 잔고"):
             await runner.tick()
         state = await store.load()
-        assert state.halted and state.pending == before.pending
+        assert not state.halted and state.pending == before.pending
         assert (state.krw, state.btc, state.peak) == (before.krw, before.btc, before.peak)
+    assert len(api.sent) == 1
+
+    # Revalidation succeeds only when the original balances are restored; no capital reset.
+    assert before.krw is not None and before.btc is not None
+    api.cash, api.btc = before.krw, before.btc
+    assert await runner.tick() == "reconciled"
+    assert not (await store.load()).halted and (await store.load()).pending is None
     assert len(api.sent) == 1
 
 

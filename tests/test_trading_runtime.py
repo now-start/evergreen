@@ -55,6 +55,7 @@ async def test_api_lifespan_runs_worker_and_awaits_cleanup(
         initialize: bool,
         once: bool,
         on_cycle: Callable[[str], None],
+        on_recovery: Callable[..., None],
     ) -> int:
         assert not initialize and not once
         on_cycle("no-signal")

@@ -12,6 +12,7 @@ from evergreen.strategies.breakout import target
 from evergreen.strategies.buffer import ID, LIMIT, BufferState, IntentContext, entry_budget
 from evergreen.trading import buffer_execution, chart
 from evergreen.trading.config import TradingSettings
+from evergreen.trading.recovery import TradingRejected
 from evergreen.trading.state import State, StateUnavailable, Store
 from evergreen.trading.upbit import Book, Chance, Order, Upbit
 
@@ -19,10 +20,10 @@ STEP = Decimal(".00000001")
 logger = logging.getLogger(__name__)
 
 
-def _reject(reason: str, message: str) -> ValueError:
+def _reject(reason: str, message: str) -> TradingRejected:
     # Only static reason codes belong in logs, never validation/HTTP payloads.
     logger.warning("event=trading_rejected reason=%s", reason)
-    return ValueError(message)
+    return TradingRejected(reason, message)
 
 
 def validate_chance(chance: Chance) -> None:
@@ -113,11 +114,10 @@ class Trader:
             abs(chance.bid_account.balance - expected_cash) > Decimal(".01")
             or abs(chance.ask_account.balance - expected_btc) > STEP
         ):
-            state.halted = True
             await self.store.save(state, "settlement-mismatch")
             raise _reject(
                 "settlement_mismatch",
-                "주문 체결 후 예상 잔고와 실제 잔고가 다릅니다. 수동 확인 필요",
+                "주문 체결 후 예상 잔고와 실제 잔고가 다릅니다. 주문 보류 후 재검증",
             )
         state.krw, state.btc = chance.bid_account.balance, chance.ask_account.balance
         if state.strategy == ID:
@@ -187,10 +187,10 @@ class Trader:
                 )
             state.krw, state.btc = cash, btc
         elif abs(cash - state.krw) > Decimal(".01") or abs(btc - state.btc) > STEP:
-            state.halted = True
             await self.store.save(state, "unexpected-balance")
             raise _reject(
-                "unexpected_balance", "외부 입출금·수동 거래로 잔고가 변경됐습니다. 수동 확인 필요"
+                "unexpected_balance",
+                "외부 입출금·수동 거래로 잔고가 변경됐습니다. 주문 보류 후 재검증",
             )
         equity = cash + btc * bid * (1 - chance.ask_fee)
         prior_peak = state.peak

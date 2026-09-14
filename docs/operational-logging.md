@@ -15,7 +15,7 @@ Config Server 조회 이전 로그는 시작 시 환경변수 또는 기본 레�
 | 마이그레이션 | `database_migration`, `database_schema_apply`, `database_revision` |
 | DB 잠금 | `database_lock_wait`, `database_lock_acquired`, `database_lock_unavailable`, `execution_lock_lost` |
 | 플랫폼 연동 | `telemetry_initialize`, `eureka_client_initialize`, `eureka_client_stop` |
-| 매매 루프 | `worker_skipped`, `worker_started`, `worker_heartbeat`, `worker_failed`, `worker_stopping`, `worker_stopped` |
+| 매매 루프 | `worker_skipped`, `worker_started`, `worker_heartbeat`, `worker_recovering`, `worker_recovered`, `worker_failed`, `worker_stopping`, `worker_stopped` |
 | 매매 판단 | `trading_signal`, `trading_rejected`, `trading_halted`, `trading_cycle_result` |
 | 주문 | `order_intent_committed`, `order_submit`, `order_accepted`, `order_reconcile_lookup`, `order_reconciled` |
 | DB 기록 | `execution_initialization_approved`, `execution_state_initialized`, `execution_state_committed`, `execution_state_blocked` |
@@ -37,6 +37,10 @@ API와 함께 실행되는 루프 상태·마지막 완료 시각은 `/actuator/
 
 ## 장애 확인
 
+- `worker_recovering`: 주문을 보류하고 `retry_seconds` 뒤 새 세션으로 상태·미확정 주문을 대사한다.
+- `worker_recovered`: 복구 후 첫 사이클 완료다. 체결 성공을 뜻하지 않는다.
+- 원인이 남아 있으면 재검증 실패와 `worker_recovering`이 반복된다. 정상 검증 후 자동으로 이어간다.
+  상세 기준은 [재시도·복구 정책](trading-recovery.md)을 따른다.
 - `strategy_recovery status=completed`는 복구 상태·감사 이력 커밋 및 차트 로그 출력 완료다.
   실제 주문이나 Loki 수신 확인을 뜻하지 않는다. `stale_recovery_signal`은 복구 중
   만료된 매수 신호를 건너뛴 것이며, `candle_recovery reason=invalid_page`는 자료 검증 실패다.

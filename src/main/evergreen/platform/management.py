@@ -7,7 +7,7 @@ from evergreen.platform.config import PlatformSettings
 
 
 def configure_management(
-    app: FastAPI, settings: PlatformSettings, *, trading_info: dict[str, str | None]
+    app: FastAPI, settings: PlatformSettings, *, trading_info: dict[str, str | int | float | None]
 ) -> None:
     app.add_middleware(
         _ManagementPortMiddleware,

@@ -69,7 +69,7 @@
             "type": "loki",
             "uid": "${DS_LOKI}"
           },
-          "expr": "{service_name=\"evergreen\"} | regexp \"event=(?P<worker_event>worker_heartbeat|worker_failed|worker_skipped|worker_started|worker_stopped)(?: |$)\" | worker_event!=\"\" | line_format \"{{.worker_event}}\"",
+          "expr": "{service_name=\"evergreen\"} | regexp \"event=(?P<worker_event>worker_heartbeat|worker_failed|worker_skipped|worker_started|worker_stopped|worker_recovering|worker_recovered)(?: |$)\" | worker_event!=\"\" | line_format \"{{.worker_event}}\"",
           "queryType": "range",
           "editorMode": "code",
           "direction": "backward",
@@ -147,6 +147,14 @@
                       "worker_failed": {
                         "text": "실패 기록",
                         "color": "red"
+                      },
+                      "worker_recovering": {
+                        "text": "자동 복구 중",
+                        "color": "orange"
+                      },
+                      "worker_recovered": {
+                        "text": "복구 후 평가 완료",
+                        "color": "blue"
                       },
                       "worker_skipped": {
                         "text": "미실행 기록",
@@ -2500,7 +2508,7 @@
                 "type": "loki",
                 "uid": "${DS_LOKI}"
               },
-              "expr": "{service_name=\"evergreen\"} |~ \"worker_heartbeat|worker_failed|worker_skipped|worker_started|worker_stopped|trading_rejected|trading_halted\"",
+              "expr": "{service_name=\"evergreen\"} |~ \"worker_heartbeat|worker_failed|worker_skipped|worker_started|worker_stopped|worker_recovering|worker_recovered|trading_rejected|trading_halted\"",
               "queryType": "range",
               "direction": "backward",
               "maxLines": 1000
