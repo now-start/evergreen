@@ -5,6 +5,7 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from decimal import Decimal
+from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -414,3 +415,51 @@ async def test_automatic_initialization_with_real_store_and_fake_exchange(
         assert (await store.load()) == baseline
         assert await Trader(api, store, config, lambda: NOW).tick() == "submitted"
         assert len(api.sent) == 1
+
+
+@pytest.mark.asyncio
+async def test_chart_queries_use_event_time_nulls_and_deduplicated_execution(
+    engine: AsyncEngine,
+) -> None:
+    from evergreen.strategies.buffer import ID, BufferState
+    from evergreen.trading.engine import Trader
+    from test_buffer_execution import CandidateUpbit, candidate
+    from test_trading_execution import NOW
+
+    api, config = CandidateUpbit(), candidate()
+    async with initialized_store(engine, config.identity) as store:
+        state = await store.load()
+        state.strategy, state.buffer = ID, BufferState()
+        state.krw, state.btc, state.peak = Decimal(100000), Decimal(0), Decimal(100000)
+        await store.save(state, "test-seed")
+        trader = Trader(api, store, config, lambda: NOW)
+        assert await trader.tick() == "submitted"
+        api.cash, api.btc, api.order_state = Decimal(0), Decimal(1000), "done"
+        assert await trader.tick() == "reconciled"
+
+    # Simulate a duplicate imported event AND delayed ingestion; chart uses original event time.
+    async with engine.begin() as connection:
+        await connection.execute(
+            text(
+                "INSERT INTO evergreen_execution_event (time,event,payload) "
+                "SELECT '2099-01-01T00:00:00+00:00',event,payload "
+                "FROM evergreen_execution_event WHERE event IN ('strategy-evaluated','order-terminal')"
+            )
+        )
+    directory = (await asyncio.to_thread(Path(__file__).resolve)).parents[1] / "docs" / "grafana"
+    results = {}
+    async with engine.connect() as connection:
+        for filename in ("prices.sql", "executions.sql", "decisions.sql", "orders.sql"):
+            query = await asyncio.to_thread((directory / filename).read_text)
+            query = query.replace("$__unixEpochFrom()", str(int(NOW.timestamp()) - 3600))
+            query = query.replace("$__unixEpochTo()", str(int(NOW.timestamp()) + 3600))
+            results[filename] = (await connection.execute(text(query))).mappings().all()
+    assert all(len(rows) == 1 for rows in results.values())
+    price = results["prices.sql"][0]
+    assert price["time"] == NOW.replace(second=0).timestamp()
+    assert price["종가"] == Decimal(110) and price["진입선"] == Decimal("101.101")
+    assert price["초기 손절선"] is None and price["추적 손절선"] is None
+    fill = results["executions.sql"][0]
+    assert fill["time"] == NOW.timestamp() and fill["value"] == Decimal("99.95")
+    assert fill["metric"] == "매수 #1"
+    assert results["orders.sql"][0]["수수료 KRW"] == Decimal(50)

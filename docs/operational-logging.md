@@ -2,6 +2,7 @@
 
 API 서버·거래 워커·DB CLI는 Python 표준 로깅을 사용한다.
 메시지는 `event=... status=... reason=... duration_ms=...` 형식이다.
+차트 전용 `strategy_bar`, `order_execution`은 숫자·null·시간 필드 보존을 위해 JSON 본문을 사용한다.
 기본 레벨은 INFO이며 Config Server의 `logging.level.evergreen` 또는
 `LOGGING_LEVEL_EVERGREEN`으로 DEBUG/INFO/WARNING/ERROR/CRITICAL을 선택할 수 있다.
 Config Server 조회 이전 로그는 시작 시 환경변수 또는 기본 레벨을 사용한다.
@@ -18,6 +19,7 @@ Config Server 조회 이전 로그는 시작 시 환경변수 또는 기본 레�
 | 매매 판단 | `trading_signal`, `trading_rejected`, `trading_halted`, `trading_cycle_result` |
 | 주문 | `order_intent_committed`, `order_submit`, `order_accepted`, `order_reconcile_lookup`, `order_reconciled` |
 | DB 기록 | `execution_initialization_approved`, `execution_state_initialized`, `execution_state_committed`, `execution_state_blocked` |
+| 차트 관측 | `strategy_bar` (확정 봉 판단), `order_execution` (잔고 대사 완료 주문 VWAP) |
 
 `status=completed`는 해당 함수/단계의 정상 반환을 의미한다.
 Eureka 클라이언트 초기화가 실제 레지스트리 등록·게이트웨이 통신 성공을 보장하지는 않는다.
@@ -47,8 +49,11 @@ API와 함께 실행되는 루프 상태·마지막 완료 시각은 `/actuator/
   `execution_state_initialized`와 `trading_cycle_result result=initialized`가 있어야
   계좌 검증을 통과한 초기 상태 생성이 완료된 것이다. 해당 첫 사이클은 주문하지 않는다.
 
-추가한 운영 로그에는 API 키, 인증 헤더, 설정값 전체, DB URL·비밀번호,
+일반 운영 로그에는 API 키, 인증 헤더, 설정값 전체, DB URL·비밀번호,
 계좌 잔고, 주문 금액·수량, 거래소 응답 원문을 넣지 않는다.
+차트 전용 JSON은 요청된 시각화를 위해 공개 가격과 확인된 체결가·수량·수수료·잔여 BTC만
+허용 목록으로 기록한다. API 키·계좌 identity·거래소 주문 식별자·원본 응답은 여전히 제외한다.
+금융 정보가 포함되므로 Loki/Grafana 권한과 보존 기간을 제한한다.
 `upbit`, `httpx`, `httpcore`의 INFO/DEBUG 로그도 제한한다.
 상세 거래 감사·복구 정보는 기존 MariaDB 실행 이력을 사용한다.
 
@@ -60,3 +65,4 @@ API lifespan의 매매 루프는 금융 HTTP·SQL 자동 계측을 context 단�
 고정 이벤트 로그는 API와 같은 로깅 핸들러를 사용하므로 기존 OTel 로그 수집 설정을 따른다.
 수동 거래 CLI는 OTel 초기화를 하지 않으므로 stdout/stderr 수집 경로를 사용한다.
 이번 변경은 수집기 배포나 운영 환경의 실제 전달 여부를 검증하지 않는다.
+차트 로그의 필드·누락 범위·SQL·대시보드 가져오기 절차는 [Grafana 준비](grafana/README.md)를 참고한다.

@@ -10,7 +10,7 @@ from evergreen.market import validate_candles
 from evergreen.observability import operation
 from evergreen.strategies.breakout import target
 from evergreen.strategies.buffer import ID, LIMIT, BufferState, IntentContext, entry_budget
-from evergreen.trading import buffer_execution
+from evergreen.trading import buffer_execution, chart
 from evergreen.trading.config import TradingSettings
 from evergreen.trading.state import State, Store
 from evergreen.trading.upbit import Book, Chance, Order, Upbit
@@ -122,9 +122,13 @@ class Trader:
         state.krw, state.btc = chance.bid_account.balance, chance.ask_account.balance
         if state.strategy == ID:
             buffer_execution.settled(state, order, self.clock())
+        executions = chart.execution_snapshot(state, order, self.clock())
         state.pending = None
         state.intent_context = None
-        await self.store.save(state, "order-terminal", order.model_dump(mode="json"))
+        await self.store.save(
+            state, "order-terminal", {**order.model_dump(mode="json"), "chart": executions}
+        )
+        chart.emit(executions)
         logger.info(
             "event=order_reconciled order_sequence=%d state=%s", state.order_sequence, order.state
         )
@@ -256,8 +260,14 @@ class Trader:
             ):
                 raise _reject("invalid_candles", "연속 확정 봉 품질 검사가 실패했습니다")
             if state.strategy == ID:
+                snapshots: list[dict[str, object]] = []
                 signal, context = buffer_execution.signal(
-                    state, candles, chance, self.settings.max_slippage, prior_peak=prior_peak
+                    state,
+                    candles,
+                    chance,
+                    self.settings.max_slippage,
+                    prior_peak=prior_peak,
+                    snapshots=snapshots,
                 )
                 if state.peak > 0 and equity <= state.peak * (1 - limit):
                     state.halted = True
@@ -271,7 +281,14 @@ class Trader:
                         signal = None
                     reason = "risk"
                 # Preserve a sell reservation even if later depth/freshness checks reject submission.
-                await self.store.save(state, "strategy-evaluated")
+                for snapshot in snapshots:
+                    snapshot["observed_at"] = now.astimezone(UTC).isoformat()
+                if snapshots:
+                    # Only the latest bar can become an order now; catch-up signals are evidence.
+                    snapshots[-1]["pre_order_signal"] = signal
+                    snapshots[-1]["decision_reason"] = reason
+                await self.store.save(state, "strategy-evaluated", {"chart": snapshots})
+                chart.emit(snapshots)
             else:
                 signal = target(candles, holding)
                 if state.strategy != self.settings.strategy and signal == "buy":

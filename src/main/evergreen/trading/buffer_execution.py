@@ -6,6 +6,7 @@ from decimal import Decimal
 from evergreen.market import Candle
 from evergreen.strategies.buffer import LIMIT, IntentContext, prior_mean_true_range, reset_required
 from evergreen.strategies.types import Side
+from evergreen.trading.chart import bar_snapshot
 from evergreen.trading.state import State, StateUnavailable
 from evergreen.trading.upbit import Chance, Order
 
@@ -13,7 +14,13 @@ STEP = Decimal(".00000001")
 
 
 def signal(
-    state: State, candles: list[Candle], chance: Chance, slippage: Decimal, *, prior_peak: Decimal
+    state: State,
+    candles: list[Candle],
+    chance: Chance,
+    slippage: Decimal,
+    *,
+    prior_peak: Decimal,
+    snapshots: list[dict[str, object]] | None = None,
 ) -> tuple[Side | None, IntentContext | None]:
     buffer = state.buffer
     if buffer is None or state.krw is None or state.btc is None:
@@ -67,6 +74,8 @@ def signal(
                 reset_after_sell=reset_required(history),
                 reason="signal",
             )
+        if snapshots is not None:
+            snapshots.append(bar_snapshot(state, history, observed))
     state.peak = max(state.peak, prior_peak)
     if state.reserved_exit is not None:
         if not holding:
