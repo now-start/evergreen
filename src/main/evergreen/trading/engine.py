@@ -12,7 +12,7 @@ from evergreen.strategies.breakout import target
 from evergreen.strategies.buffer import ID, LIMIT, BufferState, IntentContext, entry_budget
 from evergreen.trading import buffer_execution, chart
 from evergreen.trading.config import TradingSettings
-from evergreen.trading.state import State, Store
+from evergreen.trading.state import State, StateUnavailable, Store
 from evergreen.trading.upbit import Book, Chance, Order, Upbit
 
 STEP = Decimal(".00000001")
@@ -243,14 +243,34 @@ class Trader:
                 return "already-evaluated"
             if (
                 not reserved
+                and state.strategy != ID
                 and not 0 <= (now - hour).total_seconds() <= self.settings.max_signal_age_seconds
             ):
                 return "outside-signal-window"
+            baseline = hour - timedelta(hours=self.settings.candle_count)
+            start = baseline
+            if (
+                state.strategy == ID
+                and state.buffer is not None
+                and state.buffer.last_bar is not None
+            ):
+                if state.buffer.last_bar > hour:
+                    raise StateUnavailable("buffer_future_cursor")
+                # The first unseen close needs its own bar plus 168 preceding hours.
+                start = min(start, state.buffer.last_bar - timedelta(hours=168))
+                if state.buffer.last_bar < hour:
+                    logger.info(
+                        "event=strategy_recovery status=started from=%s to=%s",
+                        state.buffer.last_bar.isoformat(),
+                        hour.isoformat(),
+                    )
             with operation(logger, "candles_fetch"):
-                candles = await self.api.candles(hour, now)
-            ordered, quality = validate_candles(
-                candles, hour - timedelta(hours=self.settings.candle_count), hour, as_of=now
-            )
+                candles = (
+                    await self.api.candles(hour, now, start=start)
+                    if start < baseline
+                    else await self.api.candles(hour, now)
+                )
+            ordered, quality = validate_candles(candles, start, hour, as_of=now)
             if (
                 not quality.valid
                 or quality.duplicates
@@ -280,6 +300,14 @@ class Trader:
                     else:
                         signal = None
                     reason = "risk"
+                if (
+                    signal == "buy"
+                    and not 0
+                    <= (self.clock() - hour).total_seconds()
+                    <= self.settings.max_signal_age_seconds
+                ):
+                    signal, context = None, None
+                    logger.info("event=trading_rejected reason=stale_recovery_signal")
                 # Preserve a sell reservation even if later depth/freshness checks reject submission.
                 for snapshot in snapshots:
                     snapshot["observed_at"] = now.astimezone(UTC).isoformat()
@@ -289,6 +317,11 @@ class Trader:
                     snapshots[-1]["decision_reason"] = reason
                 await self.store.save(state, "strategy-evaluated", {"chart": snapshots})
                 chart.emit(snapshots)
+                logger.info(
+                    "event=strategy_recovery status=completed bars=%d to=%s",
+                    len(snapshots),
+                    hour.isoformat(),
+                )
             else:
                 signal = target(candles, holding)
                 if state.strategy != self.settings.strategy and signal == "buy":

@@ -158,6 +158,13 @@ class Store:
         logger.info("event=execution_state_initialized")
 
     async def save(self, state: State, event: str, detail: dict[str, object] | None = None) -> None:
+        details = [detail]
+        if event == "strategy-evaluated" and detail is not None:
+            chart = detail.get("chart")
+            if isinstance(chart, list) and len(chart) > 32:
+                # Keep bounded chart batches within the existing TEXT column. All rows and
+                # the final cursor commit together; a partial catch-up is never durable.
+                details = [{**detail, "chart": chart[i : i + 32]} for i in range(0, len(chart), 32)]
         async with self.connection.begin():
             await self._check_owner()
             result = await self.connection.execute(
@@ -166,13 +173,16 @@ class Store:
             if result.rowcount != 1:
                 logger.error("event=execution_state_missing")
                 raise RuntimeError("실행 상태 행이 사라졌습니다")
-            await self.connection.execute(
-                insert(events).values(
-                    time=datetime.now(UTC).isoformat(),
-                    event=event,
-                    payload=json.dumps({"state": state.model_dump(mode="json"), "detail": detail}),
+            for item in details:
+                await self.connection.execute(
+                    insert(events).values(
+                        time=datetime.now(UTC).isoformat(),
+                        event=event,
+                        payload=json.dumps(
+                            {"state": state.model_dump(mode="json"), "detail": item}
+                        ),
+                    )
                 )
-            )
         logger.log(
             logging.DEBUG if event == "valuation" else logging.INFO,
             "event=execution_state_committed transition=%s order_sequence=%d",

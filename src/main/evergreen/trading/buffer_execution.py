@@ -39,7 +39,9 @@ def signal(
         if buffer.last_bar > end:
             raise StateUnavailable("buffer_future_cursor")
         prefixes = [
-            candles[: i + 1] for i, b in enumerate(candles) if b.close_time > buffer.last_bar
+            candles[max(0, i - 168) : i + 1]
+            for i, b in enumerate(candles)
+            if b.close_time > buffer.last_bar
         ]
     for history in prefixes:
         if len(history) < 169:

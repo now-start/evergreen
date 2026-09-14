@@ -1,6 +1,7 @@
 """Run only against an explicitly configured disposable MariaDB database."""
 
 import asyncio
+import json
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -44,6 +45,76 @@ async def engine() -> AsyncIterator[AsyncEngine]:
         yield value
     finally:
         await value.dispose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fail_later_chunk", [False, True])
+async def test_long_recovery_events_fit_text_and_commit_atomically(
+    engine: AsyncEngine, fail_later_chunk: bool
+) -> None:
+    from datetime import timedelta
+
+    from evergreen.strategies.buffer import ID, BufferState
+    from evergreen.trading.engine import Trader
+    from test_buffer_execution import candidate
+    from test_trading_recovery import HOUR, RecoveryUpbit
+
+    cfg, api = candidate(), RecoveryUpbit()
+    api.now += timedelta(minutes=10)
+    cursor = HOUR - timedelta(hours=601)
+    async with initialized_store(engine, cfg.identity) as store:
+        state = await store.load()
+        state.strategy, state.buffer = ID, BufferState(last_bar=cursor)
+        state.krw, state.btc, state.peak = api.cash, api.btc, api.cash
+        await store.save(state, "test-baseline")
+        if fail_later_chunk:
+            async with engine.begin() as connection:
+                await connection.execute(
+                    text(
+                        "CREATE TRIGGER reject_chart_chunk BEFORE INSERT ON evergreen_execution_event "
+                        "FOR EACH ROW BEGIN IF NEW.event = 'strategy-evaluated' AND "
+                        "JSON_EXTRACT(NEW.payload, '$.detail.chart[0].event_time') > "
+                        f"{int((cursor + timedelta(hours=1)).timestamp())} "
+                        "THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'test rollback'; END IF; END"
+                    )
+                )
+        try:
+            trader = Trader(api, store, cfg, lambda: api.now)
+            if fail_later_chunk:
+                with pytest.raises(SQLAlchemyError, match="test rollback"):
+                    await trader.tick()
+            else:
+                assert await trader.tick() == "no-signal"
+            saved = await store.load()
+            assert saved.buffer is not None
+            assert saved.buffer.last_bar == (cursor if fail_later_chunk else HOUR)
+            assert saved.pending is None and not api.sent
+            async with engine.connect() as connection:
+                payloads = (
+                    (
+                        await connection.execute(
+                            select(events.c.payload)
+                            .where(events.c.event == "strategy-evaluated")
+                            .order_by(events.c.id)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+            if fail_later_chunk:
+                assert not payloads
+            else:
+                assert len(payloads) > 1
+                assert all(len(payload.encode()) <= 65535 for payload in payloads)
+                bars = [
+                    bar for payload in payloads for bar in json.loads(payload)["detail"]["chart"]
+                ]
+                assert len(bars) == 601 and len({bar["event_id"] for bar in bars}) == 601
+                assert bars[-1]["bar_close_time"] == HOUR.isoformat()
+        finally:
+            if fail_later_chunk:
+                async with engine.begin() as connection:
+                    await connection.execute(text("DROP TRIGGER reject_chart_chunk"))
 
 
 @pytest.mark.asyncio

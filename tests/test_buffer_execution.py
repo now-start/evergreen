@@ -41,7 +41,9 @@ class CandidateUpbit(FakeUpbit):
             update={"trades": [f.model_copy(update={"created_at": self.now}) for f in order.trades]}
         )
 
-    async def candles(self, end: datetime, now: datetime) -> list[Candle]:
+    async def candles(
+        self, end: datetime, now: datetime, *, start: datetime | None = None
+    ) -> list[Candle]:
         rows = await super().candles(end, now)
         return [
             rows[0].model_copy(update={"open_time": rows[0].open_time - timedelta(hours=i)})
@@ -164,7 +166,9 @@ def held(monkeypatch: pytest.MonkeyPatch) -> tuple[TradingSettings, MemoryStore,
     store.state.krw, store.state.btc, store.state.peak = api.cash, api.btc, D(130000)
     original = api.candles
 
-    async def candles(end: datetime, now: datetime) -> list[Candle]:
+    async def candles(
+        end: datetime, now: datetime, *, start: datetime | None = None
+    ) -> list[Candle]:
         bars = await original(end, now)
         bars[-1] = bars[-1].model_copy(update={"open": D(110)})
         return bars

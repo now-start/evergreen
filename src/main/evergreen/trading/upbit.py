@@ -1,7 +1,8 @@
 """Fixed-host Upbit adapter. POST is deliberately never retried."""
 
+import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Literal
 
@@ -9,10 +10,11 @@ import httpx
 from pydantic import AwareDatetime, BaseModel, Field, TypeAdapter
 from upbit import AsyncUpbit
 
-from evergreen.market import Candle, Nonnegative, Positive, UpbitCandle
+from evergreen.market import Candle, Nonnegative, Positive, UpbitCandle, utc_hour, validate_candles
 from evergreen.trading.config import TradingSettings
 
 Rate = Annotated[Decimal, Field(ge=0, lt=1, allow_inf_nan=False)]
+logger = logging.getLogger(__name__)
 
 
 class Account(BaseModel):
@@ -109,12 +111,53 @@ class Upbit:
             raise ValueError("단일 BTC 호가가 필요합니다")
         return books[0]
 
-    async def candles(self, end: datetime, now: datetime) -> list[Candle]:
-        response = await self.sdk.candles.with_raw_response.list_minutes(
-            60, market="KRW-BTC", count=self.settings.candle_count, to=end.isoformat()
-        )
-        records = TypeAdapter(list[UpbitCandle]).validate_python(await response.json())
-        return sorted((bar.candle(now) for bar in records), key=lambda bar: bar.open_time)
+    async def candles(
+        self, end: datetime, now: datetime, *, start: datetime | None = None
+    ) -> list[Candle]:
+        """Read closed hours backwards; an explicit recovery range must be complete."""
+        end = utc_hour(end)
+        if start is not None:
+            start = utc_hour(start)
+            if not start < end <= now:
+                raise ValueError("복구 조회는 확정된 시간봉 범위여야 합니다")
+        cursor, pages = end, 0
+        result: list[Candle] = []
+        while True:
+            count = (
+                self.settings.candle_count
+                if start is None
+                else min(200, int((cursor - start).total_seconds() // 3600))
+            )
+            response = await self.sdk.candles.with_raw_response.list_minutes(
+                60, market="KRW-BTC", count=count, to=cursor.isoformat()
+            )
+            records = TypeAdapter(list[UpbitCandle]).validate_python(await response.json())
+            batch = sorted((bar.candle(now) for bar in records), key=lambda bar: bar.open_time)
+            pages += 1
+            if start is None:
+                return batch
+            page_start = cursor - timedelta(hours=count)
+            ordered, quality = validate_candles(batch, page_start, cursor, as_of=now)
+            if (
+                not quality.valid
+                or quality.duplicates
+                or quality.incomplete
+                or quality.outside_range
+                or ordered != batch
+            ):
+                logger.error(
+                    "event=candle_recovery status=failed reason=invalid_page page=%d", pages
+                )
+                raise ValueError("복구 캔들 페이지의 연속성·확정 여부 검사가 실패했습니다")
+            result.extend(batch)
+            cursor = page_start
+            if cursor == start:
+                logger.info(
+                    "event=candle_recovery status=completed pages=%d bars=%d", pages, len(result)
+                )
+                return sorted(result, key=lambda bar: bar.open_time)
+            # Share the candle API budget; cancellation must leave the durable cursor untouched.
+            await asyncio.sleep(0.12)
 
     async def has_open_orders(self) -> bool:
         self.settings.require_credentials()

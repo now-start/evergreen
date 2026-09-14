@@ -20,6 +20,7 @@ Config Server 조회 이전 로그는 시작 시 환경변수 또는 기본 레�
 | 주문 | `order_intent_committed`, `order_submit`, `order_accepted`, `order_reconcile_lookup`, `order_reconciled` |
 | DB 기록 | `execution_initialization_approved`, `execution_state_initialized`, `execution_state_committed`, `execution_state_blocked` |
 | 차트 관측 | `strategy_bar` (확정 봉 판단), `order_execution` (잔고 대사 완료 주문 VWAP) |
+| 중단 구간 복구 | `strategy_recovery` (커서 구간·복구 봉 수), `candle_recovery` (페이지·조회 봉 수) |
 
 `status=completed`는 해당 함수/단계의 정상 반환을 의미한다.
 Eureka 클라이언트 초기화가 실제 레지스트리 등록·게이트웨이 통신 성공을 보장하지는 않는다.
@@ -36,6 +37,9 @@ API와 함께 실행되는 루프 상태·마지막 완료 시각은 `/actuator/
 
 ## 장애 확인
 
+- `strategy_recovery status=completed`는 복구 상태·감사 이력 커밋 및 차트 로그 출력 완료다.
+  실제 주문이나 Loki 수신 확인을 뜻하지 않는다. `stale_recovery_signal`은 복구 중
+  만료된 매수 신호를 건너뛴 것이며, `candle_recovery reason=invalid_page`는 자료 검증 실패다.
 - `trading_rejected`: `stale_quote`, `invalid_candles`, `slippage_exceeded`,
   `unexpected_balance`, `settlement_mismatch` 등 고정 원인 코드로 구분한다.
 - `status=failed`: 실패 단계와 `error_type`을 확인한다. 예외 원문·스택은 포함하지 않는다.

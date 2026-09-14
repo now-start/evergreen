@@ -102,7 +102,9 @@ class FakeUpbit(Upbit):
     async def has_open_orders(self) -> bool:
         return self.open_orders
 
-    async def candles(self, end: datetime, now: datetime) -> list[Candle]:
+    async def candles(
+        self, end: datetime, now: datetime, *, start: datetime | None = None
+    ) -> list[Candle]:
         result = [
             Candle(
                 open_time=end - timedelta(hours=169 - i),
