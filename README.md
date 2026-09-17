@@ -145,7 +145,7 @@ Python 패키지 메타데이터, `uv.lock`, OpenAPI, Git 태그와 Docker 이�
 
 ## CI
 
-GitHub Actions는 `now-start/workflow`의 `reusable-python-app.yaml`을 호출합니다.
+GitHub Actions는 `now-start/gitops`의 `reusable-python-app.yaml`을 호출합니다.
 `main`/`develop` push, 두 브랜치를 대상으로 하는 PR, 수동 실행에서 포맷, lint,
 타입 검사, 테스트, 의존성 취약점 감사를 실행합니다.
 

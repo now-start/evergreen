@@ -13,6 +13,6 @@ permissions:
 
 jobs:
   app:
-    uses: now-start/workflow/.github/workflows/reusable-python-app.yaml@main
+    uses: now-start/gitops/.github/workflows/reusable-python-app.yaml@main
     secrets:
       registry-password: ${{ secrets.GITHUB_TOKEN }}
