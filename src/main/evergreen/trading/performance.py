@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 
+from pydantic import TypeAdapter
+
+from evergreen.trading.cashflow import Transfer
 from evergreen.trading.upbit import Order
 
 
@@ -30,6 +33,8 @@ class Ledger:
     realized: Decimal = Decimal(0)
     fees: Decimal = Decimal(0)
     sequence: int = 0
+    net_flows: Decimal = Decimal(0)
+    transfer_fees: Decimal = Decimal(0)
 
     def consume(self, event: str, payload: str, timestamp: str) -> None:
         if self.reason:
@@ -49,6 +54,28 @@ class Ledger:
                 if start.utcoffset() is None:
                     raise ValueError("Missing timezone")
                 self.started_at = start.astimezone(UTC).isoformat()
+                return
+            if event == "cashflow-reconciled":
+                detail = data["detail"]
+                movements = TypeAdapter(list[Transfer]).validate_python(detail["movements"])
+                principal = sum((row.principal for row in movements), Decimal(0))
+                fees = sum((row.fee for row in movements), Decimal(0))
+                if (
+                    not movements
+                    or len({row.uuid for row in movements}) != len(movements)
+                    or Decimal(detail["principal_krw"]) != principal
+                    or amount(detail["fees_krw"]) != fees
+                    or not self.matches(
+                        amount(detail["before_krw"]), amount(state["btc"]), state["order_sequence"]
+                    )
+                ):
+                    raise ValueError("Invalid cash movement journal")
+                self.cash += principal - fees
+                self.net_flows += principal
+                self.transfer_fees += fees
+                self.realized -= fees
+                if not self.matches(amount(state["krw"]), amount(state["btc"]), self.sequence):
+                    raise ValueError("Cash movement differs from journal")
                 return
             if event != "order-terminal":
                 self.reason = "balance_discrepancy"
@@ -126,8 +153,12 @@ class Ledger:
             "initial_capital_krw": str(self.capital) if valid else None,
             "realized_pnl_krw": str(self.realized) if valid else None,
             "unrealized_pnl_krw": str(net_inventory - self.basis) if valid else None,
-            "total_pnl_krw": str(equity - self.capital) if valid and self.capital else None,
-            "total_return_pct": str((equity / self.capital - 1) * 100)
+            "net_external_flows_krw": str(self.net_flows) if valid else None,
+            "transfer_fees_krw": str(self.transfer_fees) if valid else None,
+            "total_pnl_krw": str(equity - self.capital - self.net_flows)
+            if valid and self.capital
+            else None,
+            "total_return_pct": str((equity - self.capital - self.net_flows) / self.capital * 100)
             if valid and self.capital
             else None,
             "fees_krw": str(self.fees) if valid else None,

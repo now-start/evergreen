@@ -84,7 +84,7 @@ def analyze(
 
     def read(path: Path) -> Any:
         raw = path.read_bytes()
-        hashes[str(path.relative_to(source))] = hashlib.sha256(raw).hexdigest()
+        hashes[path.relative_to(source).as_posix()] = hashlib.sha256(raw).hexdigest()
         return json.loads(raw)
 
     protocol = read(source / "protocol.json")

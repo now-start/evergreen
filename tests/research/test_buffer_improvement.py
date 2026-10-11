@@ -159,7 +159,7 @@ def test_study_checks_pinned_sources_controls_and_keeps_domains(
         dataset = root / dataset_name / "datasets/block-000"
         dataset.mkdir(parents=True)
         raw = "".join(b.model_dump_json() + "\n" for b in bars)
-        (dataset / "candles.jsonl").write_text(raw)
+        (dataset / "candles.jsonl").write_bytes(raw.encode())
         digest = hashlib.sha256(raw.encode()).hexdigest()
         write_json(
             dataset / "quality.json",

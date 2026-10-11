@@ -145,6 +145,78 @@ class Trader:
         logger.log(level, "event=trading_cycle_result result=%s", result)
         return result
 
+    async def _cashflow(self, state: State, cash: Decimal, btc: Decimal) -> bool:
+        if state.krw is None or state.btc is None or btc != state.btc:
+            return False
+        since = await self.store.balance_baseline(state)
+        if since is None:
+            return False
+        movements = await self.api.cash_movements(since, self.clock())
+        if len(movements) > 100:
+            raise _reject("cashflow_history_limit", "원화 입출금 대사 이력 한도를 초과했습니다")
+        principal = sum((row.principal for row in movements), Decimal(0))
+        fees = sum((row.fee for row in movements), Decimal(0))
+        if movements and abs(state.krw + principal - fees - cash) > Decimal(".01"):
+            raise _reject("cashflow_mismatch", "원화 입출금 내역과 잔고 차이가 일치하지 않습니다")
+        # Recheck after history reads; a concurrent transfer/order must not be adopted.
+        chance = await self.api.chance()
+        validate_chance(chance)
+        if (
+            chance.bid_account.balance != cash
+            or chance.ask_account.balance != btc
+            or chance.bid_account.locked
+            or chance.ask_account.locked
+            or await self.api.has_open_orders()
+        ):
+            raise _reject("cashflow_snapshot_changed", "대사 중 잔고·대기 주문이 변경됐습니다")
+        if not movements:
+            return False
+        book = await self._book()
+        previous_cash = state.krw
+        state = state.model_copy(deep=True)
+        before = previous_cash + btc * book.orderbook_units[0].bid_price * (1 - chance.ask_fee)
+        limit = min(self.settings.max_drawdown, LIMIT if state.strategy == ID else Decimal(".10"))
+        if state.peak > 0 and before <= state.peak * (1 - limit):
+            state.halted = True
+        equity, peak, ratio = before, state.peak, state.empty_peak_ratio
+        for movement in sorted(
+            movements, key=lambda row: (row.done_at or row.created_at, row.uuid)
+        ):
+            # Charge withdrawal fees before redeeming capital, preserving drawdown even
+            # when the user withdraws everything and later funds the account again.
+            if movement.type == "withdraw":
+                equity -= movement.fee
+                if equity <= 0 or equity + movement.principal < 0:
+                    raise _reject("cashflow_mismatch", "원화 출금 이력과 평가 잔고가 다릅니다")
+                if peak > 0 and equity <= peak * (1 - limit):
+                    state.halted = True
+                ratio = max(Decimal(1), peak / equity)
+                equity += movement.principal
+                peak = equity * ratio
+            else:
+                ratio = max(Decimal(1), peak / equity) if equity > 0 else ratio
+                equity += movement.principal
+                peak = equity * ratio
+                equity -= movement.fee
+                if equity < 0:
+                    raise _reject("cashflow_mismatch", "원화 입금 이력과 평가 잔고가 다릅니다")
+                if peak > 0 and equity <= peak * (1 - limit):
+                    state.halted = True
+        state.peak, state.empty_peak_ratio = peak, ratio
+        state.krw = cash
+        await self.store.save(
+            state,
+            "cashflow-reconciled",
+            {
+                "before_krw": str(previous_cash),
+                "principal_krw": str(principal),
+                "fees_krw": str(fees),
+                "movements": [row.model_dump(mode="json") for row in movements],
+            },
+        )
+        logger.info("event=cashflow_reconciled count=%d", len(movements))
+        return True
+
     async def _tick(self) -> str:
         if not self.settings.live_enabled:
             raise _reject("live_disabled", "실거래 비활성화 상태입니다")
@@ -186,12 +258,19 @@ class Trader:
                     "첫 실행은 원화 전용 계정으로 시작해야 합니다. 기존 BTC 자동 인수 금지",
                 )
             state.krw, state.btc = cash, btc
-        elif abs(cash - state.krw) > Decimal(".01") or abs(btc - state.btc) > STEP:
-            await self.store.save(state, "unexpected-balance")
-            raise _reject(
-                "unexpected_balance",
-                "외부 입출금·수동 거래로 잔고가 변경됐습니다. 주문 보류 후 재검증",
-            )
+        else:
+            if await self._cashflow(state, cash, btc):
+                # Start another fully validated cycle before considering any new order.
+                return "cashflow-reconciled"
+            if abs(cash - state.krw) > Decimal(".01") or abs(btc - state.btc) > STEP:
+                await self.store.save(state, "unexpected-balance")
+                raise _reject(
+                    "unexpected_balance",
+                    "외부 입출금·수동 거래로 잔고가 변경됐습니다. 주문 보류 후 재검증",
+                )
+            # History pagination can outlive the original quote.
+            book = await self._book()
+            bid = book.orderbook_units[0].bid_price
         equity = cash + btc * bid * (1 - chance.ask_fee)
         prior_peak = state.peak
         state.peak = max(state.peak, equity)

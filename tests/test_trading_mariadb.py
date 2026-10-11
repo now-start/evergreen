@@ -5,6 +5,7 @@ import json
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock
@@ -14,7 +15,7 @@ import pytest_asyncio
 from alembic import command
 from alembic.util.exc import CommandError
 from pydantic import SecretStr
-from sqlalchemy import Connection, select, text
+from sqlalchemy import Connection, insert, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -87,6 +88,66 @@ async def test_performance_replays_incrementally_and_after_restart(engine: Async
         before = await store.load()
         await store.performance(identity)
         assert await store.load() == before
+
+
+@pytest.mark.asyncio
+async def test_cashflow_baseline_and_ledger_survive_retry_history(engine: AsyncEngine) -> None:
+    identity = "cashflow-test"
+    async with open_store(engine, identity, initialize=True):
+        pass
+    async with open_store(engine, identity) as store:
+        state = State(identity=identity, krw=Decimal(100000), btc=Decimal(0))
+        await store.initialize(state)
+        baseline = await store.balance_baseline(state)
+        assert baseline is not None
+        # Thousands of operational rejections are not thousands of financial events.
+        async with store.connection.begin():
+            await store.connection.execute(
+                insert(events),
+                [
+                    {
+                        "time": datetime.now(UTC).isoformat(),
+                        "event": "unexpected-balance",
+                        "payload": json.dumps(
+                            {"state": state.model_dump(mode="json"), "detail": None}
+                        ),
+                    }
+                    for _ in range(10001)
+                ],
+            )
+        assert await store.balance_baseline(state) == baseline
+        ledger = await store.performance(identity)
+        assert ledger.reason is None and ledger.cash == 100000
+        state.krw = Decimal(89000)
+        now = datetime.now(UTC)
+        detail: dict[str, object] = {
+            "before_krw": "100000",
+            "principal_krw": "-10000",
+            "fees_krw": "1000",
+            "movements": [
+                {
+                    "uuid": "test-withdraw",
+                    "currency": "KRW",
+                    "type": "withdraw",
+                    "state": "DONE",
+                    "amount": "10000",
+                    "fee": "1000",
+                    "created_at": baseline.isoformat(),
+                    "done_at": (now - timedelta(microseconds=1)).isoformat(),
+                }
+            ],
+        }
+        await store.save(state, "cashflow-reconciled", detail)
+        assert await store.balance_baseline(state) != baseline
+        ledger = await store.performance(identity)
+        assert ledger.reason is None and ledger.cash == 89000 and ledger.net_flows == -10000
+    async with open_store(engine, identity) as store:
+        ledger = await store.performance(identity)
+        assert ledger.cash == 89000 and ledger.realized == -1000 and ledger.reason is None
+        state = await store.load()
+        assert await store.balance_baseline(state) is not None
+        state.krw = Decimal(1)
+        assert await store.balance_baseline(state) is None
 
 
 @pytest.mark.asyncio

@@ -21,6 +21,7 @@ Config Server 조회 이전 로그는 시작 시 환경변수 또는 기본 레�
 | DB 기록 | `execution_initialization_approved`, `execution_state_initialized`, `execution_state_committed`, `execution_state_blocked` |
 | 차트 관측 | `strategy_bar` (확정 봉 판단), `order_execution` (잔고 대사 완료 주문 VWAP) |
 | 중단 구간 복구 | `strategy_recovery` (커서 구간·복구 봉 수), `candle_recovery` (페이지·조회 봉 수) |
+| 원화 입출금 대사 | `cashflow_reconciled` (반영 건수, 상세 내역은 DB 감사 이력) |
 
 `status=completed`는 해당 함수/단계의 정상 반환을 의미한다.
 Eureka 클라이언트 초기화가 실제 레지스트리 등록·게이트웨이 통신 성공을 보장하지는 않는다.

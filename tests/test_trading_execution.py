@@ -37,6 +37,9 @@ class MemoryStore(Store):
     async def load_for_start(self, identity: str) -> State | None:
         return await self.load()
 
+    async def balance_baseline(self, state: State) -> datetime | None:
+        return None
+
     async def save(self, state: State, event: str, detail: dict[str, object] | None = None) -> None:
         await self.assert_owner()
         self.state = state.model_copy(deep=True)

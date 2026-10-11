@@ -8,9 +8,10 @@ from typing import Annotated, Literal
 
 import httpx
 from pydantic import AwareDatetime, BaseModel, Field, TypeAdapter
-from upbit import AsyncUpbit
+from upbit import AsyncUpbit, omit
 
 from evergreen.market import Candle, Nonnegative, Positive, UpbitCandle, utc_hour, validate_candles
+from evergreen.trading.cashflow import Transfer, completed
 from evergreen.trading.config import TradingSettings
 
 Rate = Annotated[Decimal, Field(ge=0, lt=1, allow_inf_nan=False)]
@@ -103,6 +104,44 @@ class Upbit:
         self.settings.require_credentials()
         response = await self.sdk.orders.with_raw_response.retrieve_chance(market="KRW-BTC")
         return Chance.model_validate(await response.json())
+
+    async def cash_movements(self, since: datetime, until: datetime) -> list[Transfer]:
+        """Read complete KRW history with stable UUID cursors; never infer missing pages."""
+        rows: list[Transfer] = []
+        for kind in ("deposit", "withdraw"):
+            cursor = None
+            seen: set[str] = set()
+            for _ in range(100):
+                if kind == "deposit":
+                    deposits = await self.sdk.deposits.with_raw_response.list(
+                        currency="KRW",
+                        state="ACCEPTED",
+                        limit=100,
+                        order_by="desc",
+                        to=cursor if cursor is not None else omit,
+                    )
+                    payload = await deposits.json()
+                else:
+                    withdrawals = await self.sdk.withdraws.with_raw_response.list(
+                        currency="KRW",
+                        state="DONE",
+                        limit=100,
+                        order_by="desc",
+                        to=cursor if cursor is not None else omit,
+                    )
+                    payload = await withdrawals.json()
+                page = TypeAdapter(list[Transfer]).validate_python(payload)
+                for row in page:
+                    if row.type != kind or row.uuid in seen or row.done_at is None:
+                        raise ValueError("Invalid cash movement history")
+                    seen.add(row.uuid)
+                rows.extend(page)
+                if len(page) < 100:
+                    break
+                cursor = page[-1].uuid
+            else:
+                raise ValueError("Cash movement history limit exceeded")
+        return completed(rows, since, until)
 
     async def book(self) -> Book:
         response = await self.sdk.orderbooks.with_raw_response.list(markets="KRW-BTC")

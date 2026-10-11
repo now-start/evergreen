@@ -53,6 +53,7 @@ class State(BaseModel):
     buffer: BufferState | None = None
     intent_context: IntentContext | None = None
     reserved_exit: IntentContext | None = None
+    empty_peak_ratio: Nonnegative = Decimal(1)
 
 
 class StateUnavailable(ValueError):
@@ -91,8 +92,7 @@ class Store:
                             (
                                 "initialized",
                                 "order-terminal",
-                                "unexpected-balance",
-                                "settlement-mismatch",
+                                "cashflow-reconciled",
                             )
                         ),
                     )
@@ -107,6 +107,33 @@ class Store:
                 ledger.consume(row.event, row.payload, row.time)
         ledger.cursor = end
         return ledger
+
+    async def balance_baseline(self, state: State) -> datetime | None:
+        """Only financial commits establish a balance boundary; retries never move it."""
+        async with self.connection.begin():
+            await self._check_owner()
+            row = (
+                await self.connection.execute(
+                    select(events.c.time, events.c.payload)
+                    .where(
+                        events.c.event.in_(("initialized", "order-terminal", "cashflow-reconciled"))
+                    )
+                    .order_by(events.c.id.desc())
+                    .limit(1)
+                )
+            ).first()
+        if row is None:
+            return None
+        saved = State.model_validate(json.loads(row.payload)["state"])
+        if (saved.identity, saved.krw, saved.btc, saved.order_sequence) != (
+            state.identity,
+            state.krw,
+            state.btc,
+            state.order_sequence,
+        ):
+            return None
+        boundary = datetime.fromisoformat(row.time)
+        return boundary if boundary.utcoffset() is not None else None
 
     async def _check_owner(self) -> None:
         value = (
