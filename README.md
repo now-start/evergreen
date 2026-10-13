@@ -13,6 +13,7 @@
 2.2.3에는 [거래 루프의 단일 재시도·복구 정책](docs/trading-recovery.md)을 적용합니다.
 2.2.4에는 [원화 입출금 자동 대사](docs/cashflow-reconciliation.md)와 자금 이동을 제외한 손익 계산을 추가합니다.
 2.2.5에는 API 키 재발급 후 재시작 복구와 기존 DB 키 해시의 자동 제거를 적용합니다.
+2.2.6에는 DB 마이그레이션 전 로그 전송기 초기화와 기동 실패 로그의 버퍼 전송을 적용합니다.
 [승격 문서](docs/strategy-promotion.md)에 사용자 승인(20% 중단 기준), 설정과 배포 순서를 기록했습니다.
 **전체 수익성 게이트 미통과·전진 페이퍼 미검증** 상태이며 승인으로 검증 결과가 바뀌지는 않습니다.
 코드 구현과 실제 배포·전환 완료는 별개입니다. 기존 보유분은 기존 전략으로 관리합니다.
@@ -143,9 +144,9 @@ PyTorch는 범용 Swarm 노드에서 불필요한 CUDA 라이브러리를 설치
 
 ## 버전
 
-프로젝트 버전은 `pyproject.toml`에서 `2.2.5`로 관리합니다.
+프로젝트 버전은 `pyproject.toml`에서 `2.2.6`로 관리합니다.
 Python 패키지 메타데이터, `uv.lock`, OpenAPI, Git 태그와 Docker 이미지 태그도
-동일한 `2.2.5`를 사용합니다. 원격 릴리스와 이미지 발행은 CI 성공 후 확인해야 합니다.
+동일한 `2.2.6`를 사용합니다. 원격 릴리스와 이미지 발행은 CI 성공 후 확인해야 합니다.
 
 ## CI
 
@@ -156,7 +157,7 @@ GitHub Actions는 `now-start/gitops`의 `reusable-python-app.yaml`을 호출합�
 `main` push에서만 검증 후 `linux/amd64`, `linux/arm64` 이미지를 버전 태그로
 발행하고 GitHub Release를 생성합니다. 알파/베타/RC 버전은 prerelease로 표시합니다.
 
-예: `ghcr.io/now-start/evergreen:2.2.5`, Git 태그 `2.2.5`.
+예: `ghcr.io/now-start/evergreen:2.2.6`, Git 태그 `2.2.6`.
 발행된 버전은 덮어쓰지 않으므로 새 릴리스에는 버전을 올려야 합니다.
 `latest` 같은 가변 태그와 서비스 배포는 이 파이프라인에서 관리하지 않습니다.
 

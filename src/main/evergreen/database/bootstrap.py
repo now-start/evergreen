@@ -1,4 +1,4 @@
-"""Migrate before telemetry, socket binding, health checks, or discovery."""
+"""Migrate after telemetry but before socket binding, health checks, or discovery."""
 
 import asyncio
 import logging
