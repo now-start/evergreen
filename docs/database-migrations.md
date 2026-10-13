@@ -80,8 +80,8 @@ baseline 후에는 다음 배포부터 일반 자동 upgrade를 사용한다.
 
 ## 다음 스키마 변경과 장애
 
-다음 변경은 `versions/v0002_설명.py`처럼 새 파일을 추가하고
-`revision`, `down_revision="0001_execution"`, `upgrade()`, `downgrade()`를 정의한다.
+다음 변경은 `versions/v0003_설명.py`처럼 새 파일을 추가하고
+`revision`, `down_revision="0002_remove_key_identity"`, `upgrade()`, `downgrade()`를 정의한다.
 이름보다 revision 연결 관계가 적용 순서를 결정한다.
 운영에 적용한 파일은 수정하지 않는다. Alembic은 Flyway의 체크섬 검증을 그대로 제공하는 도구는 아니다.
 현재 초기 revision의 downgrade는 주문 복구 데이터 삭제를 막기 위해 명시적으로 거부한다.

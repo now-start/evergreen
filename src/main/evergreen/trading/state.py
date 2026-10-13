@@ -41,7 +41,6 @@ events = Table(
 
 class State(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    identity: str
     peak: Nonnegative = Decimal(0)
     halted: bool = False
     last_signal: str | None = None
@@ -68,10 +67,10 @@ class Store:
         self.connection, self.owner = connection, owner
         self._ledger: Ledger | None = None
 
-    async def performance(self, identity: str) -> Ledger:
+    async def performance(self) -> Ledger:
         """Replay once per worker, then read new rows by primary key; no state/schema writes."""
-        if self._ledger is None or self._ledger.identity != identity:
-            self._ledger = Ledger(identity)
+        if self._ledger is None:
+            self._ledger = Ledger()
         ledger = self._ledger
         async with self.connection.begin():
             await self._check_owner()
@@ -125,8 +124,7 @@ class Store:
         if row is None:
             return None
         saved = State.model_validate(json.loads(row.payload)["state"])
-        if (saved.identity, saved.krw, saved.btc, saved.order_sequence) != (
-            state.identity,
+        if (saved.krw, saved.btc, saved.order_sequence) != (
             state.krw,
             state.btc,
             state.order_sequence,
@@ -161,7 +159,7 @@ class Store:
             raise ValueError("실행 상태가 없습니다. 명시적인 최초 초기화가 필요합니다")
         return State.model_validate_json(row)
 
-    async def _require_approval(self, identity: str) -> None:
+    async def _require_approval(self) -> None:
         # Called inside the owner's transaction. Any other history means recovery, not setup.
         existing = (await self.connection.execute(select(states.c.id).limit(1))).first()
         history = (
@@ -177,10 +175,10 @@ class Store:
             approval = json.loads(history[0].payload)
         except ValueError:
             raise StateUnavailable("execution_state_recovery_required") from None
-        if approval != {"identity": identity}:
-            raise StateUnavailable("initialization_account_mismatch")
+        if approval != {}:
+            raise StateUnavailable("execution_state_recovery_required")
 
-    async def approve_initialization(self, identity: str) -> None:
+    async def approve_initialization(self) -> None:
         async with self.connection.begin():
             await self._check_owner()
             existing = (await self.connection.execute(select(states.c.id).limit(1))).first()
@@ -191,30 +189,27 @@ class Store:
                 insert(events).values(
                     time=datetime.now(UTC).isoformat(),
                     event="initialization-approved",
-                    payload=json.dumps({"identity": identity}),
+                    payload=json.dumps({}),
                 )
             )
         logger.info("event=execution_initialization_approved")
 
-    async def load_for_start(self, identity: str) -> State | None:
+    async def load_for_start(self) -> State | None:
         async with self.connection.begin():
             await self._check_owner()
             row = (
                 await self.connection.execute(select(states.c.payload).where(states.c.id == 1))
             ).scalar_one_or_none()
             if row is None:
-                await self._require_approval(identity)
+                await self._require_approval()
                 return None
         state = State.model_validate_json(row)
-        if state.identity != identity:
-            logger.error("event=execution_account_mismatch")
-            raise ValueError("DB에 저장된 계정 키가 다릅니다")
         return state
 
     async def initialize(self, state: State) -> None:
         async with self.connection.begin():
             await self._check_owner()
-            await self._require_approval(state.identity)
+            await self._require_approval()
             await self.connection.execute(
                 insert(states).values(id=1, payload=state.model_dump_json())
             )
@@ -262,9 +257,7 @@ class Store:
 
 
 @asynccontextmanager
-async def open_store(
-    engine: AsyncEngine, identity: str, *, initialize: bool = False
-) -> AsyncIterator[Store]:
+async def open_store(engine: AsyncEngine, *, initialize: bool = False) -> AsyncIterator[Store]:
     async with locked_connection(engine) as connection:
         with operation(logger, "execution_schema_apply", level=logging.INFO):
             heads = await connection.run_sync(apply)
@@ -274,7 +267,7 @@ async def open_store(
         await connection.commit()
         store = Store(connection, owner)
         if initialize:
-            await store.approve_initialization(identity)
+            await store.approve_initialization()
         else:
-            await store.load_for_start(identity)
+            await store.load_for_start()
         yield store

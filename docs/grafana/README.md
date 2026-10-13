@@ -62,6 +62,7 @@ JSON 추출 설정을 확인하고, 추출 직후 형태의 가짜 데이터에 
 워커는 기존 DB의 `initialized`, `order-terminal`, `cashflow-reconciled` 이력을 순서대로 읽어 장부를 복원한다.
 재시작마다 최초부터 복원하며 실행 중에는 이벤트 기본 키 커서 이후만 읽는다. 신규 테이블이나
 2.2.4의 실행 State 필드 추가와 롤백 제약은 [자동 대사](../cashflow-reconciliation.md)를 참고한다.
+2.2.5의 키 해시 제거 후 이전 버전 롤백 제약은 [API 키 재발급](../trading-execution.md#api-키-재발급)을 참고한다.
 최초 원금·매수 원가가 없거나, 주문 순번/잔고가 맞지 않으면
 손익은 `null`, 상태는 `unavailable`이다. 관련 이력이 한 번의 조회에서 10,000행을 넘으면
 부분 합계 대신 `history_limit_exceeded`로 표시한다. DB 조회/잠금 오류는 기존처럼 전파한다.

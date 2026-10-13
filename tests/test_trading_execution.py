@@ -24,17 +24,17 @@ def settings() -> TradingSettings:
 
 
 class MemoryStore(Store):
-    def __init__(self, identity: str) -> None:
-        self.state = State(identity=identity)
+    def __init__(self) -> None:
+        self.state = State()
         self.owned = True
 
-    async def performance(self, identity: str) -> Ledger:
-        return Ledger(identity)
+    async def performance(self) -> Ledger:
+        return Ledger()
 
     async def load(self) -> State:
         return self.state.model_copy(deep=True)
 
-    async def load_for_start(self, identity: str) -> State | None:
+    async def load_for_start(self) -> State | None:
         return await self.load()
 
     async def balance_baseline(self, state: State) -> datetime | None:
@@ -173,11 +173,11 @@ class FakeUpbit(Upbit):
 
 
 class ApprovedStore(MemoryStore):
-    def __init__(self, identity: str) -> None:
-        super().__init__(identity)
+    def __init__(self) -> None:
+        super().__init__()
         self.initialized = False
 
-    async def load_for_start(self, identity: str) -> State | None:
+    async def load_for_start(self) -> State | None:
         return await self.load() if self.initialized else None
 
     async def initialize(self, state: State) -> None:
@@ -189,7 +189,7 @@ class ApprovedStore(MemoryStore):
 @pytest.mark.asyncio
 async def test_approved_first_cycle_only_initializes_verified_balances() -> None:
     api, config = FakeUpbit(), settings()
-    store = ApprovedStore(config.identity)
+    store = ApprovedStore()
     trader = Trader(api, store, config, lambda: NOW)
     assert await trader.tick() == "initialized"
     assert store.state.krw == api.cash and store.state.btc == api.btc
@@ -207,7 +207,7 @@ async def test_initialization_failure_never_writes_baseline_or_submits(failure: 
     from unittest.mock import AsyncMock
 
     api, config = FakeUpbit(), settings()
-    store = ApprovedStore(config.identity)
+    store = ApprovedStore()
     if failure == "api":
         api.chance = AsyncMock(side_effect=ValueError("unavailable"))  # type: ignore[method-assign]
     elif failure == "lock":
@@ -227,7 +227,7 @@ async def test_intent_survives_restart_and_no_duplicate_post(
     caplog.set_level(logging.INFO, logger="evergreen")
     api, config = FakeUpbit(), settings()
     api.timeout = ambiguous
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     runner = Trader(api, store, config, lambda: NOW)
     if ambiguous:
         with pytest.raises(APITimeoutError):
@@ -246,7 +246,6 @@ async def test_intent_survives_restart_and_no_duplicate_post(
     assert "event=order_intent_committed order_sequence=1" in caplog.text
     assert "event=order_reconciled order_sequence=1 state=done" in caplog.text
     assert api.sent[0]["identifier"] not in caplog.text
-    assert config.identity not in caplog.text
     assert "event=trading_cycle_result result=already-evaluated" not in caplog.text
     if ambiguous:
         assert "event=order_submit status=failed error_type=APITimeoutError" in caplog.text
@@ -256,7 +255,7 @@ async def test_intent_survives_restart_and_no_duplicate_post(
 async def test_not_found_after_timeout_never_reposts(caplog: pytest.LogCaptureFixture) -> None:
     api, config = FakeUpbit(), settings()
     api.timeout = True
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     runner = Trader(api, store, config, lambda: NOW)
     with pytest.raises(APITimeoutError):
         await runner.tick()
@@ -271,7 +270,7 @@ async def test_not_found_after_timeout_never_reposts(caplog: pytest.LogCaptureFi
 @pytest.mark.asyncio
 async def test_drawdown_sells_all_and_halt_persists(caplog: pytest.LogCaptureFixture) -> None:
     api, config = FakeUpbit(), settings()
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     runner = Trader(api, store, config, lambda: NOW)
     assert await runner.tick() == "submitted"
     api.order_state, api.cash, api.btc = "done", Decimal(1), Decimal(900)
@@ -302,7 +301,7 @@ async def test_rejection_logs_distinct_safe_reason(
     api, config = FakeUpbit(), settings()
     setattr(api, field, True)
     with pytest.raises(ValueError):
-        await Trader(api, MemoryStore(config.identity), config, lambda: NOW).tick()
+        await Trader(api, MemoryStore(), config, lambda: NOW).tick()
     assert f"event=trading_rejected reason={reason}" in caplog.text
     assert not api.sent
 
@@ -324,7 +323,7 @@ async def test_slow_submission_log_cannot_bypass_final_quote_check(
     handler = SlowHandler()
     logger.addHandler(handler)
     api, config = FakeUpbit(), settings()
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     try:
         with pytest.raises(ValueError, match="만료"):
             await Trader(api, store, config, lambda: current).tick()
@@ -341,7 +340,7 @@ async def test_slow_submission_log_cannot_bypass_final_quote_check(
 async def test_invalid_inputs_block_orders(field: str) -> None:
     api, config = FakeUpbit(), settings()
     setattr(api, field, Decimal(100) if field in ("btc", "locked") else True)
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     with pytest.raises(ValueError):
         await Trader(api, store, config, lambda: NOW).tick()
     assert not api.sent and (await store.load()).pending is None
@@ -350,7 +349,7 @@ async def test_invalid_inputs_block_orders(field: str) -> None:
 @pytest.mark.asyncio
 async def test_manual_balance_change_does_not_reset_peak() -> None:
     api, config = FakeUpbit(), settings()
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     state = await store.load()
     state.krw, state.btc, state.peak = api.cash, api.btc, Decimal(120000)
     await store.save(state, "test-initial")
@@ -365,7 +364,7 @@ async def test_manual_balance_change_does_not_reset_peak() -> None:
 @pytest.mark.parametrize("halted", [False, True])
 async def test_balance_revalidation_resumes_without_clearing_existing_halt(halted: bool) -> None:
     api, config = FakeUpbit(), settings()
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     state = await store.load()
     state.krw, state.btc, state.peak = api.cash, api.btc, api.cash
     state.halted = halted
@@ -415,7 +414,7 @@ def test_default_cli_has_no_network_or_config_access(monkeypatch: pytest.MonkeyP
 @pytest.mark.asyncio
 async def test_lost_lock_after_intent_blocks_post(monkeypatch: pytest.MonkeyPatch) -> None:
     api, config = FakeUpbit(), settings()
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     original = store.save
 
     async def save(state: State, event: str, detail: dict[str, object] | None = None) -> None:
@@ -432,7 +431,7 @@ async def test_lost_lock_after_intent_blocks_post(monkeypatch: pytest.MonkeyPatc
 @pytest.mark.asyncio
 async def test_partial_cancel_risk_exit_uses_new_identifier() -> None:
     api, config = FakeUpbit(), settings()
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     runner = Trader(api, store, config, lambda: NOW)
     assert await runner.tick() == "submitted"
     api.order_state, api.cash, api.btc = "done", Decimal(1), Decimal(900)
@@ -454,7 +453,7 @@ async def test_external_balance_change_during_pending_does_not_increase_capital(
     external: str,
 ) -> None:
     api, config = FakeUpbit(), settings()
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     runner = Trader(api, store, config, lambda: NOW)
     assert await runner.tick() == "submitted"
     before = await store.load()
@@ -485,7 +484,7 @@ async def test_slow_intent_commit_blocks_stale_submission(
     delay: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     api, config = FakeUpbit(), settings()
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     original = store.save
     current = NOW
 
@@ -538,3 +537,31 @@ def test_cli_redacts_sdk_errors(
     error = capsys.readouterr().err
     assert "NotFoundError" in error
     assert "private-account-data" not in error
+
+
+@pytest.mark.asyncio
+async def test_key_rotation_resumes_pending_without_resetting_state() -> None:
+    api, config, store = FakeUpbit(), settings(), MemoryStore()
+    assert await Trader(api, store, config, lambda: NOW).tick() == "submitted"
+    before = await store.load()
+    config.access_key = SecretStr("reissued-key")
+    config.secret_key = SecretStr("reissued-secret")
+    assert await Trader(api, store, config, lambda: NOW).tick() == "pending"
+    after = await store.load()
+    assert after == before
+    assert len(api.sent) == 1
+    assert "identity" not in after.model_dump()
+
+
+@pytest.mark.asyncio
+async def test_key_rotation_keeps_balance_validation_and_halt() -> None:
+    api, config, store = FakeUpbit(), settings(), MemoryStore()
+    store.state.krw, store.state.btc = api.cash, api.btc
+    store.state.peak, store.state.halted = Decimal(100000), True
+    config.access_key = SecretStr("reissued-key")
+    assert await Trader(api, store, config, lambda: NOW).tick() == "halted"
+    assert store.state.peak == 100000 and store.state.halted
+    api.cash += 1
+    with pytest.raises(ValueError, match="잔고"):
+        await Trader(api, store, config, lambda: NOW).tick()
+    assert not api.sent

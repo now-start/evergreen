@@ -62,7 +62,7 @@ def test_strategy_and_risk_contract() -> None:
 @pytest.mark.asyncio
 async def test_cash_transition_preserves_peak_and_does_not_order() -> None:
     cfg = candidate()
-    store = MemoryStore(cfg.identity)
+    store = MemoryStore()
     store.state.krw, store.state.btc, store.state.peak = D(100000), D(0), D(101000)
     api = CandidateUpbit()
     assert await Trader(api, store, cfg, lambda: NOW).tick() == "strategy-transitioned"
@@ -73,7 +73,7 @@ async def test_cash_transition_preserves_peak_and_does_not_order() -> None:
 @pytest.mark.asyncio
 async def test_legacy_position_is_not_adopted_by_candidate() -> None:
     cfg = candidate()
-    store = MemoryStore(cfg.identity)
+    store = MemoryStore()
     api = CandidateUpbit()
     api.cash, api.btc = D(0), D(1000)
     store.state.krw, store.state.btc = api.cash, api.btc
@@ -84,7 +84,7 @@ async def test_legacy_position_is_not_adopted_by_candidate() -> None:
 @pytest.mark.asyncio
 async def test_halted_account_is_not_reset_during_promotion() -> None:
     cfg = candidate()
-    store = MemoryStore(cfg.identity)
+    store = MemoryStore()
     store.state.krw, store.state.btc, store.state.halted = D(100000), D(0), True
     assert await Trader(CandidateUpbit(), store, cfg, lambda: NOW).tick() == "halted"
     assert store.state.strategy == "breakout-v1" and store.state.halted
@@ -93,7 +93,7 @@ async def test_halted_account_is_not_reset_during_promotion() -> None:
 @pytest.mark.asyncio
 async def test_candidate_buy_persists_signal_range_before_order() -> None:
     cfg = candidate()
-    store = MemoryStore(cfg.identity)
+    store = MemoryStore()
     store.state.strategy, store.state.buffer = ID, BufferState()
     store.state.krw, store.state.btc = D(100000), D(0)
     api = CandidateUpbit()
@@ -107,7 +107,7 @@ async def test_candidate_buy_persists_signal_range_before_order() -> None:
 @pytest.mark.asyncio
 async def test_corrupt_candidate_position_blocks_new_orders() -> None:
     cfg = candidate()
-    store = MemoryStore(cfg.identity)
+    store = MemoryStore()
     store.state.strategy, store.state.buffer = ID, BufferState()
     api = CandidateUpbit()
     api.cash, api.btc = D(0), D(1000)
@@ -122,7 +122,7 @@ async def test_ambiguous_buy_recovers_once_and_restores_protection() -> None:
     from upbit import APITimeoutError
 
     cfg = candidate()
-    store = MemoryStore(cfg.identity)
+    store = MemoryStore()
     store.state.strategy, store.state.buffer = ID, BufferState()
     store.state.krw, store.state.btc = D(100000), D(0)
     api = CandidateUpbit()
@@ -152,7 +152,7 @@ async def test_ambiguous_buy_recovers_once_and_restores_protection() -> None:
 
 def held(monkeypatch: pytest.MonkeyPatch) -> tuple[TradingSettings, MemoryStore, CandidateUpbit]:
     cfg = candidate()
-    store = MemoryStore(cfg.identity)
+    store = MemoryStore()
     api = CandidateUpbit()
     api.cash, api.btc = D(0), D(1000)
     store.state.strategy = ID
@@ -202,7 +202,7 @@ async def test_terminal_partial_sell_retains_exit_then_clears_position(
 @pytest.mark.asyncio
 async def test_zero_fill_buy_does_not_create_a_position() -> None:
     cfg = candidate()
-    store = MemoryStore(cfg.identity)
+    store = MemoryStore()
     store.state.strategy, store.state.buffer = ID, BufferState()
     store.state.krw, store.state.btc = D(100000), D(0)
     api = CandidateUpbit()
@@ -247,12 +247,12 @@ async def test_depth_rejection_keeps_durable_exit_reservation(
     assert not api.sent
 
 
-def test_legacy_payload_loads_without_changing_identity_or_peak() -> None:
+def test_payload_loads_without_key_identity_or_changing_peak() -> None:
     from evergreen.trading.state import State
 
-    old = State.model_validate_json('{"identity":"old","peak":"120000","halted":true}')
+    old = State.model_validate_json('{"peak":"120000","halted":true}')
     assert old.strategy == "breakout-v1" and old.buffer is None
-    assert old.identity == "old" and old.peak == 120000 and old.halted
+    assert "identity" not in old.model_dump() and old.peak == 120000 and old.halted
 
 
 @pytest.mark.asyncio

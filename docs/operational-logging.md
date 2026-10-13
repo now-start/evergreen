@@ -52,7 +52,6 @@ API와 함께 실행되는 루프 상태·마지막 완료 시각은 `/actuator/
 - `order_sequence`: DB 실행 상태의 내부 순번과 대조한다. 거래소 주문 식별자는 로그에 출력하지 않는다.
 - `execution_state_blocked`: `initialization_approval_required`는 최초 설치 확인·승인 필요,
   `execution_state_recovery_required`는 기존 이력이 있어 복구 필요를 의미한다.
-  `initialization_account_mismatch`는 승인 시점의 계정 키와 다름을 의미한다.
   이 고정 코드는 `/actuator/info`의 `trading.reason`에도 표시한다.
 - `execution_initialization_approved`는 승인 기록만 저장한 상태다.
   `execution_state_initialized`와 `trading_cycle_result result=initialized`가 있어야

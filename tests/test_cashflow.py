@@ -45,7 +45,7 @@ async def test_verified_cashflow_preserves_risk_and_never_orders_during_reconcil
     halted: bool,
 ) -> None:
     api, config = FakeUpbit(), settings()
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     store.state.krw, store.state.btc = api.cash, api.btc
     store.state.peak = D(105000)
     store.state.halted = halted
@@ -78,7 +78,7 @@ async def test_verified_cashflow_preserves_risk_and_never_orders_during_reconcil
 )
 async def test_unverified_changes_cannot_reset_state_or_submit(fault: str) -> None:
     api, config = FakeUpbit(), settings()
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     store.state.krw, store.state.btc, store.state.peak = api.cash, api.btc, api.cash
     original = store.state.model_copy(deep=True)
     api.cash -= 11000
@@ -122,7 +122,7 @@ def test_history_boundaries_and_duplicates() -> None:
 
 
 def test_cashflow_accounting_excludes_principal_and_includes_fees() -> None:
-    ledger = Ledger("test")
+    ledger = Ledger()
     initial(ledger, capital="100000")
     row = transfer()
     ledger.consume(
@@ -173,7 +173,7 @@ async def test_sdk_cashflow_reads_both_histories_and_never_posts() -> None:
 @pytest.mark.asyncio
 async def test_full_withdrawal_and_refunding_preserve_drawdown() -> None:
     api, config = FakeUpbit(), settings()
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     store.state.krw, store.state.btc, store.state.peak = api.cash, api.btc, D(105000)
     api.cash = D(0)
     api.cash_movements = AsyncMock(return_value=[transfer(amount="99000")])  # type: ignore[method-assign]
@@ -191,7 +191,7 @@ async def test_full_withdrawal_and_refunding_preserve_drawdown() -> None:
 @pytest.mark.asyncio
 async def test_offsetting_transfers_are_recorded_even_when_balance_is_unchanged() -> None:
     api, config = FakeUpbit(), settings()
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     store.state.krw, store.state.btc, store.state.peak = api.cash, api.btc, api.cash
     deposit = transfer("deposit", "11000", "0").model_copy(update={"uuid": "deposit"})
     api.cash_movements = AsyncMock(return_value=[deposit, transfer()])  # type: ignore[method-assign]
@@ -204,7 +204,7 @@ async def test_offsetting_transfers_are_recorded_even_when_balance_is_unchanged(
 @pytest.mark.asyncio
 async def test_deposit_cannot_hide_existing_drawdown_breach() -> None:
     api, config = FakeUpbit(), settings()
-    store = MemoryStore(config.identity)
+    store = MemoryStore()
     store.state.krw, store.state.btc, store.state.peak = api.cash, api.btc, D(120000)
     api.cash += 50000
     api.cash_movements = AsyncMock(return_value=[transfer("deposit", "50000", "0")])  # type: ignore[method-assign]
@@ -264,8 +264,8 @@ async def test_journal_recovery_skips_operational_retries_and_replays_cashflow()
         connection.execute = AsyncMock(side_effect=sync.execute)
         store = Store(connection, 1)
         store._check_owner = AsyncMock()  # type: ignore[method-assign]
-        await store.approve_initialization("test")
-        state = State(identity="test", krw=D(100000), btc=D(0))
+        await store.approve_initialization()
+        state = State(krw=D(100000), btc=D(0))
         await store.initialize(state)
         baseline = await store.balance_baseline(state)
         assert baseline is not None
@@ -282,7 +282,7 @@ async def test_journal_recovery_skips_operational_retries_and_replays_cashflow()
                 ],
             )
         assert await store.balance_baseline(state) == baseline
-        assert (await store.performance("test")).reason is None
+        assert (await store.performance()).reason is None
         state.krw = D(89000)
         await store.save(
             state,
@@ -295,12 +295,12 @@ async def test_journal_recovery_skips_operational_retries_and_replays_cashflow()
             },
         )
         assert await store.balance_baseline(state) != baseline
-        ledger = await store.performance("test")
+        ledger = await store.performance()
         assert ledger.cash == 89000 and ledger.net_flows == -10000 and ledger.reason is None
         restarted = Store(connection, 1)
         restarted._check_owner = AsyncMock()  # type: ignore[method-assign]
         assert await restarted.load() == state
-        assert (await restarted.performance("test")).realized == -1000
+        assert (await restarted.performance()).realized == -1000
         state.krw = D(1)
         assert await restarted.balance_baseline(state) is None
     engine.dispose()

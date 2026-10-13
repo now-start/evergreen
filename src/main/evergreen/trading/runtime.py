@@ -87,6 +87,7 @@ async def _session(
 ) -> int:
     if initialize and settings.live_enabled:
         raise StateUnavailable("initialization_requires_live_disabled")
+    settings.require_credentials()
     # Context-local suppression keeps financial HTTP/SQL data out of API auto-instrumentation.
     with suppress_instrumentation():
         logger.info(
@@ -99,7 +100,7 @@ async def _session(
         )
         failed = False
         try:
-            async with open_store(engine, settings.identity, initialize=initialize) as store:
+            async with open_store(engine, initialize=initialize) as store:
                 if initialize:
                     print(
                         "최초 설치 승인 기록 완료. 계좌 검증·상태 생성은 다음 워커 기동에서 수행합니다."

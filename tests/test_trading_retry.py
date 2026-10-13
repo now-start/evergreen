@@ -192,7 +192,7 @@ async def test_ambiguous_post_recovers_under_new_session_without_second_post(
     cfg.datasource_url = SecretStr("jdbc:mariadb://localhost/test")
     cfg.datasource_username = cfg.datasource_password = SecretStr("test")
     api.timeout = True
-    store = MemoryStore(cfg.identity)
+    store = MemoryStore()
     resources = []
     close = AsyncMock()
     monkeypatch.setattr(api, "close", close)
@@ -201,7 +201,6 @@ async def test_ambiguous_post_recovers_under_new_session_without_second_post(
     @asynccontextmanager
     async def opened(
         engine: AsyncEngine,
-        identity: str,
         *,
         initialize: bool,
     ) -> AsyncIterator[MemoryStore]:

@@ -22,7 +22,6 @@ def amount(value: object) -> Decimal:
 class Ledger:
     """Never controls orders or modifies execution state. Missing evidence stays unknown."""
 
-    identity: str
     cursor: int = 0
     reason: str | None = None
     started_at: str | None = None
@@ -42,8 +41,6 @@ class Ledger:
         try:
             data = json.loads(payload)
             state = data["state"]
-            if state["identity"] != self.identity:
-                raise ValueError("Account changed")
             if event == "initialized":
                 if self.capital is not None or amount(state["btc"]) != 0:
                     raise ValueError("Unknown opening inventory")

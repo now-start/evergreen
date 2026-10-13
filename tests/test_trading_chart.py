@@ -14,8 +14,8 @@ from test_trading_execution import NOW, MemoryStore
 
 
 class RecordingStore(MemoryStore):
-    def __init__(self, identity: str) -> None:
-        super().__init__(identity)
+    def __init__(self) -> None:
+        super().__init__()
         self.history: list[tuple[str, dict[str, object] | None]] = []
         self.fail_event: str | None = None
 
@@ -43,7 +43,7 @@ async def test_performance_logged_only_after_valuation_commit(
 ) -> None:
     caplog.set_level(logging.INFO, logger="evergreen")
     cfg, api = candidate(), CandidateUpbit()
-    store = RecordingStore(cfg.identity)
+    store = RecordingStore()
     store.state.strategy, store.state.buffer = ID, BufferState()
     store.state.krw, store.state.btc = D(100000), D(0)
     if commit_fails:
@@ -67,7 +67,7 @@ async def test_snapshot_persisted_and_logged_once_without_changing_order(
 ) -> None:
     caplog.set_level(logging.INFO, logger="evergreen")
     cfg, api = candidate(), CandidateUpbit()
-    store = RecordingStore(cfg.identity)
+    store = RecordingStore()
     store.state.strategy, store.state.buffer = ID, BufferState()
     store.state.krw, store.state.btc = D(100000), D(0)
     trader = Trader(api, store, cfg, lambda: api.now)
@@ -85,7 +85,7 @@ async def test_snapshot_persisted_and_logged_once_without_changing_order(
     assert await trader.tick() == "pending"
     assert len(logs(caplog, "strategy_bar")) == 1 and len(api.sent) == 1
     assert not logs(caplog, "order_execution")
-    assert cfg.identity not in caplog.text and api.sent[0]["identifier"] not in caplog.text
+    assert api.sent[0]["identifier"] not in caplog.text
 
 
 @pytest.mark.asyncio
@@ -95,7 +95,7 @@ async def test_no_signal_catchup_records_each_bar_once(
 ) -> None:
     caplog.set_level(logging.INFO, logger="evergreen")
     cfg, original_store, api = held(monkeypatch)
-    store = RecordingStore(cfg.identity)
+    store = RecordingStore()
     store.state = original_store.state
     assert store.state.buffer is not None
     store.state.peak = D(110000)
@@ -125,7 +125,7 @@ async def test_snapshot_commit_failure_does_not_emit_or_submit(
 ) -> None:
     caplog.set_level(logging.INFO, logger="evergreen")
     cfg, api = candidate(), CandidateUpbit()
-    store = RecordingStore(cfg.identity)
+    store = RecordingStore()
     store.state.strategy, store.state.buffer = ID, BufferState()
     store.state.krw, store.state.btc = D(100000), D(0)
     store.fail_event = "strategy-evaluated"
@@ -142,7 +142,7 @@ async def test_reconciled_execution_is_truthful_and_not_duplicated(
 ) -> None:
     caplog.set_level(logging.INFO, logger="evergreen")
     cfg, api = candidate(), CandidateUpbit()
-    store = RecordingStore(cfg.identity)
+    store = RecordingStore()
     store.state.strategy, store.state.buffer = ID, BufferState()
     store.state.krw, store.state.btc = D(100000), D(0)
     trader = Trader(api, store, cfg, lambda: api.now)
@@ -174,7 +174,7 @@ async def test_partial_sell_and_failed_commit_do_not_create_false_markers(
 ) -> None:
     caplog.set_level(logging.INFO, logger="evergreen")
     cfg, original_store, api = held(monkeypatch)
-    store = RecordingStore(cfg.identity)
+    store = RecordingStore()
     store.state = original_store.state
     trader = Trader(api, store, cfg, lambda: api.now)
     assert await trader.tick() == "submitted"
@@ -195,10 +195,9 @@ async def test_partial_sell_and_failed_commit_do_not_create_false_markers(
 async def test_capture_does_not_change_strategy_state_or_result() -> None:
     from evergreen.trading.buffer_execution import signal
 
-    api, cfg = CandidateUpbit(), candidate()
+    api = CandidateUpbit()
     history = await api.candles(NOW.replace(second=0), NOW)
     original = State(
-        identity=cfg.identity,
         strategy=ID,
         buffer=BufferState(awaiting_reset=True),
         krw=D(100000),
@@ -234,7 +233,7 @@ def test_missing_legacy_fill_time_is_not_replaced_with_observation_time() -> Non
             "trades": [{"funds": "100", "volume": "1"}],
         }
     )
-    record = execution_snapshot(State(identity="private", btc=D(1)), order, NOW)[0]
+    record = execution_snapshot(State(btc=D(1)), order, NOW)[0]
     assert record["event_time"] is None and record["filled_at"] is None
     assert record["fill_price"] == "100" and "private" not in json.dumps(record)
 

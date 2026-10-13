@@ -50,17 +50,16 @@ async def engine() -> AsyncIterator[AsyncEngine]:
 
 @pytest.mark.asyncio
 async def test_performance_replays_incrementally_and_after_restart(engine: AsyncEngine) -> None:
-    identity = "performance-test"
-    async with open_store(engine, identity, initialize=True):
+    async with open_store(engine, initialize=True):
         pass
-    async with open_store(engine, identity) as store:
-        state = State(identity=identity, krw=Decimal(1000), btc=Decimal(0))
+    async with open_store(engine) as store:
+        state = State(krw=Decimal(1000), btc=Decimal(0))
         await store.initialize(state)
-        ledger = await store.performance(identity)
+        ledger = await store.performance()
         assert ledger.capital == Decimal(1000) and ledger.reason is None
         cursor = ledger.cursor
         await store.save(state, "valuation")
-        assert await store.performance(identity) is ledger
+        assert await store.performance() is ledger
         assert ledger.cursor > cursor and ledger.realized == 0
         state.krw, state.btc, state.order_sequence = Decimal(495), Decimal(5), 1
         await store.save(
@@ -77,26 +76,25 @@ async def test_performance_replays_incrementally_and_after_restart(engine: Async
                 "trades": [{"funds": "500", "volume": "5"}],
             },
         )
-        ledger = await store.performance(identity)
+        ledger = await store.performance()
         assert ledger.basis == Decimal(505) and ledger.sequence == 1
         assert ledger.reason is None
-        assert (await store.performance(identity)).basis == Decimal(505)
-    async with open_store(engine, identity) as store:
-        ledger = await store.performance(identity)
+        assert (await store.performance()).basis == Decimal(505)
+    async with open_store(engine) as store:
+        ledger = await store.performance()
         assert ledger.basis == Decimal(505) and ledger.sequence == 1
         assert ledger.reason is None
         before = await store.load()
-        await store.performance(identity)
+        await store.performance()
         assert await store.load() == before
 
 
 @pytest.mark.asyncio
 async def test_cashflow_baseline_and_ledger_survive_retry_history(engine: AsyncEngine) -> None:
-    identity = "cashflow-test"
-    async with open_store(engine, identity, initialize=True):
+    async with open_store(engine, initialize=True):
         pass
-    async with open_store(engine, identity) as store:
-        state = State(identity=identity, krw=Decimal(100000), btc=Decimal(0))
+    async with open_store(engine) as store:
+        state = State(krw=Decimal(100000), btc=Decimal(0))
         await store.initialize(state)
         baseline = await store.balance_baseline(state)
         assert baseline is not None
@@ -116,7 +114,7 @@ async def test_cashflow_baseline_and_ledger_survive_retry_history(engine: AsyncE
                 ],
             )
         assert await store.balance_baseline(state) == baseline
-        ledger = await store.performance(identity)
+        ledger = await store.performance()
         assert ledger.reason is None and ledger.cash == 100000
         state.krw = Decimal(89000)
         now = datetime.now(UTC)
@@ -139,10 +137,10 @@ async def test_cashflow_baseline_and_ledger_survive_retry_history(engine: AsyncE
         }
         await store.save(state, "cashflow-reconciled", detail)
         assert await store.balance_baseline(state) != baseline
-        ledger = await store.performance(identity)
+        ledger = await store.performance()
         assert ledger.reason is None and ledger.cash == 89000 and ledger.net_flows == -10000
-    async with open_store(engine, identity) as store:
-        ledger = await store.performance(identity)
+    async with open_store(engine) as store:
+        ledger = await store.performance()
         assert ledger.cash == 89000 and ledger.realized == -1000 and ledger.reason is None
         state = await store.load()
         assert await store.balance_baseline(state) is not None
@@ -165,7 +163,7 @@ async def test_long_recovery_events_fit_text_and_commit_atomically(
     cfg, api = candidate(), RecoveryUpbit()
     api.now += timedelta(minutes=10)
     cursor = HOUR - timedelta(hours=601)
-    async with initialized_store(engine, cfg.identity) as store:
+    async with initialized_store(engine) as store:
         state = await store.load()
         state.strategy, state.buffer = ID, BufferState(last_bar=cursor)
         state.krw, state.btc, state.peak = api.cash, api.btc, api.cash
@@ -221,29 +219,26 @@ async def test_long_recovery_events_fit_text_and_commit_atomically(
 
 
 @pytest.mark.asyncio
-async def test_mariadb_persistence_lock_identity_and_explicit_initialization(
+async def test_mariadb_persistence_lock_and_explicit_initialization(
     engine: AsyncEngine,
 ) -> None:
     with pytest.raises(ValueError, match="최초 초기화"):
-        async with open_store(engine, "account"):
+        async with open_store(engine):
             pass
-    async with initialized_store(engine, "account") as store:
+    async with initialized_store(engine) as store:
         state = await store.load()
         state.halted, state.peak = True, Decimal("123456.789")
         state.pending = {"identifier": "never-repost"}
         await store.save(state, "intent")
         with pytest.raises(RuntimeError, match="다른"):
-            async with open_store(engine, "account"):
+            async with open_store(engine):
                 pass
-    async with open_store(engine, "account") as store:
+    async with open_store(engine) as store:
         state = await store.load()
         assert state.halted and state.peak == Decimal("123456.789")
         assert state.pending == {"identifier": "never-repost"}
-    with pytest.raises(ValueError, match="계정"):
-        async with open_store(engine, "wrong-account"):
-            pass
     with pytest.raises(StateUnavailable):
-        async with open_store(engine, "account", initialize=True):
+        async with open_store(engine, initialize=True):
             pass
     async with engine.connect() as connection:
         assert (await connection.execute(select(events.c.event))).scalars().all() == [
@@ -254,16 +249,16 @@ async def test_mariadb_persistence_lock_identity_and_explicit_initialization(
 
 
 @asynccontextmanager
-async def initialized_store(engine: AsyncEngine, identity: str) -> AsyncIterator[Store]:
+async def initialized_store(engine: AsyncEngine) -> AsyncIterator[Store]:
     """Seed a synthetic baseline, never a real exchange account."""
-    async with open_store(engine, identity, initialize=True) as store:
-        await store.initialize(State(identity=identity))
+    async with open_store(engine, initialize=True) as store:
+        await store.initialize(State())
         yield store
 
 
 @pytest.mark.asyncio
 async def test_mariadb_lost_lock_blocks_state_operations(engine: AsyncEngine) -> None:
-    async with initialized_store(engine, "account") as store:
+    async with initialized_store(engine) as store:
         async with store.connection.begin():
             await store.connection.execute(text("SELECT RELEASE_LOCK(:name)"), {"name": LOCK_NAME})
         for operation in (store.load, store.assert_owner):
@@ -273,7 +268,7 @@ async def test_mariadb_lost_lock_blocks_state_operations(engine: AsyncEngine) ->
 
 @pytest.mark.asyncio
 async def test_mariadb_audit_failure_rolls_back_state(engine: AsyncEngine) -> None:
-    async with initialized_store(engine, "account") as store:
+    async with initialized_store(engine) as store:
         state = await store.load()
         state.halted = True
         with pytest.raises(SQLAlchemyError):
@@ -306,7 +301,7 @@ async def test_worker_initialization_and_cleanup_without_exchange_access(
     trader.tick.side_effect = RuntimeError("test failure")
     with pytest.raises(RuntimeError):
         await run(config, initialize=False, once=True)
-    async with open_store(engine, config.identity):
+    async with open_store(engine):
         pass  # Worker failure released the DB lock.
 
 
@@ -322,7 +317,7 @@ async def test_loop_cancellation_preserves_pending_and_releases_single_owner_loc
         datasource_username=SecretStr(engine.url.username or ""),
         datasource_password=SecretStr(engine.url.password or ""),
     )
-    async with initialized_store(engine, config.identity):
+    async with initialized_store(engine):
         pass
     started = asyncio.Event()
     sdk = AsyncMock()
@@ -352,7 +347,7 @@ async def test_loop_cancellation_preserves_pending_and_releases_single_owner_loc
         with pytest.raises(asyncio.CancelledError):
             await task
     sdk.close.assert_awaited_once()
-    async with open_store(engine, config.identity) as store:
+    async with open_store(engine) as store:
         assert (await store.load()).pending == {"identifier": "unconfirmed-intent"}
 
 
@@ -362,8 +357,8 @@ async def test_schema_upgrade_is_serialized_idempotent_and_does_not_initialize_a
 ) -> None:
     assert await migrate(engine, "current") == ()
     results = await asyncio.gather(migrate(engine), migrate(engine))
-    assert all(heads == ("0001_execution",) for heads in results)
-    assert await migrate(engine) == ("0001_execution",)
+    assert all(heads == ("0002_remove_key_identity",) for heads in results)
+    assert await migrate(engine) == ("0002_remove_key_identity",)
     async with engine.connect() as connection:
         assert (
             await connection.execute(text("SELECT COUNT(*) FROM evergreen_execution_state"))
@@ -389,7 +384,7 @@ async def test_legacy_baseline_preserves_order_state_and_audit(engine: AsyncEngi
     with pytest.raises(SQLAlchemyError):
         await migrate(engine)  # Existing tables are never automatically stamped.
     assert await migrate(engine, "baseline") == ("0001_execution",)
-    assert await migrate(engine) == ("0001_execution",)
+    assert await migrate(engine) == ("0002_remove_key_identity",)
     async with engine.connect() as connection:
         assert (
             "preserve"
@@ -437,7 +432,7 @@ async def test_migration_runner_uses_existing_datasource_without_upbit_keys(
         datasource_username=SecretStr(engine.url.username or ""),
         datasource_password=SecretStr(engine.url.password or ""),
     )
-    assert await run_migrations(config) == ("0001_execution",)
+    assert await run_migrations(config) == ("0002_remove_key_identity",)
     monkeypatch.setattr("evergreen.database.__main__.load_dotenv", Mock())
     monkeypatch.setattr("evergreen.database.__main__.load_spring_config", Mock())
     monkeypatch.setattr("evergreen.database.__main__.DatabaseSettings", lambda: config)
@@ -457,7 +452,7 @@ async def test_unknown_revision_and_destructive_downgrade_are_rejected(engine: A
 
         with pytest.raises(RuntimeError, match="삭제 downgrade"):
             await connection.run_sync(downgrade)
-    assert await migrate(engine, "current") == ("0001_execution",)
+    assert await migrate(engine, "current") == ("0002_remove_key_identity",)
     async with engine.begin() as connection:
         await connection.execute(text("UPDATE evergreen_alembic_version SET version_num='future'"))
     with pytest.raises(CommandError):
@@ -468,86 +463,82 @@ async def test_unknown_revision_and_destructive_downgrade_are_rejected(engine: A
 @pytest.mark.asyncio
 async def test_approval_is_required_and_does_not_create_state(engine: AsyncEngine) -> None:
     with pytest.raises(StateUnavailable) as missing:
-        async with open_store(engine, "account"):
+        async with open_store(engine):
             pass
     assert missing.value.reason == "initialization_approval_required"
-    async with open_store(engine, "account", initialize=True) as store:
-        assert await store.load_for_start("account") is None
+    async with open_store(engine, initialize=True) as store:
+        assert await store.load_for_start() is None
     async with engine.connect() as connection:
         assert (
             await connection.execute(text("SELECT COUNT(*) FROM evergreen_execution_state"))
         ).scalar_one() == 0
-    with pytest.raises(StateUnavailable) as mismatch:
-        async with open_store(engine, "other-account"):
-            pass
-    assert mismatch.value.reason == "initialization_account_mismatch"
     with pytest.raises(StateUnavailable):
-        async with open_store(engine, "account", initialize=True):
+        async with open_store(engine, initialize=True):
             pass
 
 
 @pytest.mark.asyncio
 async def test_state_loss_cannot_reuse_consumed_approval(engine: AsyncEngine) -> None:
-    async with initialized_store(engine, "account"):
+    async with initialized_store(engine):
         pass
     async with engine.begin() as connection:
         await connection.execute(text("DELETE FROM evergreen_execution_state WHERE id=1"))
     with pytest.raises(StateUnavailable) as recovery:
-        async with open_store(engine, "account"):
+        async with open_store(engine):
             pass
     assert recovery.value.reason == "execution_state_recovery_required"
     with pytest.raises(StateUnavailable):
-        async with open_store(engine, "account", initialize=True):
+        async with open_store(engine, initialize=True):
             pass
     # Losing both state and history also loses approval: it must not bootstrap itself.
     async with engine.begin() as connection:
         await connection.execute(events.delete())
     with pytest.raises(StateUnavailable) as empty:
-        async with open_store(engine, "account"):
+        async with open_store(engine):
             pass
     assert empty.value.reason == "initialization_approval_required"
 
 
 @pytest.mark.asyncio
 async def test_initialization_rechecks_lock_and_preserves_approval(engine: AsyncEngine) -> None:
-    async with open_store(engine, "account", initialize=True) as store:
+    async with open_store(engine, initialize=True) as store:
         async with store.connection.begin():
             await store.connection.execute(text("SELECT RELEASE_LOCK(:name)"), {"name": LOCK_NAME})
         with pytest.raises(RuntimeError, match="잠금"):
-            await store.initialize(State(identity="account"))
-    async with open_store(engine, "account") as store:
-        assert await store.load_for_start("account") is None
+            await store.initialize(State())
+    async with open_store(engine) as store:
+        assert await store.load_for_start() is None
 
 
 @pytest.mark.asyncio
 async def test_corrupted_state_is_not_reinitialized(engine: AsyncEngine) -> None:
-    async with initialized_store(engine, "account"):
+    async with initialized_store(engine):
         pass
     async with engine.begin() as connection:
         await connection.execute(text("UPDATE evergreen_execution_state SET payload='invalid'"))
     with pytest.raises(ValueError):
-        async with open_store(engine, "account"):
+        async with open_store(engine):
             pass
     with pytest.raises(StateUnavailable):
-        async with open_store(engine, "account", initialize=True):
+        async with open_store(engine, initialize=True):
             pass
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("payload", ["not-json", '{"identity":"wrong"}'])
 async def test_invalid_approval_is_rejected(engine: AsyncEngine, payload: str) -> None:
-    async with open_store(engine, "account", initialize=True):
+    async with open_store(engine, initialize=True):
         pass
     async with engine.begin() as connection:
         await connection.execute(events.update().values(payload=payload))
     with pytest.raises(StateUnavailable):
-        async with open_store(engine, "account"):
+        async with open_store(engine):
             pass
 
 
 @pytest.mark.asyncio
 async def test_initialization_audit_failure_rolls_back_baseline(engine: AsyncEngine) -> None:
-    async with open_store(engine, "account", initialize=True) as store:
+    async with open_store(engine, initialize=True) as store:
         # Trigger failure after the state INSERT, not during its validation.
         async with store.connection.begin():
             await store.connection.execute(
@@ -558,8 +549,8 @@ async def test_initialization_audit_failure_rolls_back_baseline(engine: AsyncEng
             )
         try:
             with pytest.raises(SQLAlchemyError):
-                await store.initialize(State(identity="account"))
-            assert await store.load_for_start("account") is None
+                await store.initialize(State())
+            assert await store.load_for_start() is None
         finally:
             async with store.connection.begin():
                 await store.connection.execute(text("DROP TRIGGER reject_initialized"))
@@ -573,19 +564,19 @@ async def test_automatic_initialization_with_real_store_and_fake_exchange(
     from test_trading_execution import NOW, FakeUpbit, settings
 
     api, config = FakeUpbit(), settings()
-    async with open_store(engine, config.identity, initialize=True):
+    async with open_store(engine, initialize=True):
         pass
-    async with open_store(engine, config.identity) as store:
+    async with open_store(engine) as store:
         trader = Trader(api, store, config, lambda: NOW)
         api.open_orders = True
         with pytest.raises(ValueError, match="대기 주문"):
             await trader.tick()
-        assert await store.load_for_start(config.identity) is None
+        assert await store.load_for_start() is None
         api.open_orders = False
         assert await trader.tick() == "initialized"
         assert not api.sent
         baseline = await store.load()
-    async with open_store(engine, config.identity) as store:
+    async with open_store(engine) as store:
         assert (await store.load()) == baseline
         assert await Trader(api, store, config, lambda: NOW).tick() == "submitted"
         assert len(api.sent) == 1
@@ -601,7 +592,7 @@ async def test_chart_queries_use_event_time_nulls_and_deduplicated_execution(
     from test_trading_execution import NOW
 
     api, config = CandidateUpbit(), candidate()
-    async with initialized_store(engine, config.identity) as store:
+    async with initialized_store(engine) as store:
         state = await store.load()
         state.strategy, state.buffer = ID, BufferState()
         state.krw, state.btc, state.peak = Decimal(100000), Decimal(0), Decimal(100000)

@@ -8,7 +8,7 @@
 
 웹 서비스 `uv run evergreen`는 FastAPI lifespan 안에서 매매 루프를 함께 관리한다.
 `local` 프로파일 또는 `evergreen.execution.live-enabled=false`이면 루프를 시작하지 않는다.
-비로컬 프로파일에서 true이면 기존 설정으로 DB 잠금·계좌 바인딩을 검증한 뒤 실행한다.
+비로컬 프로파일에서 true이면 기존 설정으로 DB 잠금·잔고·미확정 주문을 검증한 뒤 실행한다.
 Docker 기본 명령은 그대로이며 별도 워커 서비스나 실행 명령이 필요하지 않다.
 연구 CLI와 아래 기본 명령은 주문 실행기를 시작하지 않는다.
 아래 기본 명령은 Config Server·DB·업비트에도 접속하지 않는다.
@@ -144,7 +144,7 @@ early3는 정시 주문 창 밖에서도 상태와 차트 기록을 복구한다
 테이블 생성·변경은 [Alembic 마이그레이션](database-migrations.md)이 관리한다.
 비로컬 웹 배포와 거래 워커 시작 전에 미적용 revision을 반영한다.
 최초 설치 승인은 실행 상태와 이벤트가 모두 비어 있을 때만 허용한다.
-`evergreen_execution_event`에 계정 키 해시와 `initialization-approved` 이벤트를 기록한다.
+`evergreen_execution_event`에 `initialization-approved` 이벤트를 기록한다.
 운영 이력이 없음을 운영자가 확인한 후 앱 환경에서 한 번만 실행한다.
 
 ```bash
@@ -163,7 +163,6 @@ Config Server의 키와 DB 연결을 그대로 사용한다. 상시 자동 초�
 | 해당 키의 승인 이벤트 하나만 있음 | 계좌 검증 후 자동 상태 생성; 첫 사이클 주문 없음 |
 | 정상 실행 상태 있음 | 기존 상태 재사용; 미확정 주문 우선 대사, 잔고 불일치 시 중단 |
 | 실행 이력은 있는데 상태 없음 | `execution_state_recovery_required`로 중단; 재승인도 거부 |
-| 승인에 기록된 키가 다름 | `initialization_account_mismatch`로 중단 |
 
 DB 전체가 유실되면 승인도 없어지므로 자동으로 처음부터 거래하지 않는다.
 반대로 DB 백업이 승인만 있던 시점으로 복원되면 이를 진짜 첫 설치와 자동 구분할 수 없다.
@@ -197,3 +196,13 @@ EVERGREEN_TEST_MARIADB_URL='mysql+asyncmy://USER:PASSWORD@127.0.0.1:PORT/evergre
 
 통합 테스트는 해당 테스트 DB의 두 실행 테이블과 Alembic 이력을 삭제·재생성한다. 운영 DB 주소를 넣지 않는다.
 운영 계정·운영 네트워크·거래소 최종 체결까지의 검증은 이 테스트에 포함되지 않는다.
+
+## API 키 재발급
+
+동일 업비트 계정의 API 키를 재발급하면 설정을 교체하고 앱을 재시작한다.
+키 해시는 실행 상태·승인·성과 이력의 검증 기준으로 사용하지 않는다.
+`0002_remove_key_identity` 마이그레이션은 기존 상태와 이벤트 JSON의 `identity`만
+제거하며 잔고, 미확정 주문 식별자, 주문 순번, 고점·중단 상태와 성과 이력을 보존한다.
+새 주문 식별자는 임의 UUID로 만들고 제출 전에 DB에 기록하며, 기존 pending은 그대로 대사한다.
+잔고·주문 검증은 유지하지만 동일 계정 여부를 별도로 식별하지는 않으므로 다른 계정의
+키로 설정을 바꾸지 않는다. 마이그레이션 후에는 `identity`를 요구하는 이전 버전으로 롤백할 수 없다.

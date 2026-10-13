@@ -71,7 +71,7 @@ def snapshot(ledger: Ledger) -> dict[str, object]:
 
 
 def test_fees_partial_sale_and_restart_replay() -> None:
-    ledger = Ledger("test")
+    ledger = Ledger()
     initial(ledger)
     terminal(ledger, "bid", "5", "500", "5", "495", "5", 1)
     terminal(ledger, "ask", "2", "240", "2.4", "732.6", "3", 2, "cancel")
@@ -87,7 +87,7 @@ def test_fees_partial_sale_and_restart_replay() -> None:
     assert D(str(snapshot(ledger)["realized_pnl_krw"])) == D(89)
     assert ledger.basis == 0
     # A new process rebuilds the same ledger without writing/resetting trading state.
-    other = Ledger("test")
+    other = Ledger()
     initial(other)
     terminal(other, "bid", "5", "500", "5", "495", "5", 1)
     terminal(other, "ask", "2", "240", "2.4", "732.6", "3", 2, "cancel")
@@ -96,7 +96,7 @@ def test_fees_partial_sale_and_restart_replay() -> None:
 
 
 def test_zero_fill_cancel_and_multiple_buys_average_cost() -> None:
-    ledger = Ledger("test")
+    ledger = Ledger()
     initial(ledger)
     terminal(ledger, "bid", "0", "0", "0", "1000", "0", 1, "cancel")
     terminal(ledger, "bid", "2", "200", "2", "798", "2", 2)
@@ -108,7 +108,7 @@ def test_zero_fill_cancel_and_multiple_buys_average_cost() -> None:
 
 @pytest.mark.parametrize("btc,capital", [("1", "1000"), ("0", "0"), ("0", "NaN")])
 def test_unknown_baseline_is_not_zero_profit(btc: str, capital: str) -> None:
-    ledger = Ledger("test")
+    ledger = Ledger()
     initial(ledger, btc, capital)
     result = snapshot(ledger)
     assert result["status"] == "unavailable"
@@ -117,32 +117,32 @@ def test_unknown_baseline_is_not_zero_profit(btc: str, capital: str) -> None:
 
 @pytest.mark.parametrize("payload", ["{", "[]", '{"state": null}'])
 def test_malformed_history_does_not_crash_accounting(payload: str) -> None:
-    ledger = Ledger("test")
+    ledger = Ledger()
     ledger.consume("initialized", payload, NOW.isoformat())
     assert snapshot(ledger)["status"] == "unavailable"
 
 
 def test_gap_duplicate_discrepancy_and_missing_history() -> None:
-    assert snapshot(Ledger("test"))["total_return_pct"] is None
+    assert snapshot(Ledger())["total_return_pct"] is None
     for sequence in (0, 2):
-        ledger = Ledger("test")
+        ledger = Ledger()
         initial(ledger)
         terminal(ledger, "bid", "1", "100", "1", "899", "1", sequence)
         assert snapshot(ledger)["realized_pnl_krw"] is None
-    ledger = Ledger("test")
+    ledger = Ledger()
     initial(ledger)
     ledger.consume(
         "unexpected-balance", json.dumps({"state": {"identity": "test"}}), NOW.isoformat()
     )
     assert snapshot(ledger)["reason"] == "balance_discrepancy"
-    ledger = Ledger("test")
+    ledger = Ledger()
     initial(ledger)
     terminal(ledger, "bid", "1", "100", "1", "900", "1", 1)
     assert snapshot(ledger)["status"] == "unavailable"
 
 
 def test_current_balance_mismatch_cannot_show_stale_profit() -> None:
-    ledger = Ledger("test")
+    ledger = Ledger()
     initial(ledger)
     result = ledger.snapshot(
         cash=D(1100),

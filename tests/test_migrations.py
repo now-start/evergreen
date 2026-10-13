@@ -10,9 +10,9 @@ def test_packaged_migration_has_single_head_and_frozen_schema() -> None:
     from evergreen.database.migration import configuration
 
     scripts = ScriptDirectory.from_config(configuration())
-    assert scripts.get_heads() == ["0001_execution"]
+    assert scripts.get_heads() == ["0002_remove_key_identity"]
     revision = scripts.get_revision("head")
-    assert revision is not None and revision.down_revision is None
+    assert revision is not None and revision.down_revision == "0001_execution"
     source = Path(revision.path).read_text()
     assert "evergreen.trading" not in source
     assert "create_all" not in source
@@ -82,3 +82,54 @@ def test_direct_alembic_upgrade_cannot_bypass_connection_lock() -> None:
 
     with pytest.raises(RuntimeError, match=r"evergreen\.database"):
         command.upgrade(configuration(), "head")
+
+
+def test_key_identity_migration_preserves_state_and_journal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import json
+
+    from alembic import op
+    from sqlalchemy import create_engine, text
+
+    from evergreen.database.migrations.versions import v0002_remove_key_identity as migration
+    from evergreen.trading.state import State
+
+    engine = create_engine("sqlite://")
+    state = {
+        "identity": "old-key",
+        "peak": "120000",
+        "halted": True,
+        "order_sequence": 7,
+        "pending": {"identifier": "preserve"},
+    }
+    with engine.begin() as connection:
+        for table in ("evergreen_execution_state", "evergreen_execution_event"):
+            connection.execute(text(f"CREATE TABLE {table} (payload TEXT)"))
+        connection.execute(
+            text("INSERT INTO evergreen_execution_state VALUES (:payload)"),
+            {"payload": json.dumps(state)},
+        )
+        for event in ({"identity": "old-key"}, {"state": state, "detail": {"uuid": "order"}}):
+            connection.execute(
+                text("INSERT INTO evergreen_execution_event VALUES (:payload)"),
+                {"payload": json.dumps(event)},
+            )
+        connection.execute(text("INSERT INTO evergreen_execution_event VALUES ('not-json')"))
+        monkeypatch.setattr(op, "get_bind", lambda: connection)
+        migration.upgrade()
+        migration.upgrade()
+        payload = connection.execute(
+            text("SELECT payload FROM evergreen_execution_state")
+        ).scalar_one()
+        expected = {key: value for key, value in state.items() if key != "identity"}
+        assert json.loads(payload) == expected
+        assert State.model_validate_json(payload).pending == {"identifier": "preserve"}
+        history = (
+            connection.execute(text("SELECT payload FROM evergreen_execution_event"))
+            .scalars()
+            .all()
+        )
+        assert json.loads(history[0]) == {}
+        assert json.loads(history[1]) == {"state": expected, "detail": {"uuid": "order"}}
+        assert history[2] == "not-json"

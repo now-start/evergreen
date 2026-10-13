@@ -1,6 +1,5 @@
 """Config Server properties; credentials reuse the existing Spring key names."""
 
-import hashlib
 from decimal import Decimal
 from typing import Self
 
@@ -54,8 +53,3 @@ class TradingSettings(DatabaseSettings):
                 "{cipher}"
             ):
                 raise ValueError("Config Server에서 복호화된 업비트 키가 필요합니다")
-
-    @property
-    def identity(self) -> str:
-        self.require_credentials()
-        return hashlib.sha256(self.access_key.get_secret_value().encode()).hexdigest()

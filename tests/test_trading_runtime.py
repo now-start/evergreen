@@ -147,7 +147,7 @@ async def test_shared_loop_cancellation_cleans_resources_and_isolates_telemetry(
     closed, started = asyncio.Event(), asyncio.Event()
 
     @asynccontextmanager
-    async def store(db: AsyncEngine, identity: str, *, initialize: bool) -> AsyncIterator[Store]:
+    async def store(db: AsyncEngine, *, initialize: bool) -> AsyncIterator[Store]:
         assert not initialize
         assert not is_instrumentation_enabled()
         try:

@@ -135,7 +135,7 @@ async def test_restart_recovers_every_bar_once_outside_buy_window(
     caplog.set_level(logging.INFO, logger="evergreen.trading.chart")
     cfg, api = candidate(), RecoveryUpbit()
     api.now += timedelta(minutes=10)
-    store = MemoryStore(cfg.identity)
+    store = MemoryStore()
     cursor = HOUR - timedelta(hours=gap)
     store.state.strategy, store.state.buffer = ID, BufferState(last_bar=cursor)
     store.state.krw, store.state.btc, store.state.peak = api.cash, api.btc, api.cash
@@ -188,7 +188,7 @@ async def test_cancellation_during_second_sdk_page_returns_no_partial_history() 
 async def test_cancelled_catchup_keeps_cursor_and_restart_recovers() -> None:
     cfg, api = candidate(), RecoveryUpbit()
     api.now += timedelta(minutes=10)
-    store = MemoryStore(cfg.identity)
+    store = MemoryStore()
     cursor = HOUR - timedelta(hours=72)
     store.state.strategy, store.state.buffer = ID, BufferState(last_bar=cursor)
     store.state.krw, store.state.btc = api.cash, api.btc
@@ -207,7 +207,7 @@ async def test_cancelled_catchup_keeps_cursor_and_restart_recovers() -> None:
 async def test_historical_or_expired_buy_never_submits(old_buy: bool, delay: bool) -> None:
     cfg, api = candidate(), RecoveryUpbit()
     api.old_buy, api.delay = old_buy, delay
-    store = MemoryStore(cfg.identity)
+    store = MemoryStore()
     store.state.strategy, store.state.buffer = ID, BufferState(last_bar=HOUR - timedelta(hours=72))
     store.state.krw, store.state.btc = api.cash, api.btc
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "no-signal"
@@ -220,7 +220,7 @@ async def test_held_position_recovers_exit_after_long_downtime() -> None:
     cfg, api = candidate(), RecoveryUpbit()
     api.now += timedelta(minutes=10)
     api.cash, api.btc = D(0), D(1000)
-    store = MemoryStore(cfg.identity)
+    store = MemoryStore()
     cursor = HOUR - timedelta(hours=72)
     store.state.strategy = ID
     store.state.buffer = BufferState(

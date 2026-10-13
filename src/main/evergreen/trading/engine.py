@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_DOWN, Decimal
-from uuid import NAMESPACE_URL, uuid5
+from uuid import uuid4
 
 from evergreen.market import validate_candles
 from evergreen.observability import operation
@@ -221,18 +221,15 @@ class Trader:
         if not self.settings.live_enabled:
             raise _reject("live_disabled", "실거래 비활성화 상태입니다")
         with operation(logger, "execution_state_load"):
-            saved = await self.store.load_for_start(self.settings.identity)
+            saved = await self.store.load_for_start()
         state = (
             saved
             if saved is not None
             else State(
-                identity=self.settings.identity,
                 strategy=self.settings.strategy,
                 buffer=BufferState() if self.settings.strategy == ID else None,
             )
         )
-        if state.identity != self.settings.identity:
-            raise _reject("account_identity_mismatch", "실행 계정과 DB 상태가 다릅니다")
         if state.pending is not None:
             return await self._reconcile(state)
         with operation(logger, "account_fetch"):
@@ -283,7 +280,7 @@ class Trader:
             if not state.halted:
                 logger.warning("event=trading_halted reason=max_drawdown")
             state.halted = True
-        ledger = await self.store.performance(state.identity)
+        ledger = await self.store.performance()
         performance = ledger.snapshot(
             cash=cash,
             btc=btc,
@@ -461,13 +458,7 @@ class Trader:
         ):
             raise _reject("stale_signal", "주문 준비 중 신호 유효 시간이 지났습니다")
         state.order_sequence += 1
-        identifier = (
-            "eg-"
-            + uuid5(
-                NAMESPACE_URL,
-                f"{state.identity}:KRW-BTC:{state.strategy}:{hour.isoformat()}:{side}:{reason}:{state.order_sequence}",
-            ).hex
-        )
+        identifier = "eg-" + uuid4().hex
         state.pending = {
             "market": "KRW-BTC",
             "side": side,
