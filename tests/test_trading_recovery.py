@@ -235,3 +235,93 @@ async def test_held_position_recovers_exit_after_long_downtime() -> None:
     assert store.state.reserved_exit is not None
     assert await Trader(api, store, cfg, lambda: api.now).tick() == "pending"
     assert len(api.sent) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("hours", [200, 400])
+async def test_maintenance_gaps_recover_durable_cursor(
+    hours: int, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    start = HOUR - timedelta(hours=hours)
+    # Include the start boundary, a page boundary, and the recent downtime.
+    missing = {
+        start,
+        start + timedelta(hours=1),
+        HOUR - timedelta(hours=200),
+        HOUR - timedelta(hours=199),
+        HOUR - timedelta(hours=4),
+        HOUR - timedelta(hours=3),
+    }
+
+    def fetch(request: httpx.Request) -> httpx.Response:
+        end = datetime.fromisoformat(request.url.params["to"])
+        count = int(request.url.params["count"])
+        data: list[dict[str, object]] = []
+        opening = end - timedelta(hours=1)
+        while len(data) < count:
+            if opening not in missing:
+                data.append(raw_bar(opening))
+            opening -= timedelta(hours=1)
+        return httpx.Response(200, json=data)
+
+    cfg, api = candidate(), RecoveryUpbit()
+    api.now += timedelta(minutes=10)
+    adapter = Upbit(cfg, transport=httpx.MockTransport(fetch))
+    try:
+        bars = await adapter.candles(HOUR, api.now, **({"start": start} if hours > 200 else {}))
+        assert [bar.open_time for bar in bars] == [start + timedelta(hours=i) for i in range(hours)]
+        for bar in bars:
+            if bar.open_time in missing:
+                assert bar.open == bar.high == bar.low == bar.close == D(100)
+                assert bar.volume == bar.quote_volume == 0
+            else:
+                assert bar.volume == 1 and bar.high == 101 and bar.low == 99
+        assert "event=candle_gap_filled" in caplog.text
+        monkeypatch.setattr(api, "candles", adapter.candles)
+        store = MemoryStore()
+        cursor = start + timedelta(hours=168)
+        store.state.strategy, store.state.buffer = ID, BufferState(last_bar=cursor)
+        store.state.krw, store.state.btc, store.state.peak = api.cash, api.btc, api.cash
+        assert await Trader(api, store, cfg, lambda: api.now).tick() == "no-signal"
+        assert store.state.buffer is not None and store.state.buffer.last_bar == HOUR
+        assert await Trader(api, store, cfg, lambda: api.now).tick() == "already-evaluated"
+        assert not api.sent
+    finally:
+        await adapter.close()
+
+
+@pytest.mark.asyncio
+async def test_missing_latest_hour_is_not_filled() -> None:
+    def fetch(request: httpx.Request) -> httpx.Response:
+        count = int(request.url.params["count"])
+        return httpx.Response(
+            200, json=[raw_bar(HOUR - timedelta(hours=i)) for i in range(2, count + 2)]
+        )
+
+    api = Upbit(candidate(), transport=httpx.MockTransport(fetch))
+    try:
+        with pytest.raises(ValueError):
+            await api.candles(HOUR, NOW)
+    finally:
+        await api.close()
+
+
+@pytest.mark.asyncio
+async def test_gap_uses_preceding_close_not_future_price() -> None:
+    def fetch(request: httpx.Request) -> httpx.Response:
+        data = []
+        for offset, price in [(1, 200), (2, 150), (4, 90), (5, 80)]:
+            bar = raw_bar(HOUR - timedelta(hours=offset))
+            bar.update(opening_price=price, high_price=price, low_price=price, trade_price=price)
+            data.append(bar)
+        return httpx.Response(200, json=data)
+
+    api = Upbit(candidate(), transport=httpx.MockTransport(fetch))
+    try:
+        bars = await api.candles(HOUR, NOW, start=HOUR - timedelta(hours=4))
+        assert [bar.close for bar in bars] == [D(90), D(90), D(150), D(200)]
+        gap = bars[1]
+        assert gap.open == gap.high == gap.low == gap.close == D(90)
+        assert gap.volume == gap.quote_volume == 0
+    finally:
+        await api.close()

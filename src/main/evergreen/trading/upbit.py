@@ -153,50 +153,75 @@ class Upbit:
     async def candles(
         self, end: datetime, now: datetime, *, start: datetime | None = None
     ) -> list[Candle]:
-        """Read closed hours backwards; an explicit recovery range must be complete."""
+        """Fill no-trade hours only between real candles, never beyond the latest close."""
         end = utc_hour(end)
-        if start is not None:
-            start = utc_hour(start)
-            if not start < end <= now:
-                raise ValueError("복구 조회는 확정된 시간봉 범위여야 합니다")
+        start = (
+            utc_hour(start)
+            if start is not None
+            else end - timedelta(hours=self.settings.candle_count)
+        )
+        if not start < end <= now:
+            raise ValueError("복구 조회는 확정된 시간봉 범위여야 합니다")
         cursor, pages = end, 0
         result: list[Candle] = []
-        while True:
-            count = (
-                self.settings.candle_count
-                if start is None
-                else min(200, int((cursor - start).total_seconds() // 3600))
-            )
+        while cursor > start:
+            count = min(200, int((cursor - start).total_seconds() // 3600))
             response = await self.sdk.candles.with_raw_response.list_minutes(
                 60, market="KRW-BTC", count=count, to=cursor.isoformat()
             )
             records = TypeAdapter(list[UpbitCandle]).validate_python(await response.json())
             batch = sorted((bar.candle(now) for bar in records), key=lambda bar: bar.open_time)
             pages += 1
-            if start is None:
-                return batch
-            page_start = cursor - timedelta(hours=count)
-            ordered, quality = validate_candles(batch, page_start, cursor, as_of=now)
+            if len(batch) != count or batch[0].open_time >= cursor:
+                raise ValueError("복구 캔들 페이지가 부족하거나 진행하지 않습니다")
+            ordered, quality = validate_candles(batch, batch[0].open_time, cursor, as_of=now)
             if (
-                not quality.valid
+                quality.conflicts
                 or quality.duplicates
                 or quality.incomplete
                 or quality.outside_range
                 or ordered != batch
+                or (pages == 1 and batch[-1].close_time != end)
             ):
                 logger.error(
                     "event=candle_recovery status=failed reason=invalid_page page=%d", pages
                 )
                 raise ValueError("복구 캔들 페이지의 연속성·확정 여부 검사가 실패했습니다")
             result.extend(batch)
-            cursor = page_start
-            if cursor == start:
-                logger.info(
-                    "event=candle_recovery status=completed pages=%d bars=%d", pages, len(result)
+            cursor = batch[0].open_time
+            if cursor > start:
+                await asyncio.sleep(0.12)
+
+        # Upbit omits hours without trades. An older real close anchors each gap;
+        # requiring the latest real hour above prevents trading on stale-only data.
+        result.sort(key=lambda bar: bar.open_time)
+        filled: list[Candle] = []
+        previous = result[0]
+        for bar in result[1:]:
+            opening = max(start, previous.close_time)
+            while opening < bar.open_time:
+                filled.append(
+                    Candle(
+                        open_time=opening,
+                        open=previous.close,
+                        high=previous.close,
+                        low=previous.close,
+                        close=previous.close,
+                        volume=Decimal(0),
+                        quote_volume=Decimal(0),
+                        fetched_at=now,
+                    )
                 )
-                return sorted(result, key=lambda bar: bar.open_time)
-            # Share the candle API budget; cancellation must leave the durable cursor untouched.
-            await asyncio.sleep(0.12)
+                opening += timedelta(hours=1)
+            previous = bar
+        if filled:
+            logger.warning("event=candle_gap_filled bars=%d", len(filled))
+        result = sorted(
+            [bar for bar in result if bar.open_time >= start] + filled,
+            key=lambda bar: bar.open_time,
+        )
+        logger.info("event=candle_recovery status=completed pages=%d bars=%d", pages, len(result))
+        return result
 
     async def has_open_orders(self) -> bool:
         self.settings.require_credentials()

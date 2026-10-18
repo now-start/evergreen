@@ -180,7 +180,8 @@ async def test_sdk_read_paths_and_response_validation() -> None:
         with pytest.raises(ValueError):
             await api.book()
         now = datetime(2026, 9, 7, tzinfo=UTC)
-        assert await api.candles(now, now) == []
+        with pytest.raises(ValueError):
+            await api.candles(now, now)
         assert dict(seen[-1].url.params) == {
             "market": "KRW-BTC",
             "count": "169",

@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import httpx
@@ -151,25 +151,30 @@ async def test_valid_read_responses_and_chronological_candles(candidate: bool) -
                 ],
             }
         ],
-        "/v1/candles/minutes/60": [
-            {
-                "market": "KRW-BTC",
-                "unit": 60,
-                "candle_date_time_utc": f"2026-09-08T0{hour}:00:00",
-                "opening_price": 100,
-                "high_price": 110,
-                "low_price": 90,
-                "trade_price": 105,
-                "candle_acc_trade_volume": 1,
-                "candle_acc_trade_price": 105,
-            }
-            for hour in (2, 1)
-        ],
     }
 
     def fetch(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/v1/candles/minutes/60":
-            assert request.url.params["count"] == ("200" if candidate else "169")
+            count = 200 if candidate else 169
+            assert request.url.params["count"] == str(count)
+            end = datetime.fromisoformat(request.url.params["to"])
+            return httpx.Response(
+                200,
+                json=[
+                    {
+                        "market": "KRW-BTC",
+                        "unit": 60,
+                        "candle_date_time_utc": (end - timedelta(hours=i)).isoformat(),
+                        "opening_price": 100,
+                        "high_price": 110,
+                        "low_price": 90,
+                        "trade_price": 105,
+                        "candle_acc_trade_volume": 1,
+                        "candle_acc_trade_price": 105,
+                    }
+                    for i in range(1, count + 1)
+                ],
+            )
         return httpx.Response(200, json=responses[request.url.path])
 
     config = live_settings()
@@ -185,7 +190,10 @@ async def test_valid_read_responses_and_chronological_candles(candidate: bool) -
         assert (await api.book()).orderbook_units[0].ask_price == Decimal(101)
         now = datetime(2026, 9, 8, 3, tzinfo=UTC)
         bars = await api.candles(now, now)
-        assert [bar.open_time.hour for bar in bars] == [1, 2]
+        count = 200 if candidate else 169
+        assert [bar.open_time for bar in bars] == [
+            now - timedelta(hours=i) for i in range(count, 0, -1)
+        ]
         assert all(bar.fetched_at == now for bar in bars)
     finally:
         await api.close()
