@@ -1,11 +1,11 @@
 {
   "__inputs": [
     {
-      "name": "DS_MARIADB",
-      "label": "Evergreen MariaDB (SELECT 전용)",
+      "name": "DS_POSTGRESQL",
+      "label": "Evergreen PostgreSQL (SELECT 전용)",
       "type": "datasource",
-      "pluginId": "mysql",
-      "pluginName": "MySQL"
+      "pluginId": "grafana-postgresql-datasource",
+      "pluginName": "PostgreSQL"
     },
     {
       "name": "DS_LOKI",
@@ -43,8 +43,8 @@
       "title": "BTC/KRW · 전략 기준선과 실제 주문 평균 체결가",
       "description": "확정 봉 종가 시각 기준. 점은 잔고 대사가 끝난 주문의 VWAP이며 마지막 실제 체결 시각에 표시됩니다. 미체결 주문·가상 신호는 점으로 표시하지 않습니다. 수집되지 않은 시간봉은 보간하지 않습니다.",
       "datasource": {
-        "type": "mysql",
-        "uid": "${DS_MARIADB}"
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_POSTGRESQL}"
       },
       "gridPos": {
         "x": 0,
@@ -56,24 +56,24 @@
         {
           "refId": "A",
           "datasource": {
-            "type": "mysql",
-            "uid": "${DS_MARIADB}"
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_POSTGRESQL}"
           },
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "WITH evidence AS (\n  SELECT e.id, j.*,\n         ROW_NUMBER() OVER (PARTITION BY j.event_id ORDER BY e.id DESC) AS latest\n  FROM evergreen_execution_event AS e,\n       JSON_TABLE(e.payload, '$.detail.chart[*]' COLUMNS (\n         event_id VARCHAR(160) PATH '$.event_id',\n         kind VARCHAR(40) PATH '$.event',\n         schema_version INT PATH '$.schema_version',\n         strategy VARCHAR(64) PATH '$.strategy',\n         mode VARCHAR(8) PATH '$.mode',\n         event_time DOUBLE PATH '$.event_time',\n         observed_at VARCHAR(40) PATH '$.observed_at',\n         close_price DECIMAL(30,10) PATH '$.close',\n         entry_threshold DECIMAL(30,10) PATH '$.entry_threshold',\n         initial_stop DECIMAL(30,10) PATH '$.initial_stop',\n         trailing_stop DECIMAL(30,10) PATH '$.trailing_stop',\n         channel_exit_threshold DECIMAL(30,10) PATH '$.channel_exit_threshold',\n         breach_count INT PATH '$.breach_count',\n         rising_grace VARCHAR(5) PATH '$.rising_grace',\n         awaiting_reset VARCHAR(5) PATH '$.awaiting_reset',\n         exit_due VARCHAR(5) PATH '$.exit_due',\n         halted VARCHAR(5) PATH '$.halted',\n         position VARCHAR(8) PATH '$.position',\n         candidate_signal VARCHAR(8) PATH '$.candidate_signal',\n         pre_order_signal VARCHAR(8) PATH '$.pre_order_signal'\n       )) AS j\n  WHERE e.event = 'strategy-evaluated'\n    AND j.schema_version = 1 AND j.strategy = 'breakout-buffer-early3-v1'\n    AND j.mode = 'live'\n    AND j.event_time BETWEEN $__unixEpochFrom() AND $__unixEpochTo()\n)\nSELECT event_time AS time, close_price AS '종가', entry_threshold AS '진입선',\n       initial_stop AS '초기 손절선', trailing_stop AS '추적 손절선',\n       channel_exit_threshold AS '96시간 청산선'\nFROM evidence WHERE latest = 1 AND kind = 'strategy_bar'\nORDER BY time;\n"
+          "rawSql": "WITH evidence AS (\n  SELECT e.id, j.*,\n         ROW_NUMBER() OVER (PARTITION BY j.event_id ORDER BY e.id DESC) AS latest\n  FROM evergreen_execution_event AS e,\n       JSON_TABLE(CAST(e.payload AS jsonb), '$.detail.chart[*]' COLUMNS (\n         event_id VARCHAR(160) PATH '$.event_id',\n         kind VARCHAR(40) PATH '$.event',\n         schema_version INT PATH '$.schema_version',\n         strategy VARCHAR(64) PATH '$.strategy',\n         mode VARCHAR(8) PATH '$.mode',\n         event_time DOUBLE PRECISION PATH '$.event_time',\n         observed_at VARCHAR(40) PATH '$.observed_at',\n         close_price DECIMAL(30,10) PATH '$.close',\n         entry_threshold DECIMAL(30,10) PATH '$.entry_threshold',\n         initial_stop DECIMAL(30,10) PATH '$.initial_stop',\n         trailing_stop DECIMAL(30,10) PATH '$.trailing_stop',\n         channel_exit_threshold DECIMAL(30,10) PATH '$.channel_exit_threshold',\n         breach_count INT PATH '$.breach_count',\n         rising_grace VARCHAR(5) PATH '$.rising_grace',\n         awaiting_reset VARCHAR(5) PATH '$.awaiting_reset',\n         exit_due VARCHAR(5) PATH '$.exit_due',\n         halted VARCHAR(5) PATH '$.halted',\n         position VARCHAR(8) PATH '$.position',\n         candidate_signal VARCHAR(8) PATH '$.candidate_signal',\n         pre_order_signal VARCHAR(8) PATH '$.pre_order_signal'\n       )) AS j\n  WHERE e.event = 'strategy-evaluated'\n    AND j.schema_version = 1 AND j.strategy = 'breakout-buffer-early3-v1'\n    AND j.mode = 'live'\n    AND j.event_time BETWEEN $__unixEpochFrom() AND $__unixEpochTo()\n)\nSELECT event_time AS time, close_price AS \"종가\", entry_threshold AS \"진입선\",\n       initial_stop AS \"초기 손절선\", trailing_stop AS \"추적 손절선\",\n       channel_exit_threshold AS \"96시간 청산선\"\nFROM evidence WHERE latest = 1 AND kind = 'strategy_bar'\nORDER BY time;\n"
         },
         {
           "refId": "B",
           "datasource": {
-            "type": "mysql",
-            "uid": "${DS_MARIADB}"
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_POSTGRESQL}"
           },
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "WITH evidence AS (\n  SELECT e.id, j.*,\n         ROW_NUMBER() OVER (PARTITION BY j.event_id ORDER BY e.id DESC) AS latest\n  FROM evergreen_execution_event AS e,\n       JSON_TABLE(e.payload, '$.detail.chart[*]' COLUMNS (\n         event_id VARCHAR(160) PATH '$.event_id',\n         kind VARCHAR(40) PATH '$.event',\n         schema_version INT PATH '$.schema_version',\n         strategy VARCHAR(64) PATH '$.strategy',\n         mode VARCHAR(8) PATH '$.mode',\n         event_time DOUBLE PATH '$.event_time',\n         observed_at VARCHAR(40) PATH '$.observed_at',\n         order_sequence INT PATH '$.order_sequence',\n         side VARCHAR(8) PATH '$.side',\n         fill_price DECIMAL(30,10) PATH '$.fill_price',\n         quantity DECIMAL(30,10) PATH '$.quantity',\n         fee_amount DECIMAL(30,10) PATH '$.fee_amount',\n         terminal_state VARCHAR(8) PATH '$.terminal_state',\n         signal_time VARCHAR(40) PATH '$.signal_time',\n         filled_at VARCHAR(40) PATH '$.filled_at',\n         remaining_btc DECIMAL(30,10) PATH '$.remaining_btc'\n       )) AS j\n  WHERE e.event = 'order-terminal'\n    AND j.schema_version = 1 AND j.strategy = 'breakout-buffer-early3-v1'\n    AND j.mode = 'live'\n    AND j.event_time BETWEEN $__unixEpochFrom() AND $__unixEpochTo()\n)\nSELECT event_time AS time, fill_price AS value,\n       CONCAT(CASE side WHEN 'buy' THEN '매수 #' ELSE '매도 #' END, order_sequence) AS metric\nFROM evidence WHERE latest = 1 AND kind = 'order_execution'\nORDER BY time, order_sequence;\n"
+          "rawSql": "WITH evidence AS (\n  SELECT e.id, j.*,\n         ROW_NUMBER() OVER (PARTITION BY j.event_id ORDER BY e.id DESC) AS latest\n  FROM evergreen_execution_event AS e,\n       JSON_TABLE(CAST(e.payload AS jsonb), '$.detail.chart[*]' COLUMNS (\n         event_id VARCHAR(160) PATH '$.event_id',\n         kind VARCHAR(40) PATH '$.event',\n         schema_version INT PATH '$.schema_version',\n         strategy VARCHAR(64) PATH '$.strategy',\n         mode VARCHAR(8) PATH '$.mode',\n         event_time DOUBLE PRECISION PATH '$.event_time',\n         observed_at VARCHAR(40) PATH '$.observed_at',\n         order_sequence INT PATH '$.order_sequence',\n         side VARCHAR(8) PATH '$.side',\n         fill_price DECIMAL(30,10) PATH '$.fill_price',\n         quantity DECIMAL(30,10) PATH '$.quantity',\n         fee_amount DECIMAL(30,10) PATH '$.fee_amount',\n         terminal_state VARCHAR(8) PATH '$.terminal_state',\n         signal_time VARCHAR(40) PATH '$.signal_time',\n         filled_at VARCHAR(40) PATH '$.filled_at',\n         remaining_btc DECIMAL(30,10) PATH '$.remaining_btc'\n       )) AS j\n  WHERE e.event = 'order-terminal'\n    AND j.schema_version = 1 AND j.strategy = 'breakout-buffer-early3-v1'\n    AND j.mode = 'live'\n    AND j.event_time BETWEEN $__unixEpochFrom() AND $__unixEpochTo()\n)\nSELECT event_time AS time, fill_price AS value,\n       CONCAT(CASE side WHEN 'buy' THEN '매수 #' ELSE '매도 #' END, order_sequence) AS metric\nFROM evidence WHERE latest = 1 AND kind = 'order_execution'\nORDER BY time, order_sequence;\n"
         }
       ],
       "fieldConfig": {
@@ -165,8 +165,8 @@
       "type": "table",
       "title": "시간봉 판단 근거",
       "datasource": {
-        "type": "mysql",
-        "uid": "${DS_MARIADB}"
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_POSTGRESQL}"
       },
       "gridPos": {
         "x": 0,
@@ -178,13 +178,13 @@
         {
           "refId": "A",
           "datasource": {
-            "type": "mysql",
-            "uid": "${DS_MARIADB}"
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_POSTGRESQL}"
           },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH evidence AS (\n  SELECT e.id, j.*,\n         ROW_NUMBER() OVER (PARTITION BY j.event_id ORDER BY e.id DESC) AS latest\n  FROM evergreen_execution_event AS e,\n       JSON_TABLE(e.payload, '$.detail.chart[*]' COLUMNS (\n         event_id VARCHAR(160) PATH '$.event_id',\n         kind VARCHAR(40) PATH '$.event',\n         schema_version INT PATH '$.schema_version',\n         strategy VARCHAR(64) PATH '$.strategy',\n         mode VARCHAR(8) PATH '$.mode',\n         event_time DOUBLE PATH '$.event_time',\n         observed_at VARCHAR(40) PATH '$.observed_at',\n         close_price DECIMAL(30,10) PATH '$.close',\n         entry_threshold DECIMAL(30,10) PATH '$.entry_threshold',\n         initial_stop DECIMAL(30,10) PATH '$.initial_stop',\n         trailing_stop DECIMAL(30,10) PATH '$.trailing_stop',\n         channel_exit_threshold DECIMAL(30,10) PATH '$.channel_exit_threshold',\n         breach_count INT PATH '$.breach_count',\n         rising_grace VARCHAR(5) PATH '$.rising_grace',\n         awaiting_reset VARCHAR(5) PATH '$.awaiting_reset',\n         exit_due VARCHAR(5) PATH '$.exit_due',\n         halted VARCHAR(5) PATH '$.halted',\n         position VARCHAR(8) PATH '$.position',\n         candidate_signal VARCHAR(8) PATH '$.candidate_signal',\n         pre_order_signal VARCHAR(8) PATH '$.pre_order_signal'\n       )) AS j\n  WHERE e.event = 'strategy-evaluated'\n    AND j.schema_version = 1 AND j.strategy = 'breakout-buffer-early3-v1'\n    AND j.mode = 'live'\n    AND j.event_time BETWEEN $__unixEpochFrom() AND $__unixEpochTo()\n)\nSELECT event_time AS time, position AS '보유 상태',\n       candidate_signal AS '봉 신호', pre_order_signal AS '최종 주문 전 신호',\n       breach_count AS '연속 이탈', rising_grace AS '상승 유예',\n       awaiting_reset AS '재진입 대기', exit_due AS '예방 청산',\n       halted AS '거래 중단', observed_at AS '관측 시각 UTC'\nFROM evidence WHERE latest = 1 AND kind = 'strategy_bar'\nORDER BY time DESC;\n"
+          "rawSql": "WITH evidence AS (\n  SELECT e.id, j.*,\n         ROW_NUMBER() OVER (PARTITION BY j.event_id ORDER BY e.id DESC) AS latest\n  FROM evergreen_execution_event AS e,\n       JSON_TABLE(CAST(e.payload AS jsonb), '$.detail.chart[*]' COLUMNS (\n         event_id VARCHAR(160) PATH '$.event_id',\n         kind VARCHAR(40) PATH '$.event',\n         schema_version INT PATH '$.schema_version',\n         strategy VARCHAR(64) PATH '$.strategy',\n         mode VARCHAR(8) PATH '$.mode',\n         event_time DOUBLE PRECISION PATH '$.event_time',\n         observed_at VARCHAR(40) PATH '$.observed_at',\n         close_price DECIMAL(30,10) PATH '$.close',\n         entry_threshold DECIMAL(30,10) PATH '$.entry_threshold',\n         initial_stop DECIMAL(30,10) PATH '$.initial_stop',\n         trailing_stop DECIMAL(30,10) PATH '$.trailing_stop',\n         channel_exit_threshold DECIMAL(30,10) PATH '$.channel_exit_threshold',\n         breach_count INT PATH '$.breach_count',\n         rising_grace VARCHAR(5) PATH '$.rising_grace',\n         awaiting_reset VARCHAR(5) PATH '$.awaiting_reset',\n         exit_due VARCHAR(5) PATH '$.exit_due',\n         halted VARCHAR(5) PATH '$.halted',\n         position VARCHAR(8) PATH '$.position',\n         candidate_signal VARCHAR(8) PATH '$.candidate_signal',\n         pre_order_signal VARCHAR(8) PATH '$.pre_order_signal'\n       )) AS j\n  WHERE e.event = 'strategy-evaluated'\n    AND j.schema_version = 1 AND j.strategy = 'breakout-buffer-early3-v1'\n    AND j.mode = 'live'\n    AND j.event_time BETWEEN $__unixEpochFrom() AND $__unixEpochTo()\n)\nSELECT event_time AS time, position AS \"보유 상태\",\n       candidate_signal AS \"봉 신호\", pre_order_signal AS \"최종 주문 전 신호\",\n       breach_count AS \"연속 이탈\", rising_grace AS \"상승 유예\",\n       awaiting_reset AS \"재진입 대기\", exit_due AS \"예방 청산\",\n       halted AS \"거래 중단\", observed_at AS \"관측 시각 UTC\"\nFROM evidence WHERE latest = 1 AND kind = 'strategy_bar'\nORDER BY time DESC;\n"
         }
       ],
       "fieldConfig": {
@@ -200,8 +200,8 @@
       "type": "table",
       "title": "확정된 주문 체결 · 수수료",
       "datasource": {
-        "type": "mysql",
-        "uid": "${DS_MARIADB}"
+        "type": "grafana-postgresql-datasource",
+        "uid": "${DS_POSTGRESQL}"
       },
       "gridPos": {
         "x": 0,
@@ -213,13 +213,13 @@
         {
           "refId": "A",
           "datasource": {
-            "type": "mysql",
-            "uid": "${DS_MARIADB}"
+            "type": "grafana-postgresql-datasource",
+            "uid": "${DS_POSTGRESQL}"
           },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH evidence AS (\n  SELECT e.id, j.*,\n         ROW_NUMBER() OVER (PARTITION BY j.event_id ORDER BY e.id DESC) AS latest\n  FROM evergreen_execution_event AS e,\n       JSON_TABLE(e.payload, '$.detail.chart[*]' COLUMNS (\n         event_id VARCHAR(160) PATH '$.event_id',\n         kind VARCHAR(40) PATH '$.event',\n         schema_version INT PATH '$.schema_version',\n         strategy VARCHAR(64) PATH '$.strategy',\n         mode VARCHAR(8) PATH '$.mode',\n         event_time DOUBLE PATH '$.event_time',\n         observed_at VARCHAR(40) PATH '$.observed_at',\n         order_sequence INT PATH '$.order_sequence',\n         side VARCHAR(8) PATH '$.side',\n         fill_price DECIMAL(30,10) PATH '$.fill_price',\n         quantity DECIMAL(30,10) PATH '$.quantity',\n         fee_amount DECIMAL(30,10) PATH '$.fee_amount',\n         terminal_state VARCHAR(8) PATH '$.terminal_state',\n         signal_time VARCHAR(40) PATH '$.signal_time',\n         filled_at VARCHAR(40) PATH '$.filled_at',\n         remaining_btc DECIMAL(30,10) PATH '$.remaining_btc'\n       )) AS j\n  WHERE e.event = 'order-terminal'\n    AND j.schema_version = 1 AND j.strategy = 'breakout-buffer-early3-v1'\n    AND j.mode = 'live'\n    AND j.event_time BETWEEN $__unixEpochFrom() AND $__unixEpochTo()\n)\nSELECT event_time AS time, order_sequence AS '주문 순번', side AS '방향',\n       fill_price AS '주문 평균 체결가', quantity AS '체결 BTC',\n       fee_amount AS '수수료 KRW', terminal_state AS '종료 상태',\n       signal_time AS '신호 시각 UTC', filled_at AS '최종 체결 시각 UTC',\n       remaining_btc AS '잔여 BTC'\nFROM evidence WHERE latest = 1 AND kind = 'order_execution'\nORDER BY time DESC, order_sequence;\n"
+          "rawSql": "WITH evidence AS (\n  SELECT e.id, j.*,\n         ROW_NUMBER() OVER (PARTITION BY j.event_id ORDER BY e.id DESC) AS latest\n  FROM evergreen_execution_event AS e,\n       JSON_TABLE(CAST(e.payload AS jsonb), '$.detail.chart[*]' COLUMNS (\n         event_id VARCHAR(160) PATH '$.event_id',\n         kind VARCHAR(40) PATH '$.event',\n         schema_version INT PATH '$.schema_version',\n         strategy VARCHAR(64) PATH '$.strategy',\n         mode VARCHAR(8) PATH '$.mode',\n         event_time DOUBLE PRECISION PATH '$.event_time',\n         observed_at VARCHAR(40) PATH '$.observed_at',\n         order_sequence INT PATH '$.order_sequence',\n         side VARCHAR(8) PATH '$.side',\n         fill_price DECIMAL(30,10) PATH '$.fill_price',\n         quantity DECIMAL(30,10) PATH '$.quantity',\n         fee_amount DECIMAL(30,10) PATH '$.fee_amount',\n         terminal_state VARCHAR(8) PATH '$.terminal_state',\n         signal_time VARCHAR(40) PATH '$.signal_time',\n         filled_at VARCHAR(40) PATH '$.filled_at',\n         remaining_btc DECIMAL(30,10) PATH '$.remaining_btc'\n       )) AS j\n  WHERE e.event = 'order-terminal'\n    AND j.schema_version = 1 AND j.strategy = 'breakout-buffer-early3-v1'\n    AND j.mode = 'live'\n    AND j.event_time BETWEEN $__unixEpochFrom() AND $__unixEpochTo()\n)\nSELECT event_time AS time, order_sequence AS \"주문 순번\", side AS \"방향\",\n       fill_price AS \"주문 평균 체결가\", quantity AS \"체결 BTC\",\n       fee_amount AS \"수수료 KRW\", terminal_state AS \"종료 상태\",\n       signal_time AS \"신호 시각 UTC\", filled_at AS \"최종 체결 시각 UTC\",\n       remaining_btc AS \"잔여 BTC\"\nFROM evidence WHERE latest = 1 AND kind = 'order_execution'\nORDER BY time DESC, order_sequence;\n"
         }
       ],
       "fieldConfig": {

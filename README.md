@@ -2,6 +2,9 @@
 
 차트 데이터만을 사용해 비트코인을 자동 매매하는 Python 프로젝트입니다.
 
+3.0.0부터 PostgreSQL 18 전용입니다. [DB 설정](docs/database-migrations.md)과
+[2.x 핵심 데이터 가져오기](docs/postgresql-cutover.md)를 참고하세요.
+
 ## 현재 연구·승격 상태
 
 실험01–72는 [연구 목차](docs/research-index.md)에서 주제별로 확인할 수 있습니다.
@@ -26,7 +29,7 @@
 [매매 전략 V0](docs/trading-strategy-v0.md)에 업비트 BTC/KRW 현물의 진입·청산,
 데이터 계약, 백테스트와 자동 승격 기준을 정리합니다. 이 문서는 검증할 초안이며,
 온라인 파인튜닝·자동 승격은 아직 없습니다.
-[주문 실행기](docs/trading-execution.md)는 공식 `upbit-sdk`와 기존 MariaDB를 사용하며,
+[주문 실행기](docs/trading-execution.md)는 공식 `upbit-sdk`와 기존 PostgreSQL를 사용하며,
 API와 같은 프로세스에서 시작·종료됩니다. 비로컬 프로파일에서 Config Server의
 `evergreen.execution.live-enabled=true`일 때만 매매 루프를 시작하며 기본값은 false입니다.
 최초 계좌 상태는 별도로 초기화해야 하며, 실행 상태는 `/actuator/info`의 `trading`에서 확인합니다.
@@ -103,7 +106,7 @@ src/main/evergreen/
 ├── market.py       # 공통 캔들 계약·공개 데이터·품질 검사
 ├── strategies/    # 공통 순수 전략 신호
 ├── research/      # 오프라인 모의 체결, 학습·실험·보고
-└── trading/       # API lifespan 매매 루프, 공식 Upbit SDK·MariaDB (기본 비활성화)
+└── trading/       # API lifespan 매매 루프, 공식 Upbit SDK·PostgreSQL (기본 비활성화)
 ```
 
 비즈니스 기능은 `evergreen` 아래에 기능 단위로 추가하고, 공통 Platform 연동은
@@ -121,7 +124,7 @@ uv run evergreen
 
 기동·DB·매매 로그와 수집 범위는 [운영 로그](docs/operational-logging.md)를 참고하세요.
 전략 기준선·실제 체결 그래프는 [Grafana 준비 가이드](docs/grafana/README.md)의
-JSON 로그 계약, MariaDB 조회 SQL, 가져오기용 대시보드 템플릿을 사용합니다.
+JSON 로그 계약, PostgreSQL 조회 SQL, 가져오기용 대시보드 템플릿을 사용합니다.
 
 ## Docker
 
@@ -179,7 +182,7 @@ GitHub Actions는 `now-start/gitops`의 `reusable-python-app.yaml`을 호출합�
 1. `.env`와 프로세스 환경변수 로드
 2. Config Server의 `{application}-{profile}.json?resolvePlaceholders=true` 조회
 3. 원격 설정을 환경변수보다 낮은 우선순위로 병합하고 Pydantic으로 재검증
-4. 기존 MariaDB에 Alembic 미적용 revision 반영, 실패 시 기동 중단
+4. 기존 PostgreSQL에 Alembic 미적용 revision 반영, 실패 시 기동 중단
 5. 원격 OTLP 설정으로 OpenTelemetry 자동 계측 초기화
 6. 애플리케이션 포트와 관리 포트 시작
 7. Eureka 등록 및 heartbeat 시작

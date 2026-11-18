@@ -30,7 +30,7 @@
   빈 결과 자체가 워커 정상이나 거래 없음을 뜻하지 않는다.
 - Loki 누락·보존 만료는 이 대시보드에서 복원할 수 없다. 거래 프로그램의 DB 저장은 유지한다.
 
-아래 MariaDB SQL 템플릿은 **선택 사항**이다. Loki 전용 구성에는 DB 데이터 소스나 계정이 필요 없다.
+아래 PostgreSQL SQL 템플릿은 **선택 사항**이다. Loki 전용 구성에는 DB 데이터 소스나 계정이 필요 없다.
 
 변환 계약 검증: 임시 디렉터리에 `@grafana/data@13.2.1`과 `rxjs`를 설치한 뒤
 `node docs/grafana/verify-loki-dashboard.cjs /절대/임시경로/node_modules`로 실행한다.
@@ -104,17 +104,16 @@ ID의 범위는 단일 실행 DB/계좌다. 여러 DB의 데이터를 병합할 
 체결 금액/수량 역시 민감한 거래 정보이므로 Grafana/Loki 접근 권한과 보존 기간을 제한한다.
 `event_id`, 가격, 시각, 주문 순번은 **Loki 인덱스 라벨에 추가하지 않는다.**
 
-## 선택 사항: MariaDB 기반 템플릿 연결 순서
+## 선택 사항: PostgreSQL 기반 템플릿 연결 순서
 
 **이번 Loki 전용 대시보드 적용에는 아래 절차를 실행하지 않는다.**
 DB 직접 조회를 별도로 선택한 경우에만 사용하는 대안이다.
 
-1. 운영 DB에서 `SELECT VERSION();`으로 **MariaDB 10.11 이상**을 확인한다 (이번 SQL 검증 버전은 10.11).
-   `JSON_TABLE` 자체는 10.6부터 지원하지만 이전 버전은 JSON null 처리까지 별도 검증이 필요하다.
-2. Grafana의 MySQL 데이터 소스를 기존 Evergreen DB에 연결한다. 애플리케이션의 쓰기 계정을
+1. PostgreSQL 18을 사용한다. `JSON_TABLE`로 Text payload를 jsonb로 변환해 조회한다.
+2. Grafana의 PostgreSQL 데이터 소스를 기존 Evergreen DB에 연결한다. 애플리케이션의 쓰기 계정을
    재사용하지 말고 `evergreen_execution_event`에만 SELECT 가능한 별도 계정을 사용한다.
    이 테이블에는 기존 계좌/주문 상태도 있으므로 Grafana 편집·Explore 권한 역시 신뢰된 운영자로 제한한다.
-3. `early3-dashboard.json`을 Dashboards → Import로 가져와 MariaDB와 Loki 데이터 소스를 선택한다.
+3. `early3-dashboard.json`을 Dashboards → Import로 가져와 PostgreSQL와 Loki 데이터 소스를 선택한다.
    데이터 소스 UID나 비밀번호를 JSON에 하드코딩하지 않는다. 시간대는 `Asia/Seoul`이다.
 4. 애플리케이션 변경 배포 후 다음 확정 시간봉부터 데이터가 쌓이는지 확인한다.
    보유하지 않을 때 손절선이 비어 있는 것은 정상이며, 매수 신호만 있고 점이 없는 것도 가능하다.
@@ -165,13 +164,13 @@ OTel 로그 본문이 JSON인 현재 경로:
 
 ## 검증 기준
 
-테스트는 가짜 거래소와 일회용 로컬 MariaDB만 사용한다. 신규/복구 봉, 중복 방지, 미체결 취소,
+테스트는 가짜 거래소와 일회용 로컬 PostgreSQL만 사용한다. 신규/복구 봉, 중복 방지, 미체결 취소,
 부분 체결, 저장 실패 시 로그 억제, OTel JSON 전달, 대시보드 SQL 계약을 확인한다.
 운영 가져오기·실계좌 체결·운영 부하는 별도 검증이며 템플릿 파일 생성만으로 완료로 간주하지 않는다.
 
 공식 문서:
 
-- [Grafana MySQL 시간축/SQL 매크로](https://grafana.com/docs/grafana/latest/datasources/mysql/query-editor/)
-- [MariaDB JSON_TABLE: 10.6부터 지원](https://mariadb.com/docs/server/reference/sql-functions/special-functions/json-functions/json_table)
+- [Grafana PostgreSQL 시간축/SQL 매크로](https://grafana.com/docs/grafana/latest/datasources/postgres/query-editor/)
+- [PostgreSQL JSON_TABLE](https://www.postgresql.org/docs/18/functions-json.html#FUNCTIONS-SQLJSON-TABLE)
 - [Grafana Time series](https://grafana.com/docs/grafana/latest/visualizations/panels-visualizations/visualizations/time-series/)
 - [Loki 로그 파서](https://grafana.com/docs/loki/latest/query/log_queries/)

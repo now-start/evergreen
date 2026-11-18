@@ -1,4 +1,4 @@
-"""MariaDB write-ahead order state guarded by a dedicated session-level lock."""
+"""PostgreSQL write-ahead order state guarded by a dedicated session-level lock."""
 
 import json
 import logging
@@ -8,10 +8,23 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import Column, Integer, MetaData, String, Table, Text, insert, select, text, update
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    Identity,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    Text,
+    insert,
+    select,
+    text,
+    update,
+)
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from evergreen.database.connection import LOCK_NAME, ExecutionLockError, locked_connection
+from evergreen.database.connection import assert_owner, locked_connection
 from evergreen.database.migration import apply
 from evergreen.market import Nonnegative
 from evergreen.observability import operation
@@ -24,18 +37,16 @@ metadata = MetaData()
 states = Table(
     "evergreen_execution_state",
     metadata,
-    Column("id", Integer, primary_key=True),
+    Column("id", Integer, primary_key=True, autoincrement=False),
     Column("payload", Text, nullable=False),
-    mysql_engine="InnoDB",
 )
 events = Table(
     "evergreen_execution_event",
     metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("id", BigInteger, Identity(), primary_key=True),
     Column("time", String(40), nullable=False),
     Column("event", String(40), nullable=False),
     Column("payload", Text, nullable=False),
-    mysql_engine="InnoDB",
 )
 
 
@@ -134,15 +145,7 @@ class Store:
         return boundary if boundary.utcoffset() is not None else None
 
     async def _check_owner(self) -> None:
-        value = (
-            await self.connection.execute(
-                text("SELECT IS_USED_LOCK(:name) = CONNECTION_ID() AND CONNECTION_ID() = :owner"),
-                {"name": LOCK_NAME, "owner": self.owner},
-            )
-        ).scalar_one()
-        if value != 1:
-            logger.error("event=execution_lock_lost")
-            raise ExecutionLockError("MariaDB 실행 잠금을 잃었습니다")
+        await assert_owner(self.connection, self.owner)
 
     async def assert_owner(self) -> None:
         async with self.connection.begin():
@@ -263,7 +266,7 @@ async def open_store(engine: AsyncEngine, *, initialize: bool = False) -> AsyncI
             heads = await connection.run_sync(apply)
             await connection.commit()
         logger.info("event=database_revision action=upgrade revision=%s", ",".join(heads) or "base")
-        owner = int((await connection.execute(text("SELECT CONNECTION_ID()"))).scalar_one())
+        owner = int((await connection.execute(text("SELECT pg_backend_pid()"))).scalar_one())
         await connection.commit()
         store = Store(connection, owner)
         if initialize:

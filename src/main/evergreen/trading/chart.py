@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 def bar_snapshot(
     state: "State", history: Sequence[Candle], signal: Side | None
 ) -> dict[str, object]:
-    """Copy already-observed state. Decimal strings retain precision in MariaDB and Loki."""
+    """Copy already-observed state. Decimal strings retain precision in PostgreSQL and Loki."""
     bar, buffer = history[-1], state.buffer
     protection = buffer.protection if buffer else None
     active = bool(protection and protection.peak >= protection.reference + 3 * protection.entry_tr)

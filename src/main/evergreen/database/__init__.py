@@ -1,1 +1,1 @@
-"""MariaDB schema lifecycle, independent of trading activation."""
+"""PostgreSQL schema lifecycle, independent of trading activation."""

@@ -111,7 +111,7 @@ async def test_worker_heartbeat_and_cleanup_without_external_io(
     settings = TradingSettings(
         access_key=SecretStr("private-sentinel"),
         secret_key=SecretStr("private-sentinel"),
-        datasource_url=SecretStr("jdbc:mariadb://localhost/test"),
+        datasource_url=SecretStr("jdbc:postgresql://localhost/test"),
         datasource_username=SecretStr("private-sentinel"),
         datasource_password=SecretStr("private-sentinel"),
     )

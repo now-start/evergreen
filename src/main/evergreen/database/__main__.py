@@ -17,8 +17,8 @@ from evergreen.platform.config import PlatformSettings, load_spring_config
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Evergreen MariaDB 스키마 마이그레이션")
-    parser.add_argument("action", choices=["upgrade", "current", "baseline", "history"])
+    parser = argparse.ArgumentParser(description="Evergreen PostgreSQL 스키마 마이그레이션")
+    parser.add_argument("action", choices=["upgrade", "current", "history"])
     args = parser.parse_args(argv)
     configure_logging()
     if args.action == "history":

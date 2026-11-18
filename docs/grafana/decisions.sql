@@ -2,13 +2,13 @@ WITH evidence AS (
   SELECT e.id, j.*,
          ROW_NUMBER() OVER (PARTITION BY j.event_id ORDER BY e.id DESC) AS latest
   FROM evergreen_execution_event AS e,
-       JSON_TABLE(e.payload, '$.detail.chart[*]' COLUMNS (
+       JSON_TABLE(CAST(e.payload AS jsonb), '$.detail.chart[*]' COLUMNS (
          event_id VARCHAR(160) PATH '$.event_id',
          kind VARCHAR(40) PATH '$.event',
          schema_version INT PATH '$.schema_version',
          strategy VARCHAR(64) PATH '$.strategy',
          mode VARCHAR(8) PATH '$.mode',
-         event_time DOUBLE PATH '$.event_time',
+         event_time DOUBLE PRECISION PATH '$.event_time',
          observed_at VARCHAR(40) PATH '$.observed_at',
          close_price DECIMAL(30,10) PATH '$.close',
          entry_threshold DECIMAL(30,10) PATH '$.entry_threshold',
@@ -29,10 +29,10 @@ WITH evidence AS (
     AND j.mode = 'live'
     AND j.event_time BETWEEN $__unixEpochFrom() AND $__unixEpochTo()
 )
-SELECT event_time AS time, position AS '보유 상태',
-       candidate_signal AS '봉 신호', pre_order_signal AS '최종 주문 전 신호',
-       breach_count AS '연속 이탈', rising_grace AS '상승 유예',
-       awaiting_reset AS '재진입 대기', exit_due AS '예방 청산',
-       halted AS '거래 중단', observed_at AS '관측 시각 UTC'
+SELECT event_time AS time, position AS "보유 상태",
+       candidate_signal AS "봉 신호", pre_order_signal AS "최종 주문 전 신호",
+       breach_count AS "연속 이탈", rising_grace AS "상승 유예",
+       awaiting_reset AS "재진입 대기", exit_due AS "예방 청산",
+       halted AS "거래 중단", observed_at AS "관측 시각 UTC"
 FROM evidence WHERE latest = 1 AND kind = 'strategy_bar'
 ORDER BY time DESC;

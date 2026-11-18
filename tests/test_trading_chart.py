@@ -280,7 +280,7 @@ def test_dashboard_embeds_exact_readonly_sql_and_does_not_connect_fill_points() 
         assert query == (directory / filename).read_text()
         assert query.startswith("WITH evidence AS")
         assert "$.event_time" in query and "latest = 1" in query
-        assert "${DS_MARIADB}" == target["datasource"]["uid"]
+        assert "${DS_POSTGRESQL}" == target["datasource"]["uid"]
     style = panels[0]["fieldConfig"]
     assert style["defaults"]["custom"]["spanNulls"] is False
     assert {"id": "custom.lineWidth", "value": 0} in style["overrides"][0]["properties"]

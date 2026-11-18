@@ -18,7 +18,7 @@ uv run python -m evergreen.trading
 ```
 
 수동 초기화·진단 CLI는 기존 Config Server 부트스트랩을 사용한다.
-`--approve-initialization`은 빈 MariaDB에 최초 설치 승인을 기록하며 업비트 API는 호출하지 않는다.
+`--approve-initialization`은 빈 PostgreSQL에 최초 설치 승인을 기록하며 업비트 API는 호출하지 않는다.
 기존 `--initialize-state`도 같은 승인 명령의 별칭이다. 더 이상 미검증 상태 행을 직접 만들지 않는다.
 `--execute`는 `evergreen.execution.live-enabled=true`도 함께 있어야 동작하며,
 `--once`는 한 사이클 후 종료한다. 실제 운영 설정이 기본값과 같다고 가정하지 않는다.
@@ -58,7 +58,7 @@ Docker가 주문 루프를 반복 재시작하는 것을 피한다. 거래 장�
 | 설정 | 용도 |
 | --- | --- |
 | `evergreen.trading.access-key / secret-key` | 기존 업비트 키, 미복호화 cipher 거부 |
-| `spring.datasource.url / username / password` | 기존 MariaDB 연결 |
+| `spring.datasource.url / username / password` | 기존 PostgreSQL 연결 |
 | `evergreen.execution.live-enabled` | false, 명시적 주문 허용 스위치 |
 | `evergreen.execution.strategy` | 기본 breakout-v1; 승인한 후보는 breakout-buffer-early3-v1 |
 | `evergreen.execution.poll-seconds` | 30초, 주문 복구·위험 확인 |
@@ -67,8 +67,9 @@ Docker가 주문 루프를 반복 재시작하는 것을 피한다. 거래 장�
 | `evergreen.execution.max-slippage` | 0.003, 보이는 호가의 예상 평균 체결 편차 |
 | `evergreen.execution.max-drawdown` | 기본 돌파 최대0.10; early3는 정확히0.20, 관측 중단 기준 |
 
-단일 호스트 `jdbc:mariadb://host:3306/database` 또는 `jdbc:mysql://...`를
-SQLAlchemy `mysql+asyncmy` URL로 변환한다. 비밀번호는 URL 문자열로 출력하지 않는다.
+단일 호스트 `jdbc:postgresql://host:5432/database?sslmode=require&connectTimeout=3`을
+SQLAlchemy `postgresql+asyncpg` URL로 변환한다. TLS 기본값은 require이며 읽기 가능한 primary에만 접속한다.
+비밀번호는 URL 문자열로 출력하지 않는다.
 지원하지 않는 JDBC 옵션이나 TLS 활성화 URL은 무시하지 않고 시작을 거부한다.
 TLS가 필요한 운영 환경은 CA·호스트 검증 정책을 확정해 드라이버 설정을 추가해야 한다.
 현재 운영 DB의 복호화된 주소·접속 권한은 검증하지 않았다.
@@ -115,7 +116,7 @@ early3 선택·기존 포지션 전환·실제 VWAP와 연구 체결 차이·버
 새 보호 상태와 주문 문맥은 기존 상태 테이블의 JSON payload에 함께 저장한다.
 새 payload를 쓴 뒤2.0.2로 이미지 롤백하면 읽기가 거부된다. DB 상태를 삭제해 해결하지 않는다.
 
-## MariaDB 상태와 복구
+## PostgreSQL 상태와 복구
 
 ### 배포 순단·장시간 중단 후 복구 (2.2.1)
 
@@ -169,10 +170,10 @@ DB 전체가 유실되면 승인도 없어지므로 자동으로 처음부터 �
 **모든 DB 복원 후에는 워커를 중지한 채 실제 주문 이력을 수동 대사해야 한다.**
 현재 버전의 미검증 잔고(null) 상태 행은 유지하며 기존 첫 실행 검증을 적용한다.
 마이그레이션 적용만으로 계좌를 초기화하거나 거래를 활성화하지 않는다.
-이전 버전에서 이미 테이블을 만든 경우 문서의 baseline 절차를 먼저 수행한다.
+2.x 데이터는 [일회성 가져오기](postgresql-cutover.md)로 새 PostgreSQL 스키마에 적재한다.
 상태와 감사 이벤트는 같은 트랜잭션으로 저장된다. 감사 이벤트 보관·아카이브 정책은 운영자가 별도로 정해야 한다.
 
-동일 MariaDB 서버의 세션 잠금 `evergreen:execution:KRW-BTC`로 동시 워커를 차단한다.
+동일 PostgreSQL 서버의 세션 advisory lock `(0x45564752, 1)`로 동시 워커를 차단한다.
 전용 연결을 유지하고 모든 읽기·쓰기 및 제출 직전에 연결 ID와 소유권을 검사한다.
 연결을 잃으면 중단한다. 독립 DB 서버나 멀티 라이터 클러스터 사이의 분산 잠금은 아니다.
 모든 워커를 **동일한 단일 writer**로 연결해야 한다. DB와 거래소를 아우르는 원자적 exactly-once 보장은 없다.
@@ -185,13 +186,13 @@ DB 복원으로 주문 이력이 과거로 돌아간 경우에도 거래소와 �
 ## 검증
 
 일반 테스트는 외부 API 대신 SDK 전송부 모의 응답을 사용한다.
-DB 통합 테스트만 명시적으로 제공된 격리 MariaDB를 사용한다.
+DB 통합 테스트만 명시적으로 제공된 격리 PostgreSQL를 사용한다.
 
 ```bash
 uv run pytest
 # disposable local DB only: 127.0.0.1, database=evergreen_test
-EVERGREEN_TEST_MARIADB_URL='mysql+asyncmy://USER:PASSWORD@127.0.0.1:PORT/evergreen_test' \
-  uv run pytest tests/test_trading_mariadb.py --no-cov
+EVERGREEN_TEST_POSTGRESQL_URL='postgresql+asyncpg://USER:PASSWORD@127.0.0.1:PORT/evergreen_test?ssl=disable' \
+  uv run pytest tests/test_trading_postgresql.py --no-cov
 ```
 
 통합 테스트는 해당 테스트 DB의 두 실행 테이블과 Alembic 이력을 삭제·재생성한다. 운영 DB 주소를 넣지 않는다.
@@ -201,8 +202,6 @@ EVERGREEN_TEST_MARIADB_URL='mysql+asyncmy://USER:PASSWORD@127.0.0.1:PORT/evergre
 
 동일 업비트 계정의 API 키를 재발급하면 설정을 교체하고 앱을 재시작한다.
 키 해시는 실행 상태·승인·성과 이력의 검증 기준으로 사용하지 않는다.
-`0002_remove_key_identity` 마이그레이션은 기존 상태와 이벤트 JSON의 `identity`만
-제거하며 잔고, 미확정 주문 식별자, 주문 순번, 고점·중단 상태와 성과 이력을 보존한다.
 새 주문 식별자는 임의 UUID로 만들고 제출 전에 DB에 기록하며, 기존 pending은 그대로 대사한다.
 잔고·주문 검증은 유지하지만 동일 계정 여부를 별도로 식별하지는 않으므로 다른 계정의
-키로 설정을 바꾸지 않는다. 마이그레이션 후에는 `identity`를 요구하는 이전 버전으로 롤백할 수 없다.
+키로 설정을 바꾸지 않는다. 3.0은 PostgreSQL 전용이며 2.x 스키마를 사용하지 않는다.

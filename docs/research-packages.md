@@ -35,7 +35,7 @@ src/main/evergreen/
 ├── trading/
 │   ├── config.py             # 기존 Config Server 키·datasource 해석
 │   ├── upbit.py              # 공식 비동기 Upbit SDK·응답 계약
-│   ├── state.py              # MariaDB 상태·감사 이벤트·단일 세션 잠금
+│   ├── state.py              # PostgreSQL 상태·감사 이벤트·단일 세션 잠금
 │   ├── engine.py             # 잔고 대사·주문 의도·복구·위험 중단
 │   └── __main__.py           # 명시적 실행 워커, 기본 비활성화
 └── platform/                 # 기존 웹 서비스의 Spring 연동

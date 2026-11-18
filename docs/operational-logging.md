@@ -63,7 +63,7 @@ API와 함께 실행되는 루프 상태·마지막 완료 시각은 `/actuator/
 허용 목록으로 기록한다. API 키·계좌 identity·거래소 주문 식별자·원본 응답은 여전히 제외한다.
 금융 정보가 포함되므로 Loki/Grafana 권한과 보존 기간을 제한한다.
 `upbit`, `httpx`, `httpcore`의 INFO/DEBUG 로그도 제한한다.
-상세 거래 감사·복구 정보는 기존 MariaDB 실행 이력을 사용한다.
+상세 거래 감사·복구 정보는 기존 PostgreSQL 실행 이력을 사용한다.
 
 ## Grafana와 수집 범위
 

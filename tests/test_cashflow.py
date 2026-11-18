@@ -1,18 +1,14 @@
 import json
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from datetime import timedelta
 from decimal import Decimal as D
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
-from sqlalchemy import create_engine, insert
 
 from evergreen.trading.cashflow import Transfer, completed
 from evergreen.trading.engine import Trader
 from evergreen.trading.performance import Ledger
-from evergreen.trading.state import State, Store, events, metadata
 from evergreen.trading.upbit import Upbit
 from test_trading_execution import NOW, FakeUpbit, MemoryStore, settings
 from test_trading_performance import initial, snapshot
@@ -244,63 +240,3 @@ async def test_history_paginates_by_uuid_and_rejects_repeated_page(duplicate: bo
             assert len(calls) == 3
     finally:
         await api.close()
-
-
-@pytest.mark.asyncio
-async def test_journal_recovery_skips_operational_retries_and_replays_cashflow() -> None:
-    # Exercise the actual SQL/journal paths without a production DB. Only the
-    # MariaDB connection ownership query is replaced; its tests use MariaDB.
-    engine = create_engine("sqlite://")
-    metadata.create_all(engine)
-    with engine.connect() as sync:
-
-        @asynccontextmanager
-        async def transaction() -> AsyncIterator[None]:
-            with sync.begin():
-                yield
-
-        connection = Mock()
-        connection.begin = transaction
-        connection.execute = AsyncMock(side_effect=sync.execute)
-        store = Store(connection, 1)
-        store._check_owner = AsyncMock()  # type: ignore[method-assign]
-        await store.approve_initialization()
-        state = State(krw=D(100000), btc=D(0))
-        await store.initialize(state)
-        baseline = await store.balance_baseline(state)
-        assert baseline is not None
-        with sync.begin():
-            sync.execute(
-                insert(events),
-                [
-                    {
-                        "time": NOW.isoformat(),
-                        "event": "unexpected-balance",
-                        "payload": "{}",
-                    }
-                    for _ in range(10001)
-                ],
-            )
-        assert await store.balance_baseline(state) == baseline
-        assert (await store.performance()).reason is None
-        state.krw = D(89000)
-        await store.save(
-            state,
-            "cashflow-reconciled",
-            {
-                "before_krw": "100000",
-                "principal_krw": "-10000",
-                "fees_krw": "1000",
-                "movements": [transfer().model_dump(mode="json")],
-            },
-        )
-        assert await store.balance_baseline(state) != baseline
-        ledger = await store.performance()
-        assert ledger.cash == 89000 and ledger.net_flows == -10000 and ledger.reason is None
-        restarted = Store(connection, 1)
-        restarted._check_owner = AsyncMock()  # type: ignore[method-assign]
-        assert await restarted.load() == state
-        assert (await restarted.performance()).realized == -1000
-        state.krw = D(1)
-        assert await restarted.balance_baseline(state) is None
-    engine.dispose()

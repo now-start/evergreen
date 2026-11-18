@@ -96,7 +96,10 @@ async def _session(
             settings.strategy,
         )
         engine = create_async_engine(
-            settings.database_url, poolclass=NullPool, hide_parameters=True
+            settings.database_url,
+            poolclass=NullPool,
+            hide_parameters=True,
+            connect_args=settings.connect_args,
         )
         failed = False
         try:

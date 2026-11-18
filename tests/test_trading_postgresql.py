@@ -1,4 +1,4 @@
-"""Run only against an explicitly configured disposable MariaDB database."""
+"""Run only against an explicitly configured disposable PostgreSQL database."""
 
 import asyncio
 import json
@@ -15,26 +15,95 @@ import pytest_asyncio
 from alembic import command
 from alembic.util.exc import CommandError
 from pydantic import SecretStr
-from sqlalchemy import Connection, insert, select, text
+from sqlalchemy import Connection, func, insert, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from evergreen.database.config import DatabaseSettings
-from evergreen.database.connection import LOCK_NAME, locked_connection
+from evergreen.database.connection import LOCK_PARAMS, locked_connection
 from evergreen.database.migration import configuration, migrate, run_migrations
-from evergreen.database.migrations.versions.v0001_execution import legacy_schema
 from evergreen.trading.config import TradingSettings
 from evergreen.trading.runtime import run
-from evergreen.trading.state import State, StateUnavailable, Store, events, metadata, open_store
+from evergreen.trading.state import (
+    State,
+    StateUnavailable,
+    Store,
+    events,
+    metadata,
+    open_store,
+    states,
+)
 from evergreen.trading.upbit import Upbit
+
+
+@pytest.mark.asyncio
+async def test_snapshot_import_preserves_raw_rows_and_source_sequence(engine: AsyncEngine) -> None:
+    from evergreen.database.transfer import import_snapshot
+    from test_database_transfer import sample
+
+    snapshot = sample()
+    await import_snapshot(engine, snapshot)
+    async with open_store(engine) as store:
+        assert await store.load() == State.model_validate_json(snapshot.state.payload)
+        assert (await store.performance()).capital == Decimal(1000)
+        assert await store.balance_baseline(await store.load()) is not None
+        await store.save(await store.load(), "valuation")
+    async with engine.connect() as connection:
+        assert (
+            await connection.execute(select(events.c.id).order_by(events.c.id))
+        ).scalars().all() == [1, 3, 160969]
+    with pytest.raises(ValueError, match="빈 대상"):
+        await import_snapshot(engine, snapshot)
+
+
+@pytest.mark.asyncio
+async def test_import_failure_is_atomic(engine: AsyncEngine) -> None:
+    from evergreen.database.transfer import import_snapshot
+    from test_database_transfer import sample
+
+    await migrate(engine)
+    async with engine.begin() as connection:
+        await connection.execute(
+            text(
+                "ALTER TABLE evergreen_execution_event ADD CONSTRAINT reject_import CHECK (id < 3)"
+            )
+        )
+    with pytest.raises(SQLAlchemyError):
+        await import_snapshot(engine, sample())
+    async with engine.connect() as connection:
+        for table in (states, events):
+            assert (
+                await connection.execute(select(func.count()).select_from(table))
+            ).scalar_one() == 0
+
+
+@pytest.mark.asyncio
+async def test_invalidated_connection_cannot_reconnect_as_old_owner(engine: AsyncEngine) -> None:
+    async with initialized_store(engine) as store:
+        await store.connection.invalidate()
+        with pytest.raises(RuntimeError, match=r"연결|잠금"):
+            await store.assert_owner()
+    async with open_store(engine) as store:
+        await store.assert_owner()
+
+
+@pytest.mark.asyncio
+async def test_cancelled_lock_wait_does_not_steal_or_leak_lock(engine: AsyncEngine) -> None:
+    async with locked_connection(engine):
+        waiter = asyncio.create_task(migrate(engine))
+        await asyncio.sleep(0.2)
+        waiter.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await waiter
+    assert await migrate(engine, wait_seconds=0) == ("0001_postgresql",)
 
 
 @pytest_asyncio.fixture
 async def engine() -> AsyncIterator[AsyncEngine]:
-    url = os.getenv("EVERGREEN_TEST_MARIADB_URL")
+    url = os.getenv("EVERGREEN_TEST_POSTGRESQL_URL")
     if not url:
-        pytest.skip("disposable MariaDB URL not configured")
+        pytest.skip("disposable PostgreSQL URL not configured")
     value = create_async_engine(url, poolclass=NullPool)
     # Refuse destructive fixture setup against arbitrary databases.
     if value.url.host != "127.0.0.1" or value.url.database != "evergreen_test":
@@ -172,17 +241,16 @@ async def test_long_recovery_events_fit_text_and_commit_atomically(
             async with engine.begin() as connection:
                 await connection.execute(
                     text(
-                        "CREATE TRIGGER reject_chart_chunk BEFORE INSERT ON evergreen_execution_event "
-                        "FOR EACH ROW BEGIN IF NEW.event = 'strategy-evaluated' AND "
-                        "JSON_EXTRACT(NEW.payload, '$.detail.chart[0].event_time') > "
-                        f"{int((cursor + timedelta(hours=1)).timestamp())} "
-                        "THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'test rollback'; END IF; END"
+                        "ALTER TABLE evergreen_execution_event ADD CONSTRAINT reject_chart_chunk "
+                        "CHECK (event <> 'strategy-evaluated' OR "
+                        "CAST(payload::jsonb #>> '{detail,chart,0,event_time}' AS DOUBLE PRECISION) <= "
+                        f"{int((cursor + timedelta(hours=1)).timestamp())})"
                     )
                 )
         try:
             trader = Trader(api, store, cfg, lambda: api.now)
             if fail_later_chunk:
-                with pytest.raises(SQLAlchemyError, match="test rollback"):
+                with pytest.raises(SQLAlchemyError, match="reject_chart_chunk"):
                     await trader.tick()
             else:
                 assert await trader.tick() == "no-signal"
@@ -215,11 +283,15 @@ async def test_long_recovery_events_fit_text_and_commit_atomically(
         finally:
             if fail_later_chunk:
                 async with engine.begin() as connection:
-                    await connection.execute(text("DROP TRIGGER reject_chart_chunk"))
+                    await connection.execute(
+                        text(
+                            "ALTER TABLE evergreen_execution_event DROP CONSTRAINT reject_chart_chunk"
+                        )
+                    )
 
 
 @pytest.mark.asyncio
-async def test_mariadb_persistence_lock_and_explicit_initialization(
+async def test_postgresql_persistence_lock_and_explicit_initialization(
     engine: AsyncEngine,
 ) -> None:
     with pytest.raises(ValueError, match="최초 초기화"):
@@ -257,17 +329,19 @@ async def initialized_store(engine: AsyncEngine) -> AsyncIterator[Store]:
 
 
 @pytest.mark.asyncio
-async def test_mariadb_lost_lock_blocks_state_operations(engine: AsyncEngine) -> None:
+async def test_postgresql_lost_lock_blocks_state_operations(engine: AsyncEngine) -> None:
     async with initialized_store(engine) as store:
         async with store.connection.begin():
-            await store.connection.execute(text("SELECT RELEASE_LOCK(:name)"), {"name": LOCK_NAME})
+            await store.connection.execute(
+                text("SELECT pg_advisory_unlock(:namespace, :resource)"), LOCK_PARAMS
+            )
         for operation in (store.load, store.assert_owner):
             with pytest.raises(RuntimeError, match="잠금"):
                 await operation()
 
 
 @pytest.mark.asyncio
-async def test_mariadb_audit_failure_rolls_back_state(engine: AsyncEngine) -> None:
+async def test_postgresql_audit_failure_rolls_back_state(engine: AsyncEngine) -> None:
     async with initialized_store(engine) as store:
         state = await store.load()
         state.halted = True
@@ -283,7 +357,9 @@ async def test_worker_initialization_and_cleanup_without_exchange_access(
     config = TradingSettings(
         access_key=SecretStr("test"),
         secret_key=SecretStr("test"),
-        datasource_url=SecretStr(f"jdbc:mariadb://127.0.0.1:{engine.url.port}/evergreen_test"),
+        datasource_url=SecretStr(
+            f"jdbc:postgresql://127.0.0.1:{engine.url.port}/evergreen_test?sslmode=disable"
+        ),
         datasource_username=SecretStr(engine.url.username or ""),
         datasource_password=SecretStr(engine.url.password or ""),
     )
@@ -313,7 +389,9 @@ async def test_loop_cancellation_preserves_pending_and_releases_single_owner_loc
         live_enabled=True,
         access_key=SecretStr("test"),
         secret_key=SecretStr("test"),
-        datasource_url=SecretStr(f"jdbc:mariadb://127.0.0.1:{engine.url.port}/evergreen_test"),
+        datasource_url=SecretStr(
+            f"jdbc:postgresql://127.0.0.1:{engine.url.port}/evergreen_test?sslmode=disable"
+        ),
         datasource_username=SecretStr(engine.url.username or ""),
         datasource_password=SecretStr(engine.url.password or ""),
     )
@@ -357,8 +435,8 @@ async def test_schema_upgrade_is_serialized_idempotent_and_does_not_initialize_a
 ) -> None:
     assert await migrate(engine, "current") == ()
     results = await asyncio.gather(migrate(engine), migrate(engine))
-    assert all(heads == ("0002_remove_key_identity",) for heads in results)
-    assert await migrate(engine) == ("0002_remove_key_identity",)
+    assert all(heads == ("0001_postgresql",) for heads in results)
+    assert await migrate(engine) == ("0001_postgresql",)
     async with engine.connect() as connection:
         assert (
             await connection.execute(text("SELECT COUNT(*) FROM evergreen_execution_state"))
@@ -369,75 +447,24 @@ async def test_schema_upgrade_is_serialized_idempotent_and_does_not_initialize_a
 
 
 @pytest.mark.asyncio
-async def test_legacy_baseline_preserves_order_state_and_audit(engine: AsyncEngine) -> None:
-    async with engine.begin() as connection:
-        await connection.run_sync(legacy_schema().create_all)
-        await connection.execute(
-            text("INSERT INTO evergreen_execution_state VALUES (1, :payload)"),
-            {"payload": '{"identity":"test","pending":{"identifier":"preserve"},"halted":true}'},
-        )
-        await connection.execute(
-            text(
-                "INSERT INTO evergreen_execution_event (time,event,payload) VALUES ('old','intent','preserve')"
-            )
-        )
-    with pytest.raises(SQLAlchemyError):
-        await migrate(engine)  # Existing tables are never automatically stamped.
-    assert await migrate(engine, "baseline") == ("0001_execution",)
-    assert await migrate(engine) == ("0002_remove_key_identity",)
-    async with engine.connect() as connection:
-        assert (
-            "preserve"
-            in (
-                await connection.execute(text("SELECT payload FROM evergreen_execution_state"))
-            ).scalar_one()
-        )
-        assert (
-            await connection.execute(text("SELECT payload FROM evergreen_execution_event"))
-        ).scalar_one() == "preserve"
-    with pytest.raises(ValueError, match="이미"):
-        await migrate(engine, "baseline")
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "ddl",
-    [
-        "DROP TABLE evergreen_execution_event",
-        "ALTER TABLE evergreen_execution_event MODIFY event VARCHAR(20) NOT NULL",
-        "ALTER TABLE evergreen_execution_event ENGINE=MyISAM",
-        "ALTER TABLE evergreen_execution_state MODIFY id INT NOT NULL, DROP PRIMARY KEY",
-        "ALTER TABLE evergreen_execution_event MODIFY id INT NOT NULL",
-    ],
-)
-async def test_legacy_baseline_rejects_partial_or_different_schema(
-    engine: AsyncEngine, ddl: str
-) -> None:
-    async with engine.begin() as connection:
-        await connection.run_sync(legacy_schema().create_all)
-        await connection.execute(text(ddl))
-    with pytest.raises(ValueError):
-        await migrate(engine, "baseline")
-    assert await migrate(engine, "current") == ()
-
-
-@pytest.mark.asyncio
 async def test_migration_runner_uses_existing_datasource_without_upbit_keys(
     engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     from evergreen.database.__main__ import main
 
     config = DatabaseSettings(
-        datasource_url=SecretStr(f"jdbc:mariadb://127.0.0.1:{engine.url.port}/evergreen_test"),
+        datasource_url=SecretStr(
+            f"jdbc:postgresql://127.0.0.1:{engine.url.port}/evergreen_test?sslmode=disable"
+        ),
         datasource_username=SecretStr(engine.url.username or ""),
         datasource_password=SecretStr(engine.url.password or ""),
     )
-    assert await run_migrations(config) == ("0002_remove_key_identity",)
+    assert await run_migrations(config) == ("0001_postgresql",)
     monkeypatch.setattr("evergreen.database.__main__.load_dotenv", Mock())
     monkeypatch.setattr("evergreen.database.__main__.load_spring_config", Mock())
     monkeypatch.setattr("evergreen.database.__main__.DatabaseSettings", lambda: config)
     assert await asyncio.to_thread(main, ["current"]) == 0
-    assert "0001_execution" in capsys.readouterr().out
+    assert "0001_postgresql" in capsys.readouterr().out
 
 
 @pytest.mark.asyncio
@@ -452,7 +479,7 @@ async def test_unknown_revision_and_destructive_downgrade_are_rejected(engine: A
 
         with pytest.raises(RuntimeError, match="삭제 downgrade"):
             await connection.run_sync(downgrade)
-    assert await migrate(engine, "current") == ("0002_remove_key_identity",)
+    assert await migrate(engine, "current") == ("0001_postgresql",)
     async with engine.begin() as connection:
         await connection.execute(text("UPDATE evergreen_alembic_version SET version_num='future'"))
     with pytest.raises(CommandError):
@@ -503,7 +530,9 @@ async def test_state_loss_cannot_reuse_consumed_approval(engine: AsyncEngine) ->
 async def test_initialization_rechecks_lock_and_preserves_approval(engine: AsyncEngine) -> None:
     async with open_store(engine, initialize=True) as store:
         async with store.connection.begin():
-            await store.connection.execute(text("SELECT RELEASE_LOCK(:name)"), {"name": LOCK_NAME})
+            await store.connection.execute(
+                text("SELECT pg_advisory_unlock(:namespace, :resource)"), LOCK_PARAMS
+            )
         with pytest.raises(RuntimeError, match="잠금"):
             await store.initialize(State())
     async with open_store(engine) as store:
@@ -543,8 +572,8 @@ async def test_initialization_audit_failure_rolls_back_baseline(engine: AsyncEng
         async with store.connection.begin():
             await store.connection.execute(
                 text(
-                    "CREATE TRIGGER reject_initialized BEFORE INSERT ON evergreen_execution_event "
-                    "FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='test rejection'"
+                    "ALTER TABLE evergreen_execution_event ADD CONSTRAINT reject_initialized "
+                    "CHECK (event <> 'initialized')"
                 )
             )
         try:
@@ -553,7 +582,9 @@ async def test_initialization_audit_failure_rolls_back_baseline(engine: AsyncEng
             assert await store.load_for_start() is None
         finally:
             async with store.connection.begin():
-                await store.connection.execute(text("DROP TRIGGER reject_initialized"))
+                await store.connection.execute(
+                    text("ALTER TABLE evergreen_execution_event DROP CONSTRAINT reject_initialized")
+                )
 
 
 @pytest.mark.asyncio
@@ -564,6 +595,7 @@ async def test_automatic_initialization_with_real_store_and_fake_exchange(
     from test_trading_execution import NOW, FakeUpbit, settings
 
     api, config = FakeUpbit(), settings()
+    api.cash_movements = AsyncMock(return_value=[])  # type: ignore[method-assign]
     async with open_store(engine, initialize=True):
         pass
     async with open_store(engine) as store:
@@ -628,3 +660,50 @@ async def test_chart_queries_use_event_time_nulls_and_deduplicated_execution(
     assert fill["time"] == NOW.timestamp() and fill["value"] == Decimal("99.95")
     assert fill["metric"] == "매수 #1"
     assert results["orders.sql"][0]["수수료 KRW"] == Decimal(50)
+
+
+@pytest.mark.asyncio
+async def test_journal_recovery_skips_operational_retries_and_replays_cashflow(
+    engine: AsyncEngine,
+) -> None:
+    from test_cashflow import transfer
+    from test_trading_execution import NOW
+
+    async with open_store(engine, initialize=True) as store:
+        state = State(krw=Decimal(100000), btc=Decimal(0))
+        await store.initialize(state)
+        baseline = await store.balance_baseline(state)
+        assert baseline is not None
+        async with store.connection.begin():
+            await store.connection.execute(
+                insert(events),
+                [
+                    {
+                        "time": NOW.isoformat(),
+                        "event": "unexpected-balance",
+                        "payload": "{}",
+                    }
+                    for _ in range(10001)
+                ],
+            )
+        assert await store.balance_baseline(state) == baseline
+        assert (await store.performance()).reason is None
+        state.krw = Decimal(89000)
+        await store.save(
+            state,
+            "cashflow-reconciled",
+            {
+                "before_krw": "100000",
+                "principal_krw": "-10000",
+                "fees_krw": "1000",
+                "movements": [transfer().model_dump(mode="json")],
+            },
+        )
+        assert await store.balance_baseline(state) != baseline
+        ledger = await store.performance()
+        assert ledger.cash == 89000 and ledger.net_flows == -10000 and ledger.reason is None
+        restarted = Store(store.connection, store.owner)
+        assert await restarted.load() == state
+        assert (await restarted.performance()).realized == -1000
+        state.krw = Decimal(1)
+        assert await restarted.balance_baseline(state) is None

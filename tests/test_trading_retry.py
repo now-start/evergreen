@@ -189,7 +189,7 @@ async def test_ambiguous_post_recovers_under_new_session_without_second_post(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     cfg, api = settings(), FakeUpbit()
-    cfg.datasource_url = SecretStr("jdbc:mariadb://localhost/test")
+    cfg.datasource_url = SecretStr("jdbc:postgresql://localhost/test")
     cfg.datasource_username = cfg.datasource_password = SecretStr("test")
     api.timeout = True
     store = MemoryStore()

@@ -106,15 +106,17 @@ async def test_disabled_submission_sends_no_request() -> None:
 
 
 def test_existing_config_names_and_secret_redaction(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SPRING_DATASOURCE_URL", "jdbc:mariadb://db:3306/evergreen?useSSL=false")
+    monkeypatch.setenv(
+        "SPRING_DATASOURCE_URL", "jdbc:postgresql://db:5432/evergreen?sslmode=require"
+    )
     monkeypatch.setenv("SPRING_DATASOURCE_USERNAME", "db-user")
     monkeypatch.setenv("SPRING_DATASOURCE_PASSWORD", "private-db-password")
     value = settings()
     url = value.database_url
     assert (url.drivername, url.host, url.port, url.database) == (
-        "mysql+asyncmy",
+        "postgresql+asyncpg",
         "db",
-        3306,
+        5432,
         "evergreen",
     )
     assert url.password == "private-db-password"  # noqa: S105 - test-only sentinel
@@ -125,11 +127,11 @@ def test_existing_config_names_and_secret_redaction(monkeypatch: pytest.MonkeyPa
 @pytest.mark.parametrize(
     "url",
     [
-        "jdbc:postgresql://db/evergreen",
-        "jdbc:mariadb://db/evergreen?useSSL=true",
-        "jdbc:mariadb://db/evergreen?unknown=true",
+        "jdbc:mariadb://db/evergreen",
+        "jdbc:postgresql://db/evergreen?sslmode=prefer",
+        "jdbc:postgresql://db/evergreen?unknown=true",
         "{cipher}encrypted",
-        "jdbc:mariadb://user:password@db/evergreen",
+        "jdbc:postgresql://user:password@db/evergreen",
     ],
 )
 def test_unsupported_database_settings_fail_closed(url: str) -> None:
@@ -139,6 +141,38 @@ def test_unsupported_database_settings_fail_closed(url: str) -> None:
             datasource_username=SecretStr("u"),
             datasource_password=SecretStr("p"),
         ).database_url
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "sslmode=prefer",
+        "sslmode=require&sslmode=disable",
+        "connectTimeout=0",
+        "connectTimeout=nan",
+        "connectTimeout=61",
+        "targetServerType=primary",
+    ],
+)
+def test_postgresql_rejects_unsupported_or_ambiguous_options(query: str) -> None:
+    with pytest.raises(ValueError):
+        _ = settings(
+            datasource_url=SecretStr(f"jdbc:postgresql://db/evergreen?{query}"),
+            datasource_username=SecretStr("u"),
+            datasource_password=SecretStr("p"),
+        ).database_url
+
+
+def test_postgresql_defaults_to_tls_primary_and_bounded_connection() -> None:
+    value = settings(
+        datasource_url=SecretStr("jdbc:postgresql://db/evergreen"),
+        datasource_username=SecretStr("u"),
+        datasource_password=SecretStr("p@/:?"),
+    )
+    assert value.database_url.query == {"ssl": "require"}
+    assert value.database_url.port == 5432
+    assert value.database_url.password == "p@/:?"  # noqa: S105 - synthetic password
+    assert value.connect_args == {"timeout": 3.0, "target_session_attrs": "read-write"}
 
 
 @pytest.mark.parametrize("key", ["", "{cipher}not-decrypted"])

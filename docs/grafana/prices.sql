@@ -2,13 +2,13 @@ WITH evidence AS (
   SELECT e.id, j.*,
          ROW_NUMBER() OVER (PARTITION BY j.event_id ORDER BY e.id DESC) AS latest
   FROM evergreen_execution_event AS e,
-       JSON_TABLE(e.payload, '$.detail.chart[*]' COLUMNS (
+       JSON_TABLE(CAST(e.payload AS jsonb), '$.detail.chart[*]' COLUMNS (
          event_id VARCHAR(160) PATH '$.event_id',
          kind VARCHAR(40) PATH '$.event',
          schema_version INT PATH '$.schema_version',
          strategy VARCHAR(64) PATH '$.strategy',
          mode VARCHAR(8) PATH '$.mode',
-         event_time DOUBLE PATH '$.event_time',
+         event_time DOUBLE PRECISION PATH '$.event_time',
          observed_at VARCHAR(40) PATH '$.observed_at',
          close_price DECIMAL(30,10) PATH '$.close',
          entry_threshold DECIMAL(30,10) PATH '$.entry_threshold',
@@ -29,8 +29,8 @@ WITH evidence AS (
     AND j.mode = 'live'
     AND j.event_time BETWEEN $__unixEpochFrom() AND $__unixEpochTo()
 )
-SELECT event_time AS time, close_price AS '종가', entry_threshold AS '진입선',
-       initial_stop AS '초기 손절선', trailing_stop AS '추적 손절선',
-       channel_exit_threshold AS '96시간 청산선'
+SELECT event_time AS time, close_price AS "종가", entry_threshold AS "진입선",
+       initial_stop AS "초기 손절선", trailing_stop AS "추적 손절선",
+       channel_exit_threshold AS "96시간 청산선"
 FROM evidence WHERE latest = 1 AND kind = 'strategy_bar'
 ORDER BY time;

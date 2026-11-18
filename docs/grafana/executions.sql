@@ -2,13 +2,13 @@ WITH evidence AS (
   SELECT e.id, j.*,
          ROW_NUMBER() OVER (PARTITION BY j.event_id ORDER BY e.id DESC) AS latest
   FROM evergreen_execution_event AS e,
-       JSON_TABLE(e.payload, '$.detail.chart[*]' COLUMNS (
+       JSON_TABLE(CAST(e.payload AS jsonb), '$.detail.chart[*]' COLUMNS (
          event_id VARCHAR(160) PATH '$.event_id',
          kind VARCHAR(40) PATH '$.event',
          schema_version INT PATH '$.schema_version',
          strategy VARCHAR(64) PATH '$.strategy',
          mode VARCHAR(8) PATH '$.mode',
-         event_time DOUBLE PATH '$.event_time',
+         event_time DOUBLE PRECISION PATH '$.event_time',
          observed_at VARCHAR(40) PATH '$.observed_at',
          order_sequence INT PATH '$.order_sequence',
          side VARCHAR(8) PATH '$.side',

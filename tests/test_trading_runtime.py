@@ -139,7 +139,7 @@ async def test_shared_loop_cancellation_cleans_resources_and_isolates_telemetry(
         live_enabled=True,
         access_key=SecretStr("test-access"),
         secret_key=SecretStr("s" * 64),
-        datasource_url=SecretStr("jdbc:mariadb://localhost/test"),
+        datasource_url=SecretStr("jdbc:postgresql://localhost/test"),
         datasource_username=SecretStr("test"),
         datasource_password=SecretStr("test"),
     )
