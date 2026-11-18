@@ -1,6 +1,6 @@
 # PostgreSQL 스키마 관리
 
-Evergreen 3.0.0은 PostgreSQL 18 전용이다. 런타임은 asyncpg와 SQLAlchemy를 사용하며 MariaDB 드라이버·baseline·구 revision 분기를 포함하지 않는다.
+Evergreen은 PostgreSQL 18 전용이며 asyncpg와 SQLAlchemy를 사용한다.
 
 ## 연결 설정
 
@@ -42,13 +42,12 @@ uv run python -m evergreen.database upgrade
 replica 1, stop-first를 유지한다. 잠금은 서로 다른 서버의 split-brain을 해결하지 않으므로 Patroni의 단일 primary 운영이 필요하다.
 
 추가 스키마 변경은 새 전진 revision으로 작성한다. 적용된 PostgreSQL revision을 수정하지 않는다.
-2.x revision은 3.x chain에 존재하지 않으며, [일회성 이관](postgresql-cutover.md)으로 데이터를 새 스키마에 가져온다.
 
 ## 검증
 
 ```sh
 EVERGREEN_TEST_POSTGRESQL_URL='postgresql+asyncpg://USER:PASSWORD@127.0.0.1:PORT/evergreen_test?ssl=disable' \
-  uv run pytest tests/test_trading_postgresql.py tests/test_database_transfer.py --no-cov
+  uv run pytest tests/test_trading_postgresql.py --no-cov
 ```
 
 fixture는 `127.0.0.1`의 `evergreen_test`만 허용하고 테이블을 재생성한다. CI는 격리 PostgreSQL 18 서비스로 이 테스트를 실행하며 성공한 뒤 빌드·릴리스를 진행한다.

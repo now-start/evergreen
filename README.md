@@ -2,8 +2,7 @@
 
 차트 데이터만을 사용해 비트코인을 자동 매매하는 Python 프로젝트입니다.
 
-3.0.0부터 PostgreSQL 18 전용입니다. [DB 설정](docs/database-migrations.md)과
-[2.x 핵심 데이터 가져오기](docs/postgresql-cutover.md)를 참고하세요.
+PostgreSQL 18 전용입니다. 연결 설정과 스키마 관리는 [DB 설정](docs/database-migrations.md)을 참고하세요.
 
 ## 현재 연구·승격 상태
 

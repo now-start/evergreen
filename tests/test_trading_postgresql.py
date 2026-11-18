@@ -15,7 +15,7 @@ import pytest_asyncio
 from alembic import command
 from alembic.util.exc import CommandError
 from pydantic import SecretStr
-from sqlalchemy import Connection, func, insert, select, text
+from sqlalchemy import Connection, insert, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -32,50 +32,8 @@ from evergreen.trading.state import (
     events,
     metadata,
     open_store,
-    states,
 )
 from evergreen.trading.upbit import Upbit
-
-
-@pytest.mark.asyncio
-async def test_snapshot_import_preserves_raw_rows_and_source_sequence(engine: AsyncEngine) -> None:
-    from evergreen.database.transfer import import_snapshot
-    from test_database_transfer import sample
-
-    snapshot = sample()
-    await import_snapshot(engine, snapshot)
-    async with open_store(engine) as store:
-        assert await store.load() == State.model_validate_json(snapshot.state.payload)
-        assert (await store.performance()).capital == Decimal(1000)
-        assert await store.balance_baseline(await store.load()) is not None
-        await store.save(await store.load(), "valuation")
-    async with engine.connect() as connection:
-        assert (
-            await connection.execute(select(events.c.id).order_by(events.c.id))
-        ).scalars().all() == [1, 3, 160969]
-    with pytest.raises(ValueError, match="빈 대상"):
-        await import_snapshot(engine, snapshot)
-
-
-@pytest.mark.asyncio
-async def test_import_failure_is_atomic(engine: AsyncEngine) -> None:
-    from evergreen.database.transfer import import_snapshot
-    from test_database_transfer import sample
-
-    await migrate(engine)
-    async with engine.begin() as connection:
-        await connection.execute(
-            text(
-                "ALTER TABLE evergreen_execution_event ADD CONSTRAINT reject_import CHECK (id < 3)"
-            )
-        )
-    with pytest.raises(SQLAlchemyError):
-        await import_snapshot(engine, sample())
-    async with engine.connect() as connection:
-        for table in (states, events):
-            assert (
-                await connection.execute(select(func.count()).select_from(table))
-            ).scalar_one() == 0
 
 
 @pytest.mark.asyncio
