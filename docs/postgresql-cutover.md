@@ -67,5 +67,6 @@
 - 운영 DB 읽기 전용 사전검증에서 현재 상태 1행과 핵심 이벤트 16행의 손익 장부·잔액 기준선 일치 확인.
   원본과 운영 배포는 변경하지 않았다.
 - 최초 검사에서 발견한 기존 의존성 취약점은 aiohttp, certifi, dnspython, filelock, msgpack,
-  OpenTelemetry 계열, setuptools 갱신으로 해결했다. `pip-audit` 재검사에서 알려진 취약점 없음.
+  OpenTelemetry 계열, setuptools 갱신으로 해결했다. GitHub 교차 검사에서 추가 확인된
+  Mako 취약점도 1.4.3으로 갱신하고 migration·이관 테스트 38개를 재검증했다. `pip-audit` 재검사에서 알려진 취약점 없음.
   자체 패키지 evergreen과 전용 인덱스의 torch+cpu는 감사 도구의 PyPI 검사 대상에서 제외된다.
