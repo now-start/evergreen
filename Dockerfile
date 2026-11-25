@@ -1,12 +1,12 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.29
 
-FROM python:3.12.13-slim-bookworm AS base
+FROM python:3.12.16-slim-bookworm AS base
 
 WORKDIR /app
 
 FROM base AS builder
 
-COPY --from=ghcr.io/astral-sh/uv:0.11.3 /uv /bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.10 /uv /bin/uv
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
